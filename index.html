@@ -1,0 +1,4619 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    
+  </body>
+</html>
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポケモン対戦シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press+Start+2P', cursive;
+            touch-action: manipulation;
+        }
+        .sub-marker {
+        display: none;
+        background: #98FB98;
+        color: block;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 2px;
+    }
+        .nes-container {
+            border: 4px solid black;
+            border-radius: 8px;
+            box-shadow: 0 6px 0 black;
+        }
+        .hp-bar-container {
+            background-color: #e5e7eb;
+            border: 2px solid #1f2937;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 20px;
+        }
+        .hp-bar {
+            height: 100%;
+            transition: width 1.1s ease-in-out; /* HPの減少速度を調整 */
+            background-color: #22c55e;
+        }
+        .hp-bar.low {
+            background-color: #facc15;
+        }
+        .hp-bar.critical {
+            background-color: #ef4444;
+        }
+        .sprite-shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .pokemon-card, .item-card, .difficulty-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .pokemon-card:hover, .item-card:hover, .difficulty-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 8px black;
+        }
+        .sprite-faint {
+            transition: opacity 1s ease-out, transform 1s ease-out;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        #screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease-in;
+            z-index: 20;
+        }
+        #screen-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .status-badge {
+            font-size: 0.6rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: white;
+            margin-left: 4px;
+        }
+        body {
+    background-color: black !important;
+      }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div id="selection-tooltip" class="absolute hidden nes-container bg-white/95 p-2 text-xs z-50 w-auto pointer-events-none"></div>
+    <div id="move-tooltip" class="absolute hidden nes-container bg-white/95 p-2 text-xs z-50 w-auto pointer-events-none"></div>
+
+    <div id="game-container" class="w-full max-w-4xl p-4">
+        
+        <div id="selection-screen" class="bg-white nes-container p-4">
+            <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4">せんとうに だす ポケモンを えらんでくれ！</h2>
+            <div id="pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            </div>
+        </div>
+        
+        <div id="item-selection-screen" class="hidden bg-white nes-container p-4">
+            <h2 id="item-selection-title" class="text-center text-lg md:text-2xl mb-4">もちものを えらんでくれ！</h2>
+            <div id="item-selection-grid" class="flex flex-wrap justify-center items-center gap-4">
+            </div>
+        </div>
+
+        <div id="opponent-selection-screen" class="hidden bg-white nes-container p-4">
+            <h2 class="text-center text-lg md:text-2xl mb-4">あいての ポケモンを えらんでくれ！</h2>
+            <div id="opponent-pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            </div>
+             <div class="text-center mt-4">
+                <button id="random-opponent-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">ランダムにえらぶ</button>
+            </div>
+        </div>
+        
+        <div id="opponent-item-selection-screen" class="hidden bg-white nes-container p-4">
+            <h2 id="opponent-item-selection-title" class="text-center text-lg md:text-2xl mb-4">あいての もちものを えらんでくれ！</h2>
+            <div id="opponent-item-selection-grid" class="flex flex-wrap justify-center items-center gap-4">
+            </div>
+        </div>
+        
+        <div id="difficulty-selection-screen" class="hidden bg-white nes-container p-4">
+            <h2 class="text-center text-lg md:text-2xl mb-4">あいての つよさを えらんでくれ！</h2>
+            <div id="difficulty-selection-grid" class="flex flex-wrap justify-center items-center gap-4">
+            </div>
+        </div>
+
+                <div id="battle-screen" class="hidden bg-white nes-container relative aspect-[4/3] w-full p-2" style="background-size: cover; background-position: center flex flex-col">
+             <div id="turn-counter" class="absolute top-4 left-4 text-sm bg-black/50 text-white p-1 rounded">ターン: 1</div>
+            <div id="weather-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
+            <div id="field-indicator" class="absolute top-12 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
+            <div id="screen-overlay">
+                <div id="game-over-screen" class="w-full h-full hidden items-center justify-center flex-col z-30 text-white">
+                    <p id="game-over-text" class="text-lg mb-4 text-center"></p>
+                    <button id="restart-button" class="font-bold py-2 px-4 rounded shadow-md border-2 border-white hover:bg-white/20">はじめから もどる</button>
+                </div>
+            </div>
+            <div id="opponent-area" class="absolute top-5 right-5 w-2/5 max-w-[300px] flex flex-col items-center">
+                <div class="nes-container bg-white/80 p-2 w-full mt-[-2px]">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center">
+                           <span id="opponent-name" class="text-sm"></span>
+                           <span id="opponent-status" class="status-badge"></span>
+                           <div id="opponent-substitute" class="sub-marker">みがわり</div>
+                        </div>
+                        <span id="opponent-level" class="text-sm">Lv.50</span>
+                    </div>
+                    <div class="hp-bar-container">
+                        <div id="opponent-hp" class="hp-bar"></div>
+                    </div>
+                    <div id="opponent-hp-text" class="font-pixel text-xs mt-1 font-bold">
+    <span id="opponent-current-hp">--</span>
+    <span id="opponent-max-hp">--</span>
+</div>
+<div id="opponent-stat-display" class="text-xs mt-1 text-left"></div>
+
+                </div>
+                <div class="relative">
+                    <div id="opponent-tooltip" class="absolute top-full mt-2 hidden nes-container bg-white/95 p-2 text-xs z-10 w-48 text-center left-1/2 -translate-x-1/2"></div>
+                    <img id="opponent-sprite" src="" alt="Opponent Pokemon">
+                </div>
+            </div>
+
+            <div id="player-area" class="absolute bottom-32 sm:bottom-36 left-5 w-2/5 max-w-[300px] flex flex-col items-center">
+                <div class="relative">
+                    <div id="player-tooltip" class="absolute bottom-full mb-2 hidden nes-container bg-white/95 p-2 text-xs z-10 w-48 text-center left-1/2 -translate-x-1/2"></div>
+                    <img id="player-sprite" src="" alt="Player Pokemon">
+                </div>
+<div class="nes-container bg-white/80 p-2 w-full relative -top-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center">
+                           <span id="player-name" class="text-sm"></span>
+                           <span id="player-status" class="status-badge"></span>
+                           <div id="player-substitute" class="sub-marker">みがわり</div>
+                        </div>
+                        <span id="player-level" class="text-sm">Lv.50</span>
+                    </div>
+                    <div class="hp-bar-container">
+                        <div id="player-hp" class="hp-bar"></div>
+                    </div>
+                    <div class="text-right text-sm mt-1 font-bold">
+                        <span id="player-current-hp"></span> / <span id="player-max-hp"></span>
+                    </div>
+                    <div id="player-stat-display" class="text-xs mt-1 text-right"></div>
+                </div>
+            </div>
+
+            <div id="menu" class="absolute bottom-0 left-0 right-0 min-h-[120px] max-h-[220px] bg-white nes-container m-2 p-2 grid grid-cols-2 gap-2 text-xs sm:text-base">
+                <div id="message-log" class="col-span-1 p-2 border-2 border-gray-800 rounded flex items-center justify-center">
+                    <p id="message-text">どうする？</p>
+                </div>
+                <div id="moves-container" class="col-span-1 grid grid-cols-2 gap-2">
+                </div>
+            </div>
+             <div id="win-screen" class="absolute bottom-0 left-0 right-0 h-28 sm:h-32 m-2 p-2 hidden items-center justify-center flex-col">
+                <p id="win-text" class="text-lg mb-4"></p>
+                <button id="win-restart-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md">はじめから もどる</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Elements ---
+    const selectionScreen = document.getElementById('selection-screen');
+    const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
+    const itemSelectionScreen = document.getElementById('item-selection-screen');
+    const itemSelectionGrid = document.getElementById('item-selection-grid');
+    const opponentSelectionScreen = document.getElementById('opponent-selection-screen');
+    const opponentPokemonSelectionGrid = document.getElementById('opponent-pokemon-selection-grid');
+    const randomOpponentButton = document.getElementById('random-opponent-button');
+    const opponentItemSelectionScreen = document.getElementById('opponent-item-selection-screen');
+    const opponentItemSelectionGrid = document.getElementById('opponent-item-selection-grid');
+    const difficultySelectionScreen = document.getElementById('difficulty-selection-screen');
+    const difficultySelectionGrid = document.getElementById('difficulty-selection-grid');
+    const battleScreen = document.getElementById('battle-screen');
+    const player = { nameEl: document.getElementById('player-name'), hpBar: document.getElementById('player-hp'), currentHpEl: document.getElementById('player-current-hp'), maxHpEl: document.getElementById('player-max-hp'), sprite: document.getElementById('player-sprite'), tooltip: document.getElementById('player-tooltip'), statusEl: document.getElementById('player-status') };
+    const opponent = { nameEl: document.getElementById('opponent-name'), hpBar: document.getElementById('opponent-hp'), sprite: document.getElementById('opponent-sprite'), tooltip: document.getElementById('opponent-tooltip'), statusEl: document.getElementById('opponent-status') };
+    const messageText = document.getElementById('message-text');
+    const movesContainer = document.getElementById('moves-container');
+    const menu = document.getElementById('menu');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const gameOverText = document.getElementById('game-over-text');
+    const restartButton = document.getElementById('restart-button');
+    const winScreen = document.getElementById('win-screen');
+    const winText = document.getElementById('win-text');
+    const winRestartButton = document.getElementById('win-restart-button');
+    const screenOverlay = document.getElementById('screen-overlay');
+    const moveTooltip = document.getElementById('move-tooltip');
+    const selectionTooltip = document.getElementById('selection-tooltip');
+    const turnCounter = document.getElementById('turn-counter');
+    const weatherIndicator = document.getElementById('weather-indicator');
+    const fieldIndicator = document.getElementById('field-indicator');
+    
+    // --- Game Data ---
+    let playerPokemon;
+    let opponentPokemon;
+    let selectedPlayerKey;
+    let selectedPlayerItemName;
+    let selectedOpponentKey;
+    let selectedOpponentItemName;
+    let difficulty;
+    let gameId = 0;
+    let currentTurn = 1;
+    let weather = { type: 'none', turns: 0 };
+    let field = { type: 'none', turns: 0 };
+    let isBattleInProgress = false;
+
+    const POKE_API_BASE_URL = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/";
+    const backgroundImages = [ '01sougen.jpg' ];
+    
+    const typeColors = {
+        ノーマル: 'bg-gray-200 text-black', ほのお: 'bg-red-500 text-white', みず: 'bg-blue-500 text-white', でんき: 'bg-yellow-400 text-black', くさ: 'bg-green-500 text-white', こおり: 'bg-cyan-300 text-black', かくとう: 'bg-red-700 text-white', どく: 'bg-purple-600 text-white', じめん: 'bg-yellow-600 text-white', ひこう: 'bg-indigo-400 text-white', エスパー: 'bg-pink-500 text-white', むし: 'bg-lime-500 text-black', いわ: 'bg-yellow-700 text-white', ゴースト: 'bg-indigo-800 text-white', ドラゴン: 'bg-indigo-600 text-white', あく: 'bg-gray-800 text-white', はがね: 'bg-gray-500 text-white', フェアリー: 'bg-pink-300 text-black', 神: 'bg-gray-200 text-black',神s: 'bg-gray-200 text-black',
+    };
+    
+    const items = {
+        'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
+        'ちからのはちまき': { name: 'ちからのはちまき', description: '物理技の威力が1.25倍。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.25倍。'},
+        'マジックハンド': { name: 'マジックハンド', description: '40以下の技の威力が1.5倍。'},
+        'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.25倍。'},
+        'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
+        'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '防御と特防が1.25倍。'},
+        'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/3回復。'},
+        'きのみバスケット': { name: 'きのみバスケット', description: '毎ターンHPを回復かも'},
+        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/16回復。'},
+        'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
+        'おうじゃのしるし': { name: 'おうじゃのしるし', description: '30%で怯ませる。'},
+        'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る。'},
+        'きあいのハチマキ': { name: 'きあいのハチマキ', description: '30%でHP1耐える'},
+        'Zクリスタル': { name: 'Zクリスタル', description: 'Z技が使える。'},
+        'メガストーン': { name: 'メガストーン', description: 'メガシンカできる。'},
+        'なにも持たせない': { name: 'なにも持たせない', description: 'とくに効果なし。'},
+    };
+    
+     const difficulties = {
+        'easy': { name: 'イージー', description: 'ランダム' },
+        'normal': { name: 'ノーマル', description: '意味なし' },
+        'hard': { name: 'ハード', description: '強者' }
+    };
+    
+    // Base stats and moves for all Pokémon
+    const pokemonBaseData = {
+        snorlax: { name: "カビゴン", id: "snorlax", types: ["ノーマル"], baseHp: 160, baseAttack: 110, baseDefense: 65, baseSpAttack: 65, baseSpDefense: 110, baseSpeed: 30, ability: "あついしぼう", evs: { hp: 44, atk: 252, def: 212, spa: 0, spd: 4, spe: 0 },ai: "aggressive", nature: "わんぱく", moves: [{ name: "すてみタックル", power: 120, pp: 10, type: "ノーマル", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 }, { name: "ヒートスタンプ", power: 100, pp: 10, type: "ほのお", category: "physical", accuracy: 100, isContact: true }, { name: "ヘビーボンバー", power: 100, pp: 10, type: "はがね", category: "physical", accuracy: 100, isContact: true }] },
+        Kangaskhan: { name: "ガルーラ", id: "kangaskhan", types: ["ノーマル"], baseHp: 105, baseAttack: 95, baseDefense: 80, baseSpAttack: 40, baseSpDefense: 80, baseSpeed: 90, ability: "きもったま", evs: { hp: 212, atk: 252, def: 0, spa: 0, spd: 0, spe: 36 },ai: "aggressive",nature: "いじっぱり", moves: [{ name: "おんがえし", power: 102, pp: 10, type: "ノーマル", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{name: "ほのおのパンチ", type: "ほのお", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true,secondary: { chance: 20, effect: 'status', status: 'burn' } }, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
+        Porygon2: { name: "ポリゴン2", id: "porygon2", types: ["ノーマル"], baseHp: 85, baseAttack: 80, baseDefense: 90, baseSpAttack: 105, baseSpDefense: 95, baseSpeed: 60, ability: "ダウンロード", evs: { hp: 244, atk: 0, def: 124, spa: 0, spd: 140, spe: 0 },ai:"defensive", nature: "のんき", moves: [{ name: "トライアタック", power: 80, pp: 10, type: "ノーマル", category: "special", accuracy: 100 ,secondary: {effect: "triAttack", chance: 30}},{ name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } },{name: "じこさいせい", type: "ノーマル", pp: 8, category: "status", accuracy: 100 },{ name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
+        PorygonZ: { name: "ポリゴンZ", id: "porygonz", types: ["ノーマル"], baseHp: 85, baseAttack: 80, baseDefense: 70, baseSpAttack: 135, baseSpDefense: 70, baseSpeed: 90, ability: "てきおうりょく", evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 }, ai: "aggressive", nature: "ひかえめ",moves: [{ name: "はかいこうせん", power: 150, pp: 5, type: "ノーマル", category: "special", accuracy: 90, self: { stats: [{stat: 'spAttack', stage: -3}]} },{ name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }},{ name: "シャドーボール", power: 80, pp: 15, type: "ゴースト", category: "special", accuracy: 100, secondary: { chance: 20, effect: 'stat', stat: 'spDefense', stage: -1 } },{ name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } }] },
+        zoroarkhisui: { name: "ゾロアーク", id: "zoroark-hisui", types: ["ノーマル","ゴースト"], baseHp: 55, baseAttack: 100, baseDefense: 60, baseSpAttack: 125, baseSpDefense: 60, baseSpeed: 110, ability: "イリュージョン", evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai: "aggressive", nature: "おくびょう", moves: [{ name: "うらみつらみ", power: 75, pp: 10, type: "ゴースト", category: "special", accuracy: 100, secondary: { chance: 100, effect: 'stat', stat: 'attack', stage: -1 } }, { name: "ハイパーボイス", power: 90, pp: 10, type: "ノーマル", category: "special", accuracy: 100},{ name: "きあいだま", power: 120, pp: 5, type: "かくとう", category: "special", accuracy: 70, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
+        Urshifu: { name: "水ウーラオス", id: "urshifu-rapidstrike", types: ["かくとう", "みず"], baseHp: 100, baseAttack: 130, baseDefense: 100, baseSpAttack: 60, baseSpDefense: 63, baseSpeed: 97, ability: "ふかしのこぶし",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "すいりゅうれんだ", power: 25, pp: 5, type: "みず", category: "physical", accuracy: 100,critPriority:3 }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name: "アイススピナー", type: "こおり", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true }, { name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true }] },
+        Urshifu1: { name: "悪ウーラオス", id: "urshifu", types: ["かくとう", "あく"], baseHp: 100, baseAttack: 130, baseDefense: 100, baseSpAttack: 60, baseSpDefense: 63, baseSpeed: 97, ability: "ふかしのこぶし",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "あんこくきょうだ", power: 80, pp: 5, type: "あく", category: "physical", accuracy: 100,critPriority:3 }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true,secondary: { chance: 20, effect: 'status', status: 'freeze' } }, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
+        slowbro: { name: "ガラルヤドラン", id: "slowbro-galar", types: ["どく","エスパー"], baseHp: 95, baseAttack: 100, baseDefense: 95, baseSpAttack: 100, baseSpDefense: 70, baseSpeed: 30, ability: "クイックドロウ", evs: { hp: 252, atk: 0, def: 4, spa: 252, spd: 0, spe: 0 },ai: "aggressive", nature: "ひかえめ", moves: [{ name: "シェルアームズ", power: 100, pp: 10, type: "どく", category: "special", accuracy: 100,secondary: { chance: 40, effect: 'status', status: 'poison' }  }, { name: "サイコキネシス", power: 90, pp: 10, type: "エスパー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 }  }, { name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }}, {name: "かえんほうしゃ", power: 90, pp: 15, type: "ほのお", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'burn' }}] },
+        Ursaluna: { name: "ガチグマ", id: "ursaluna", types: ["じめん", "ノーマル"], baseHp: 130, baseAttack: 140, baseDefense: 105, baseSpAttack: 45, baseSpDefense: 80, baseSpeed: 50, ability: "こんじょう",evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 4, spe: 0 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "ぶちかまし", power: 120, pp: 5, type: "じめん", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{ name: "のしかかり", power: 90, pp: 15, type: "ノーマル", category: "physical", accuracy: 100, secondary: { chance: 30, effect: 'status', status: 'paralyze' } },{ name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },  { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },] },
+        scizor: { name: "ハッサム", id: "scizor", types: ["むし", "はがね"], baseHp: 70, baseAttack: 130, baseDefense: 100, baseSpAttack: 55, baseSpDefense: 80, baseSpeed: 65, ability: "テクニシャン",evs: { hp: 252, atk: 252, def: 4, spa: 0, spd: 0, spe: 0 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "バレットパンチ", power: 40, pp: 30, type: "はがね", category: "physical", accuracy: 100, priority: 1, isContact: true }, { name: "シザークロス", power: 80, pp: 15, type: "むし", category: "physical", accuracy: 100, isContact: true }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} }, { name: "つじぎり", power: 70, pp: 15, type: "あく", category: "physical", accuracy: 100, critPriority:1 }] },
+        Volcarona: { name: "ウルガモス", id: "volcarona", types: ["むし","ほのお"], baseHp: 85, baseAttack: 60, baseDefense: 65, baseSpAttack: 135, baseSpDefense: 110, baseSpeed: 100, ability: "ほのおのからだ", evs: { hp: 252, atk: 0, def: 124, spa: 0, spd: 0, spe: 132 },ai: "aggressive", nature: "おくびょう", moves: [ { name: "ほのおのまい", power: 80, pp: 10, type: "ほのお", category: "special", accuracy: 100,  secondary: { chance: 50, effect: 'stat', stat: 'spAttack', stage: 1, self: true }},{ name: "ギガドレイン", power: 75, pp: 10, type: "くさ", category: "special", accuracy: 100 }, { name: "ちょうのまい", type: "むし", pp: 20, category: "status", accuracy: 101 }, { name: "あさのひざし", type: "ノーマル", pp: 8, category: "status", accuracy: 101 }] },
+        Golisopod: { name: "グソクムシャ", id: "golisopod", types: ["むし", "みず"], baseHp: 75, baseAttack: 125, baseDefense: 140, baseSpAttack: 60, baseSpDefense: 90, baseSpeed: 40, ability: "ききかいひ",evs: { hp: 196, atk: 252, def: 60, spa: 0, spd: 0, spe: 0 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "アクアブレイク", power: 85, pp: 10, type: "みず" , category: "physical", accuracy: 100, isContact: true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } }, { name: "であいがしら", power: 90, pp: 1, type: "むし", category: "physical", accuracy: 100, priority: 2, isContact: true },{ name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true }, { name: "いわなだれ", power: 75, pp: 10, type: "いわ", category: "physical", accuracy: 90, secondary: { chance: 30, effect: 'flinch' } }] },
+        gengar: { name: "ゲンガー", id: "gengar", types: ["ゴースト", "どく"], baseHp: 60, baseAttack: 65, baseDefense: 60, baseSpAttack: 130, baseSpDefense: 75, baseSpeed: 110, ability: "ふゆう",evs: { hp: 0, atk: 0, def: 4, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "シャドーボール", power: 80, pp: 15, type: "ゴースト", category: "special", accuracy: 100, secondary: { chance: 20, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "ヘドロウェーブ", power: 95, pp: 10, type: "どく", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'poison' } }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 },  { name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
+        mimikyu: { name: "ミミッキュ", id: "mimikyu" , types: ["ゴースト","フェアリー"],baseHp: 55, baseAttack: 90, baseDefense: 80, baseSpAttack: 50, baseSpDefense: 105, baseSpeed: 96, ability: "ばけのかわ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves:[{ name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },{name: "シャドークロー", type: "ゴースト", category: "physical", power: 70, pp: 15, accuracy: 100, isContact: true, critPriority:1 },{ name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true},{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }]},
+        metagross: { name: "メタグロス", id: "metagross", types: ["はがね", "エスパー"], baseHp: 80, baseAttack: 135, baseDefense: 130, baseSpAttack: 95, baseSpDefense: 90, baseSpeed: 70, ability: "クリアボディ",evs: { hp: 28, atk: 236, def: 0, spa: 0, spd: 4, spe: 236 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "バレットパンチ", power: 40, pp: 30, type: "はがね", category: "physical", accuracy: 100, priority: 1, isContact: true },{ name: "しねんのずつき", power: 80, pp: 15, type: "エスパー", category: "physical", accuracy: 90, isContact: true, secondary: { chance: 20, effect: 'flinch' } }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'freeze' }}] },
+        ギルガルド: { name: "ギルガルド",id: "aegislash",types: ["はがね","ゴースト"],baseHp: 60,baseAttack: 50,baseDefense: 150,baseSpAttack: 50,baseSpDefense: 150,baseSpeed: 60,ability: "バトルスイッチ",nature: "れいせい",evs: {hp: 252,atk: 252,def: 4,spa: 0, spd: 4,spe: 0},ai: "aggressive",moves: [{name: "アイアンヘッド", type: "はがね", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 30, effect: 'flinch'}},{ name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true},{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name:"キングシールド",type:"はがね",category:"status",pp:10,accuracy:999,priority:4},]},
+        Archaludon: { name: "ブリジュラス", id: "archaludon", types: ["はがね", "ドラゴン"], baseHp: 90, baseAttack: 105, baseDefense: 130, baseSpAttack: 125, baseSpDefense: 65, baseSpeed: 85, ability: "がんじょう",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} }, { name: "ラスターカノン", power: 80, pp: 10, type: "はがね", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } }, { name: "はどうだん", power: 80, pp: 20, type: "かくとう", category: "special", accuracy: 101}] },
+        charizard: { name: "リザードン", id: "charizard", types: ["ほのお", "ひこう"], baseHp: 78, baseAttack: 84, baseDefense: 78, baseSpAttack: 109, baseSpDefense: 85, baseSpeed: 100, ability: "もうか",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "フレアドライブ", power: 120, pp: 15, type: "ほのお", category: "physical", accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'burn' } }, { name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "りゅうのまい",pp: 20, type: "ドラゴン", category: "status", accuracy: 101 }] },
+        Blaziken: { name: "バシャーモ", id: "blaziken", types: ["ほのお","かくとう"], baseHp: 80, baseAttack: 120, baseDefense: 70, baseSpAttack: 110, baseSpDefense: 70, baseSpeed: 80, ability: "かそく", evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "フレアドライブ", power: 120, pp: 15, type: "ほのお", category: "physical", accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'burn' } },{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} }, {name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'freeze' }},{ name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }] }, 
+        Gyarados: { name: "ギャラドス", id: "gyarados", types: ["みず", "ひこう"],baseHp: 95, baseAttack: 125, baseDefense: 79, baseSpAttack: 60, baseSpDefense: 100, baseSpeed: 81,  ability: "いかく",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{name: "たきのぼり", type: "みず", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 20, effect: 'flinch'}}, { name: "かみくだく", power: 80, pp: 15, type: "あく", category: "physical", accuracy: 100, isContact: true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } }, { name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true },  { name: "りゅうのまい", type: "ドラゴン", pp: 20, category: "status", accuracy: 101 }] },
+        Greninja: { name: "ゲッコウガ", id: "greninja", types: ["みず", "あく"], baseHp: 72, baseAttack: 95, baseDefense: 67, baseSpAttack: 103, baseSpDefense: 71, baseSpeed: 122, ability: "へんげんじざい",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai:"aggressive", nature: "ひかえめ",moves: [{name: "みずしゅりけん", type: "みず", category: "special", power: 20, pp: 15, accuracy: 100, priority:1,critPriority:2  },{ name: "あくのはどう", power: 80, pp: 15, type: "あく", category: "special", accuracy: 100, secondary: { chance: 20, effect: 'flinch' } }, { name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }},  { name: "ヘドロウェーブ", power: 95, pp: 10, type: "どく", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'poison' } }] },
+        Primarina: { name: "アシレーヌ", id: "primarina", types: ["みず", "フェアリー"], baseHp: 80, baseAttack: 74, baseDefense: 74, baseSpAttack: 126, baseSpDefense: 116, baseSpeed: 60, ability: "げきりゅう",evs: { hp: 252, atk: 0, def: 4, spa: 252, spd: 0, spe: 0},ai:"aggressive", nature: "ひかえめ",moves: [{name: "うたかたのアリア", type: "みず", category: "special", power: 90, pp: 10, accuracy: 100, isSound:true },{ name: "ムーンフォース", power: 95, pp: 15, type: "フェアリー", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 } }, { name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }}, { name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 }] },
+        Basculegion: { name: "イダイトウ♂", id: "basculegion", types: ["みず", "ゴースト"],baseHp: 120, baseAttack: 112, baseDefense: 65, baseSpAttack: 80, baseSpDefense: 75, baseSpeed: 78,  ability: "てきおうりょく",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "ようき", moves: [{name: "ウェーブタックル", type: "みず", category: "physical", power: 120, pp: 10, accuracy: 100, isContact: true }, { name: "おはかまいり", power: 150, pp: 10, type: "ゴースト", category: "physical", accuracy: 100 }, { name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true },  { name: "こうそくいどう", type: "エスパー", pp: 20, category: "status", accuracy: 101 }]},
+        Xurkitree: { name: "デンジュモク", id: "xurkitree", types: ["でんき"], baseHp: 83, baseAttack: 89, baseDefense: 71, baseSpAttack: 173, baseSpDefense: 71, baseSpeed: 83, ability: "ビーストブースト",evs: { hp: 116, atk: 0, def: 0, spa: 140, spd: 0, spe: 252},ai:"aggressive", nature: "ひかえめ",moves: [{ name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } },{ name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }, { name: "さいみんじゅつ", type: "エスパー", pp: 20, category: "status", accuracy: 100 },{ name: "ほたるび", type: "むし", pp: 20, category: "status", accuracy: 101 }] },
+        RagingBolt: { name: "タケルライコ", id: "ragingbolt", types: ["でんき", "ドラゴン"], baseHp: 125, baseAttack: 73, baseDefense: 91, baseSpAttack: 137, baseSpDefense: 89, baseSpeed: 75, ability: "こだいかっせい",evs: { hp: 228, atk: 0, def: 36, spa: 236, spd: 4, spe: 0},ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} },{ name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } }, { name: "じんらい", power: 70, pp: 5, type: "でんき", category: "special", accuracy: 100, priority: 1 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
+        Venusaur: { name: "フシギバナ", id: "venusaur" , types: ["くさ","どく"],baseHp: 80, baseAttack: 82, baseDefense: 83, baseSpAttack: 100, baseSpDefense: 100, baseSpeed: 80, ability: "しんりょく",evs: { hp: 252, atk: 0, def: 4, spa: 188, spd: 44, spe: 20 },ai:"aggressive",nature: "ひかえめ",  moves:[{ name: "ギガドレイン", power: 75, pp: 10, type: "くさ", category: "special", accuracy: 100 }, { name: "ヘドロばくだん", power: 90, pp: 10, type: "どく", category: "special", accuracy: 100, secondary: { chance: 30, effect: 'status', status: 'poison' } },{ name: "だいちのちから", power: 90, pp: 10, type: "じめん", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }]},
+        Ferrothorn: { name: "ナットレイ", id: "ferrothorn" , types: ["くさ","はがね"],baseHp: 74, baseAttack: 94, baseDefense: 131, baseSpAttack: 54, baseSpDefense: 116, baseSpeed: 20, ability: "てつのとげ",evs: { hp: 252, atk: 12, def: 242, spa: 0, spd: 0, spe: 0 },ai:"defensive", nature: "わんぱく",moves:[{ name: "ジャイロボール", power: 100, pp: 5, type: "はがね", category: "physical", accuracy: 100, isContact: true },{ name: "どくどく", type: "どく", pp: 20, category: "status", accuracy: 90 },  { name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 },{ name: "やどりぎのたね", type: "くさ", pp: 20, category: "status", accuracy: 100 }]},
+        Meowscarada: { name: "マスカーニャ", id: "meowscarada", types: ["くさ", "あく"], baseHp: 76, baseAttack: 110, baseDefense: 70, baseSpAttack: 81, baseSpDefense: 70, baseSpeed: 123, ability: "へんげんじざい",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "トリックフラワー", power: 70, pp: 10, type: "くさ", category: "physical", accuracy: 101, critPriority:3 }, { name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },{ name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}, {name: "トリプルアクセル", type: "こおり", category: "physical", power: 40, pp: 10, accuracy: 90, isContact: true }] },
+        Glastrier: { name: "ブリザポス", id: "glastrier", types: ["こおり"], baseHp: 100, baseAttack: 145, baseDefense: 130, baseSpAttack: 65, baseSpDefense: 110, baseSpeed: 30, ability: "しろのいななき",evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 4, spe: 0 },ai:"aggressive",nature: "しんちょう", moves: [{name: "つららおとし", type: "こおり", category: "physical", power: 85, pp: 10, accuracy: 90,secondary: {chance: 30, effect: 'flinch'} },{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{ name: "ヘビーボンバー", power: 100, pp: 10, type: "はがね", category: "physical", accuracy: 100, isContact: true }, { name: "10まんばりき", power: 95, pp: 10, type: "じめん", category: "physical", accuracy: 95, isContact: true,}] },
+        TapuLele: { name: "カプ・テテフ", id: "tapulele" , types: ["エスパー","フェアリー"],baseHp: 70, baseAttack: 85, baseDefense: 75, baseSpAttack: 130, baseSpDefense: 115, baseSpeed: 95, ability: "サイコメイカー",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 }, ai:"aggressive",nature: "ひかえめ", moves:[{ name: "サイコキネシス", power: 90, pp: 10, type: "エスパー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 }  },{ name: "ムーンフォース", power: 95, pp: 10, type: "フェアリー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 }  },{ name: "めざめるパワー炎", power: 60, pp: 10, type: "ほのお", category: "special", accuracy: 100 },{ name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 }]},
+        dragonite: { name: "カイリュー", id: "dragonite", types: ["ドラゴン", "ひこう"], baseHp: 91, baseAttack: 134, baseDefense: 95, baseSpAttack: 100, baseSpDefense: 100, baseSpeed: 80, ability: "マルチスケイル",evs: { hp: 36, atk: 252, def: 4, spa: 0, spd: 100, spe: 116 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true }, { name: "しんそく", power: 80, pp: 5, type: "ノーマル", category: "physical", accuracy: 100, priority: 2, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 }, {name: "アイススピナー", type: "こおり", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true }] },
+        garchomp: { name: "ガブリアス", id: "garchomp", types: ["ドラゴン", "じめん"], baseHp: 108, baseAttack: 130, baseDefense: 95, baseSpAttack: 80, baseSpDefense: 85, baseSpeed: 102, ability: "さめはだ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 }, { name: "ストーンエッジ", power: 100, pp: 5, type: "いわ", category: "physical", accuracy: 80,critPriority:1 }, { name: "りゅうのまい", type: "ドラゴン", pp: 20, category: "status", accuracy: 101 }] },
+        Dragapult: { name: "ドラパルト", id: "dragapult", types: ["ドラゴン", "ゴースト"], baseHp: 88, baseAttack: 120, baseDefense: 75, baseSpAttack: 100, baseSpDefense: 75, baseSpeed: 142, ability: "クリアボディ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "ドラゴンアロー", power: 55, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100  }, { name: "ポルターガイスト", power: 110, pp: 10, type: "ゴースト", category: "physical", accuracy: 90 }, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}, { name: "りゅうのまい", type: "ドラゴン", pp: 20, category: "status", accuracy: 101 }] },
+        Hydreigon: { name: "サザンドラ", id: "hydreigon", types: ["あく", "ドラゴン"], baseHp: 92, baseAttack: 105, baseDefense: 90, baseSpAttack: 125, baseSpDefense: 90, baseSpeed: 98, ability: "ふゆう",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} },{ name: "あくのはどう", power: 80, pp: 15, type: "あく", category: "special", accuracy: 100, secondary: { chance: 20, effect: 'flinch' } }, {name: "かえんほうしゃ", power: 90, pp: 15, type: "ほのお", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'burn' }}, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
+        Kingambit: { name: "ドドゲザン", id: "kingambit" , types: ["あく","はがね"],baseHp: 100, baseAttack: 135, baseDefense: 120, baseSpAttack: 60, baseSpDefense: 85, baseSpeed: 50, ability: "そうだいしょう", evs: { hp: 252, atk: 252, def: 4, spa: 0, spd: 0, spe: 0 },  ai: "aggressive",nature:"いじっぱり",moves:[{ name: "ドゲザン", power: 85, pp: 10, type: "あく", category: "physical", accuracy: 101, isContact:true },{name: "アイアンヘッド", type: "はがね", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 30, effect: 'flinch'}},{ name: "かわらわり", power: 75, pp: 15, type: "かくとう", category: "physical", accuracy: 100, isContact:true },{ name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}]},
+        トレーニング: { name: "トレーニング", id: "substitute" , types: ["トレーニング"],baseHp: 100, baseAttack: 1, baseDefense: 100, baseSpAttack: 1, baseSpDefense: 100, baseSpeed: 1, ability: "トレーニング", evs: { hp: 196, atk: 0, def: 252, spa: 0, spd: 252, spe: 0 },  ai: "aggressive",nature: "がんばりや",moves:[{name: "ぜんかいふく", type: "ノーマル", pp: 1000, category: "status", accuracy: 100,priority: -1 }]},
+    };
+
+    const typeChart = { ノーマル: { いわ: 0.5, ゴースト: 0, はがね: 0.5 }, ほのお: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 2, Icc: 2, むし: 2, いわ: 0.5, ドラゴン: 0.5, はがね: 2 }, みず: { ほのお: 2, みず: 0.5, くさ: 0.5, じめん: 2, いわ: 2, ドラゴン: 0.5 }, でんき: { みず: 2, でんき: 0.5, くさ: 0.5, じめん: 0, ひこう: 2, ドラゴン: 0.5 }, くさ: { ほのお: 0.5, みず: 2, くさ: 0.5, どく: 0.5, じめん: 2, ひこう: 0.5, むし: 0.5, いわ: 2, ドラゴン: 0.5, はがね: 0.5 }, こおり: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 0.5, Icc: 0.5,じめん: 2, ひこう: 2, ドラゴン: 2, はがね: 0.5 }, かくとう: { ノーマル: 2, Norma1:2, こおり: 2, Icc: 2, どく: 0.5, ひこう: 0.5, エスパー: 0.5, むし: 0.5, いわ: 2, ゴースト: 0, あく: 2, はがね: 2, フェアリー: 0.5 }, どく: { くさ: 2, どく: 0.5, じめん: 0.5, いわ: 0.5, ゴースト: 0.5, はがね: 0, フェアリー: 2 }, じめん: { ほのお: 2, でんき: 2, くさ: 0.5, どく: 2, ひこう: 0, むし: 0.5, いわ: 2, はがね: 2 }, ひこう: { でんき: 0.5, くさ: 2, かくとう: 2, むし: 2, いわ: 0.5, はがね: 0.5 }, エスパー: { かくとう: 2, どく: 2, エスパー: 0.5, あく: 0, はがね: 0.5 }, むし: { ほのお: 0.5, くさ: 2, かくとう: 0.5, どく: 0.5, ひこう: 0.5, エスパー: 2, ゴースト: 0.5, あく: 2, はがね: 0.5, フェアリー: 0.5 }, いわ: { ほのお: 2, こおり: 2, Icc: 2, かくとう: 0.5, じめん: 0.5, ひこう: 2, むし: 2, はがね: 0.5 }, ゴースト: { ノーマル: 0, Norma1:0, エスパー: 2, ゴースト: 2, あく: 0.5 }, ドラゴン: { ドラゴン: 2, はがね: 0.5, フェアリー: 0 }, あく: { かくとう: 0.5, エスパー: 2, ゴースト: 2, あく: 0.5, フェアリー: 0.5 }, はがね: { ほのお: 0.5, みず: 0.5, でんき: 0.5, こおり: 2, Icc: 2, いわ: 2, はがね: 0.5, フェアリー: 2 }, フェアリー: { ほのお: 0.5, かくとう: 2, どく: 0.5, ドラゴン: 2, あく: 2, はがね: 0.5 }, 神: {ノーマル: 2, ほのお: 2, みず: 2, でんき: 2, くさ: 2, こおり: 2, Icc: 2, かくとう: 2, どく: 2, じめん: 2, ひこう: 2, エスパー: 2, むし: 2, いわ: 2, ゴースト: 2, ドラゴン: 2, あく: 2, はがね: 2, フェアリー: 2, 神: 2 }, Z: {ノーマル: 0, ほのお: 0, みず: 0, でんき: 0, くさ: 0, こおり: 0, Icc: 0, かくとう: 0, どく: 0, じめん: 0, ひこう: 0, エスパー: 0, むし: 0, いわ: 0, ゴースト: 0, ドラゴン: 0, あく: 0, はがね: 0, フェアリー: 0, 神: 0 }};
+
+    const natures = {
+    がんばりや: {up: null, down: null},
+    さみしがり: {up: "attack", down: "defense"},
+    いじっぱり: {up: "attack", down: "spAttack"},
+    やんちゃ: {up: "attack", down: "spDefense"},
+    ゆうかん: {up: "attack", down: "speed"},
+
+    ずぶとい: {up: "defense", down: "attack"},
+    わんぱく: {up: "defense", down: "spAttack"},
+    のうてんき: {up: "defense", down: "spDefense"},
+    のんき: {up: "defense", down: "speed"},
+
+    ひかえめ: {up: "spAttack", down: "attack"},
+    おっとり: {up: "spAttack", down: "defense"},
+    うっかりや: {up: "spAttack", down: "spDefense"},
+    れいせい: {up: "spAttack", down: "speed"},
+
+    おだやか: {up: "spDefense", down: "attack"},
+    おとなしい: {up: "spDefense", down: "defense"},
+    しんちょう: {up: "spDefense", down: "spAttack"},
+    なまいき: {up: "spDefense", down: "speed"},
+
+    おくびょう: {up: "speed", down: "attack"},
+    せっかち: {up: "speed", down: "defense"},
+    ようき: {up: "speed", down: "spAttack"},
+    むじゃき: {up: "speed", down: "spDefense"},
+
+    すなお: {up: null, down: null},
+    てれや: {up: null, down: null},
+    きまぐれ: {up: null, down: null},
+    まじめ: {up: null, down: null}
+};
+
+const MEGA_DATA = {
+    "ゲンガー": {
+        stone: "メガストーン",
+        form: {
+            name: "メガゲンガー",
+            types: ["ゴースト","どく"],
+            ability: "かげふみ",
+            baseHp: 60,
+            baseAttack: 65,
+            baseDefense: 80,
+            baseSpAttack: 170,
+            baseSpDefense: 95,
+            baseSpeed: 130,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/gengar-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/gengar-mega.gif"
+        }
+    },
+    "ハッサム": {
+        stone: "メガストーン",
+        form: {
+            name: "メガハッサム",
+            types: ["むし","はがね"],
+            ability: "テクニシャン",
+            baseHp: 70,
+            baseAttack: 150,
+            baseDefense: 140,
+            baseSpAttack: 65,
+            baseSpDefense: 100,
+            baseSpeed: 75,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/scizor-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/scizor-mega.gif"
+        }
+    },
+    "バシャーモ": {
+        stone: "メガストーン",
+        form: {
+            name: "メガバシャーモ",
+            types: ["ほのお","かくとう"],
+            ability: "かそく",
+            baseHp: 80,
+            baseAttack: 160,
+            baseDefense: 80,
+            baseSpAttack: 130,
+            baseSpDefense: 80,
+            baseSpeed: 100,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/blaziken-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/blaziken-mega.gif"
+        }
+    },
+    "メタグロス": {
+        stone: "メガストーン",
+        form: {
+            name: "メガメタグロス",
+            types: ["はがね","エスパー"],
+            ability: "かたいツメ",
+            baseHp: 80,
+            baseAttack: 145,
+            baseDefense: 150,
+            baseSpAttack: 105,
+            baseSpDefense: 110,
+            baseSpeed: 110,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/metagross-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/metagross-mega.gif"
+        }
+    },
+    "ギャラドス": {
+        stone: "メガストーン",
+        form: {
+            name: "メガギャラドス",
+            types: ["みず","あく"],
+            ability: "かたやぶり",
+            baseHp: 95,
+            baseAttack: 155,
+            baseDefense: 109,
+            baseSpAttack: 70,
+            baseSpDefense: 130,
+            baseSpeed: 81,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/gyarados-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/gyarados-mega.gif"
+        }
+    },
+    "フシギバナ": {
+        stone: "メガストーン",
+        form: {
+            name: "メガフシギバナ",
+            types: ["くさ","どく"],
+            ability: "あついしぼう",
+            baseHp: 80,
+            baseAttack: 100,
+            baseDefense: 123,
+            baseSpAttack: 122,
+            baseSpDefense: 120,
+            baseSpeed: 80,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/venusaur-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/venusaur-mega.gif"
+        }
+    },
+    "ゲッコウガ": {
+        stone: "メガストーン",
+        form: {
+            name: "サトシゲッコウガ",
+            types: ["みず","あく"],
+            ability: "きずなへんげ",
+            baseHp: 72,
+            baseAttack: 145,
+            baseDefense: 67,
+            baseSpAttack: 153,
+            baseSpDefense: 71,
+            baseSpeed: 132,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/greninja-ash.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/greninja-ash.gif"
+        }
+    },
+    "リザードン": {
+        stone: "メガストーン",
+        form: {
+            name: "メガリザードンX",
+            types: ["ほのお","ドラゴン"],
+            ability: "かたいツメ",
+            baseHp: 78,
+            baseAttack: 130,
+            baseDefense: 111,
+            baseSpAttack: 130,
+            baseSpDefense: 85,
+            baseSpeed: 100,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/charizard-megax.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/charizard-megax.gif"
+        }
+    },
+    "ガルーラ": {
+        stone: "メガストーン",
+        form: {
+            name: "メガガルーラ",
+            types: ["ノーマル"],
+            ability: "おやこあい",
+            baseHp: 105,
+            baseAttack: 125,
+            baseDefense: 105,
+            baseSpAttack: 60,
+            baseSpDefense: 100,
+            baseSpeed: 100,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/kangaskhan-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/kangaskhan-mega.gif"
+        }
+    },
+    "トレーニング": {
+        stone: "メガストーン",
+        form: {
+            name: "ウルトラネクロズマ",
+            types: ["エスパー","ドラゴン"],
+            ability: "ブレインフォース",
+            baseHp: 97,
+            baseAttack: 167,
+            baseDefense: 97,
+            baseSpAttack: 167,
+            baseSpDefense: 97,
+            baseSpeed: 129,
+            evs: { hp: 252, atk: 252, def: 252, spa: 252, spd: 252, spe: 252 },
+            moves:[{name: "フォトンゲイザー", type: "エスパー", category: "special", power: 100, pp: 5, accuracy: 100},{name: "りゅうのはどう", type: "ドラゴン", category: "special", power: 85, pp: 10, accuracy: 100 }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "メテオドライブ", power: 100, pp: 10, type: "はがね", category: "physical", accuracy: 100 }],
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/necrozma-ultra.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/necrozma-ultra.gif"
+        }
+    },
+};
+
+const AEGISLASH_FORM = {
+    shield: {
+        attack: 50,
+        defense: 140,
+        spAttack: 50,
+        spDefense: 140,
+        spriteFront: "https://play.pokemonshowdown.com/sprites/ani/aegislash.gif",
+        spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/aegislash.gif"
+    },
+
+    blade: {
+        attack: 140,
+        defense: 50,
+        spAttack: 140,
+        spDefense: 50,
+        spriteFront: "https://play.pokemonshowdown.com/sprites/ani/aegislash-blade.gif",
+        spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/aegislash-blade.gif"
+    }
+};
+
+// ===== 定数 =====
+const Z_MOVE_NAMES = {
+  ノーマル: "ウルトラダッシュアタック",
+  くさ: "ブルームシャインエクストラ",
+  ほのお: "ダイナミックフルフレイム",
+  みず: "スーパーアクアトルネード",
+  でんき: "スパーキングギガボルト",
+  ひこう: "ファイナルダイブクラッシュ",
+  かくとう: "全力無双激烈拳",
+  じめん: "ライジングランドオーバー",
+  むし: "絶対捕食回転斬",
+  いわ: "ワールズエンドフォール",
+  あく: "ブラックホールイクリプス",
+  こおり: "レイジングジオフリーズ",
+  どく: "アシッドポイズンデリート",
+  はがね: "超絶螺旋連撃",
+  ゴースト: "無限暗夜への誘い",
+  エスパー: "マキシマムサイブレイカー",
+  ドラゴン: "アルティメットドラゴンバーン",
+  フェアリー: "ラブリースターインパクト"
+};
+
+// ===== 威力計算 =====
+function getZPower(basePower) {
+  if (basePower <= 55) return 100;
+  if (basePower <= 60) return 120;
+  if (basePower <= 70) return 140;  
+  if (basePower <= 80) return 160;
+  if (basePower <= 90) return 175;
+  if (basePower <= 100) return 180;
+  if (basePower <= 110) return 185;
+  if (basePower <= 120) return 190;
+  if (basePower <= 130) return 195;
+  return 200;
+}
+
+// ===== 初期化時に呼ぶ（重要）=====
+function initZData(pokemon) {
+  const firstMove = pokemon.moves[0];
+
+  if (!firstMove) {
+    pokemon.zMoveBase = null;
+    return;
+  }
+
+  if (firstMove.category !== "physical" && firstMove.category !== "special") {
+    pokemon.zMoveBase = null;
+    return;
+  }
+
+  pokemon.zMoveBase = {
+    type: firstMove.type,
+    power: firstMove.power
+  };
+}
+
+// ===== 使用可能判定 =====
+function canUseZMove(pokemon) {
+  if (pokemon.usedZMove) return false;
+  if (pokemon.item?.name !== "Zクリスタル") return false;
+  if (!pokemon.zMoveBase) return false;
+  return true;
+}
+
+function canMegaEvolve(pokemon){
+    if (pokemon.megaEvolved) return false;
+
+    const mega = MEGA_DATA[pokemon.name];
+    if (!mega) return false;
+
+    return pokemon.item?.name === "メガストーン";
+}
+
+// ===== Zワザ生成 =====
+function createZMove(pokemon) {
+  if (pokemon.name === "ミミッキュ") {
+    return {
+        name: "ぽかぼかフレンドタイム",
+        type: "フェアリー",
+        power: 190,
+        accuracy: 999,
+        category: "physical",
+        pp: 1,
+        currentPp: 1,
+        critPriority:1,
+        isZMove: true
+    };
+}
+if (pokemon.name === "アシレーヌ") {
+    return {
+        name: "わだつみのシンフォニア",
+        type: "みず",
+        power: 195,
+        accuracy: 999,
+        category: "special",
+        pp: 1,
+        currentPp: 1,
+        critPriority:1,
+        isZMove: true
+    };
+}
+if (pokemon.name === "ゲッコウガ") {
+    return {
+        name: "しのびのひおうぎ",
+        type: "みず",
+        power: 160,
+        accuracy: 999,
+        category: "special",
+        pp: 1,
+        currentPp: 1,
+        critPriority:2,
+        secondary: { chance: 100, effect: 'stat', stat: 'spAttack', stage: 2, self: true },
+        isZMove: true
+    };
+}
+if (pokemon.name === "水ウーラオス") {
+    return {
+        name: "げきりゅうれんげきけん",
+        type: "みず",
+        power: 60,
+        accuracy: 999,
+        category: "physical",
+        pp: 1,
+        currentPp: 1,
+        critPriority:3,
+        priority:1,
+        secondary: { chance: 100, effect: 'stat', stat: 'speed', stage: 1, self: true },
+        isZMove: true
+    };
+}
+if (pokemon.name === "悪ウーラオス") {
+    return {
+        name: "あんこくいちげきけん",
+        type: "あく",
+        power: 200,
+        accuracy: 999,
+        category: "physical",
+        pp: 1,
+        currentPp: 1,
+        priority:1,
+        critPriority:3,
+        secondary: { chance: 100, effect: 'stat', stat: 'attack', stage: 1, self: true },
+        isZMove: true
+    };
+}
+if (pokemon.name === "カビゴン") {
+    return {
+        name: "ほんきをだすこうげき",
+        type: "ノーマル",
+        power: 210,
+        accuracy: 999,
+        category: "physical",
+        pp: 1,
+        currentPp: 1,
+        isZMove: true
+    };
+}
+if (pokemon.name === "ポリゴン2") {
+    return {
+        name: "リサーチザテトラ",
+        type: "ノーマル",
+        power: 170,
+        accuracy: 999,
+        category: "special",
+        pp: 1,
+        currentPp: 1,
+        critPriority:1,
+        isDynamicType: true,
+        secondary: [{effect: "stat",stat: "defense",stage: 2,self: true,chance: 100},{effect: "stat",stat: "spDefense",stage: 2,self: true,chance: 100}],
+        isZMove: true
+    };
+}
+if (pokemon.name === "デンジュモク") {
+    return {
+        name: "Zさいみんじゅつ",
+        type: "Z",
+        power: 0,
+        accuracy: 999,
+        category: "special",
+        pp: 1,
+        currentPp: 1,
+        secondary: [{ chance: 100, effect: 'stat', stat: 'speed', stage: 1, self: true },{ chance: 100, effect: 'status', status: 'sleep' }],
+        isZMove: true
+    };
+}
+  const firstMove = pokemon.moves[0];
+
+  if (!firstMove) return null;
+
+  if (firstMove.category !== "physical" && firstMove.category !== "special") {
+    return null;
+  }
+
+  const zType = firstMove.type.toLowerCase();
+  const zName = Z_MOVE_NAMES[zType];
+
+  if (!zName) return null;
+
+  const zPower = getZPower(firstMove.power);
+
+  return {
+    name: zName,
+    type: firstMove.type, // ← 元のままでもOK
+    power: zPower,
+    accuracy: 999, // ← 命中処理回避（必中）
+    category: firstMove.category, // ⭐超重要
+    pp: 1,
+    currentPp: 1,
+    isZMove: true
+  };
+}
+
+
+function useZMove(pokemon) {
+  if (pokemon.usedZMove) return null;
+
+  if (pokemon.item?.name !== "Zクリスタル") return null;
+
+  const zMove = createZMove(pokemon);
+  if (!zMove) return null;
+
+  pokemon.usedZMove = true;
+
+  return zMove;
+}
+    // The rest of the script is restored here...
+    function createPokemonInstance(pokemonData) {
+        const instance = calculateStats(pokemonData);
+        instance.currentHp = instance.maxHp;
+        instance.statModifiers = { attack: 1 };
+        instance.statStages = { attack: 0, defense: 0, spAttack: 0, spDefense: 0, speed: 0 };
+        instance.status = null;
+        instance.statusTurns = 0;
+        auroraVeil: 0;
+        instance.volatileStatus = {
+    seeded: false,
+    seedSource: null
+};
+        instance.item = null;
+        instance.isFlinched = false;
+        
+        instance.hasSubstitute = false;
+        instance.substituteHp = 0;
+        instance.isShiny = Math.random() < 0.00025;
+        instance.isRampaging = false;
+        instance.rampageTurns = 0;
+        instance.isConfused = false;
+        instance.confusionTurns = 0;
+        instance.toxicCounter = 0;
+        instance.lastDamageTaken = 0;
+        instance.lastDamageCategory = null; // 'physical' or 'special'
+        instance.moves = JSON.parse(JSON.stringify(pokemonData.moves)); // Deep copy moves
+        instance.moves.forEach(m => m.currentPp = m.pp);
+        return instance;
+    }
+
+    function calculateStats(basePokemon) {
+        const level = 50;
+        const pokemon = { ...basePokemon };
+        
+        const ivs = { hp: 31, attack: 31, defense: 31, spAttack: 31, spDefense: 31, speed: 31 };
+        if (basePokemon.baseSpAttack > basePokemon.baseAttack) { ivs.attack = 0; }
+
+        const defaultEVs = {
+            hp: 4,
+            atk: basePokemon.baseAttack >= basePokemon.baseSpAttack ? 252 : 0,
+            def: 0,
+            spa: basePokemon.baseSpAttack > basePokemon.baseAttack ? 252 : 0,
+            spd: 0,
+            spe: 252
+        };
+        const evs = { ...defaultEVs, ...basePokemon.evs };
+        pokemon.maxHp = Math.floor(((2 * basePokemon.baseHp + ivs.hp + Math.floor(evs.hp / 4)) * level) / 100) + level + 10;
+        const calcOtherStat = (base, iv, ev) => Math.floor((((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5);
+        pokemon.attack = calcOtherStat(basePokemon.baseAttack, ivs.attack, evs.atk);
+        pokemon.defense = calcOtherStat(basePokemon.baseDefense, ivs.defense, evs.def);
+        pokemon.spAttack = calcOtherStat(basePokemon.baseSpAttack, ivs.spAttack, evs.spa);
+        pokemon.spDefense = calcOtherStat(basePokemon.baseSpDefense, ivs.spDefense, evs.spd);
+        pokemon.speed = calcOtherStat(basePokemon.baseSpeed, ivs.speed, evs.spe);
+       const nature = natures[pokemon.nature];
+
+if (nature) {
+    if (nature.up) {
+        pokemon[nature.up] = Math.floor(pokemon[nature.up] * 1.1);
+    }
+    if (nature.down) {
+        pokemon[nature.down] = Math.floor(pokemon[nature.down] * 0.9);
+    }
+}
+        return pokemon;
+    }
+    function updateStatDisplay(pokemon, element) {
+    let text = '';
+
+    const s = pokemon.statStages;
+
+    if (s.attack > 0) text += `Atk+${s.attack} `;
+    if (s.attack < 0) text += `Atk${s.attack} `;
+
+    if (s.spAttack > 0) text += `SpA+${s.spAttack} `;
+    if (s.spAttack < 0) text += `SpA${s.spAttack} `;
+
+    if (s.defense > 0) text += `Def+${s.defense} `;
+    if (s.defense < 0) text += `Def${s.defense} `;
+
+    if (s.spDefense > 0) text += `SpD+${s.spDefense} `;
+    if (s.spDefense < 0) text += `SpD${s.spDefense} `;
+
+    if (s.speed > 0) text += `Spe+${s.speed} `;
+    if (s.speed < 0) text += `Spe${s.speed} `;
+
+    element.textContent = text.trim();
+}
+function getShownName(pokemon){
+    return (
+        pokemon.disguiseData?.name ||
+        pokemon.name
+    );
+}
+    function showPlayerSelection() {
+        if(document.getElementById('mode-selection-screen')) document.getElementById('mode-selection-screen').style.display = 'none';
+        selectionScreen.style.display = 'block';
+
+        pokemonSelectionGrid.innerHTML = '';
+        for (const key in pokemonBaseData) {
+            const p = pokemonBaseData[key];
+            const card = document.createElement('div');
+            card.className = "nes-container bg-white p-2 text-center cursor-pointer pokemon-card";
+            card.dataset.pokemonKey = key;
+            card.onclick = () => handlePlayerPokemonSelect(key);      
+            let imgSrc = getSpriteUrl({id: p.id});
+            const imgSizeClass = p.id === 'eternatus-eternamax' ? 'h-24' : 'h-20';
+            card.innerHTML = `<img src="${imgSrc}" alt="${p.name}" class="mx-auto ${imgSizeClass}"><p class="mt-2 text-xs sm:text-sm">${p.name}</p>`;
+            
+            card.addEventListener('mouseover', (e) => {
+               let tooltipContent = `
+    <p class="font-bold text-xs">${p.name}</p>
+    <p class="text-xs">タイプ: ${p.types.join(' / ')}</p>
+    <p class="text-xs">とくせい: ${p.ability}</p>
+    <p class="text-xs">せいかく: ${p.nature}</p>
+    <p class="mt-1 font-bold text-xs">種族値:</p>
+    <p class="mt-1 text-xs">
+        H:${p.baseHp}
+        A:${p.baseAttack}
+        B:${p.baseDefense}
+    </p>
+    <p class="text-xs">
+        C:${p.baseSpAttack}
+        D:${p.baseSpDefense}
+        S:${p.baseSpeed}
+    </p>
+
+    <p class="mt-1 font-bold text-xs">努力値:</p>
+    <p class="text-xs">
+        H:${p.evs?.hp ?? 0}
+        A:${p.evs?.atk ?? 0}
+        B:${p.evs?.def ?? 0}
+    </p>
+    <p class="text-xs">
+        C:${p.evs?.spa ?? 0}
+        D:${p.evs?.spd ?? 0}
+        S:${p.evs?.spe ?? 0}
+    </p>
+
+    <p class="mt-1 font-bold text-xs">おぼえるわざ:</p>
+`;
+                p.moves.forEach(move => {
+                    tooltipContent += `<p class="text-xs">- ${move.name}</p>`;
+                });
+                selectionTooltip.innerHTML = tooltipContent;
+                selectionTooltip.style.display = 'block';
+
+                const rect = card.getBoundingClientRect();
+                const tooltipWidth = selectionTooltip.offsetWidth;
+                const isLeftSide = rect.left + rect.width / 2 < window.innerWidth / 2;
+                
+                let left, top;
+                top = rect.top;
+
+                if (isLeftSide) {
+                    left = rect.right + 10;
+                } else {
+                    left = rect.left - tooltipWidth - 10;
+                }
+
+                if (left < 0) left = 5;
+                if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 5;
+
+                selectionTooltip.style.left = `${left}px`;
+                selectionTooltip.style.top = `${top}px`;
+            });
+
+            card.addEventListener('mouseout', () => {
+                selectionTooltip.style.display = 'none';
+            });
+
+            pokemonSelectionGrid.appendChild(card);
+        }
+    }
+    
+    function handlePlayerPokemonSelect(key) {
+        selectedPlayerKey = key;
+        showItemSelection();
+    }
+    
+    function showItemSelection() {
+        selectionScreen.style.display = 'none';
+        itemSelectionScreen.style.display = 'block';
+        
+        itemSelectionGrid.innerHTML = '';
+        for (const key in items) {
+            const item = items[key];
+            const card = document.createElement('button');
+            card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
+            card.onclick = () => handlePlayerItemSelect(item.name);
+            card.innerHTML = `<p class="text-sm font-bold">${item.name}</p><p class="mt-2 text-xs">${item.description}</p>`;
+            itemSelectionGrid.appendChild(card);
+        }
+    }
+    
+    function handlePlayerItemSelect(itemName) {
+        selectedPlayerItemName = itemName;
+        showOpponentSelection();
+    }
+    
+    function showOpponentSelection() {
+        itemSelectionScreen.style.display = 'none';
+        opponentSelectionScreen.style.display = 'block';
+
+        opponentPokemonSelectionGrid.innerHTML = '';
+         for (const key in pokemonBaseData) {
+            const p = pokemonBaseData[key];
+            const card = document.createElement('div');
+            card.className = "nes-container bg-white p-2 text-center cursor-pointer pokemon-card";
+            card.dataset.pokemonKey = key;
+            card.onclick = () => showOpponentItemSelection(key);
+            let imgSrc = getSpriteUrl({id: p.id});
+            const imgSizeClass = p.id === 'eternatus-eternamax' ? 'h-24' : 'h-20';
+            card.innerHTML = `<img src="${imgSrc}" alt="${p.name}" class="mx-auto ${imgSizeClass}"><p class="mt-2 text-xs sm:text-sm">${p.name}</p>`;
+            
+            card.addEventListener('mouseover', (e) => {
+                let tooltipContent = `
+    <p class="font-bold text-xs">${p.name}</p>
+    <p class="text-xs">タイプ: ${p.types.join(' / ')}</p>
+    <p class="text-xs">とくせい: ${p.ability}</p>
+    <p class="text-xs">せいかく: ${p.nature}</p>
+    <p class="mt-1 font-bold text-xs">種族値:</p>
+    <p class="mt-1 text-xs">
+        H:${p.baseHp}
+        A:${p.baseAttack}
+        B:${p.baseDefense}
+    </p>
+    <p class="text-xs">
+        C:${p.baseSpAttack}
+        D:${p.baseSpDefense}
+        S:${p.baseSpeed}
+    </p>
+
+    <p class="mt-1 font-bold text-xs">努力値:</p>
+    <p class="text-xs">
+        H:${p.evs?.hp ?? 0}
+        A:${p.evs?.atk ?? 0}
+        B:${p.evs?.def ?? 0}
+    </p>
+    <p class="text-xs">
+        C:${p.evs?.spa ?? 0}
+        D:${p.evs?.spd ?? 0}
+        S:${p.evs?.spe ?? 0}
+    </p>
+
+    <p class="mt-1 font-bold text-xs">おぼえるわざ:</p>
+`;
+                p.moves.forEach(move => {
+                    tooltipContent += `<p class="text-xs">- ${move.name}</p>`;
+                });
+                selectionTooltip.innerHTML = tooltipContent;
+                selectionTooltip.style.display = 'block';
+
+                const rect = card.getBoundingClientRect();
+                const tooltipWidth = selectionTooltip.offsetWidth;
+                const isLeftSide = rect.left + rect.width / 2 < window.innerWidth / 2;
+                
+                let left, top;
+                top = rect.top;
+
+                if (isLeftSide) {
+                    left = rect.right + 10;
+                } else {
+                    left = rect.left - tooltipWidth - 10;
+                }
+
+                if (left < 0) left = 5;
+                if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 5;
+
+                selectionTooltip.style.left = `${left}px`;
+                selectionTooltip.style.top = `${top}px`;
+            });
+
+            card.addEventListener('mouseout', () => {
+                selectionTooltip.style.display = 'none';
+            });
+            
+            opponentPokemonSelectionGrid.appendChild(card);
+        }
+        randomOpponentButton.onclick = selectRandomOpponentAndItem;
+    }
+    
+    function selectRandomOpponentAndItem() {
+        const opponentKeys = Object.keys(pokemonBaseData);
+        selectedOpponentKey = opponentKeys[Math.floor(Math.random() * opponentKeys.length)];
+        selectedOpponentItemName = 'random';
+        showDifficultySelection();
+    }
+    
+    function showOpponentItemSelection(opponentKey) {
+        selectedOpponentKey = opponentKey;
+        opponentSelectionScreen.style.display = 'none';
+        opponentItemSelectionScreen.style.display = 'block';
+
+        opponentItemSelectionGrid.innerHTML = '';
+        for (const key in items) {
+            const item = items[key];
+            const card = document.createElement('button');
+            card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
+            card.onclick = () => handleOpponentItemSelect(item.name);
+            card.innerHTML = `<p class="text-sm font-bold">${item.name}</p><p class="mt-2 text-xs">${item.description}</p>`;
+            opponentItemSelectionGrid.appendChild(card);
+        }
+    }
+    
+    function handleOpponentItemSelect(itemName) {
+        selectedOpponentItemName = itemName;
+        showDifficultySelection();
+    }
+    
+    function showDifficultySelection() {
+        opponentSelectionScreen.style.display = 'none';
+        opponentItemSelectionScreen.style.display = 'none';
+        difficultySelectionScreen.style.display = 'block';
+
+        difficultySelectionGrid.innerHTML = '';
+        for (const key in difficulties) {
+            const diff = difficulties[key];
+            const card = document.createElement('button');
+            card.className = "nes-container bg-white p-4 text-center cursor-pointer difficulty-card w-48";
+            card.onclick = () => startGame(key);
+            card.innerHTML = `<p class="text-sm font-bold">${diff.name}</p><p class="mt-2 text-xs">${diff.description}</p>`;
+            difficultySelectionGrid.appendChild(card);
+        }
+    }
+
+    function resetStatDisplays() {
+    document.getElementById('player-stat-display').textContent = '';
+    document.getElementById('opponent-stat-display').textContent = '';
+}
+    
+    function startGame(difficultyLevel) {
+        difficulty = difficultyLevel;
+
+        playerPokemon = createPokemonInstance(pokemonBaseData[selectedPlayerKey]);
+        playerPokemon.item = { name: selectedPlayerItemName, used: false };
+        playerPokemon.usedZMove = false;
+
+        opponentPokemon = createPokemonInstance(pokemonBaseData[selectedOpponentKey]);
+                applyIllusion(playerPokemon);
+applyIllusion(opponentPokemon);
+        const opponentItem = selectedOpponentItemName === 'random' 
+            ? determineOpponentItem(pokemonBaseData[selectedOpponentKey]) 
+            : selectedOpponentItemName;
+        opponentPokemon.item = { name: opponentItem, used: false };
+        initZData(playerPokemon);
+initZData(opponentPokemon);
+
+playerPokemon.usedZMove = false;
+opponentPokemon.usedZMove = false;
+
+playerPokemon.pendingMega = false;
+playerPokemon.megaEvolved = false;
+
+opponentPokemon.pendingMega = false;
+opponentPokemon.megaEvolved = false;
+        difficultySelectionScreen.style.display = 'none';
+        battleScreen.style.display = 'block';
+        const bg = backgroundImages[Math.floor(Math.random() * backgroundImages.length)];
+        battleScreen.style.backgroundImage = `url('${bg}')`;
+        
+        resetStatDisplays();
+        initBattleUI();
+        updateSubstituteMarkers();
+        startBattleSequence();   
+    }
+
+    function applyIllusion(pokemon) {
+
+    if (pokemon.ability !== "イリュージョン")
+        return;
+
+    const candidates =
+        Object.values(pokemonBaseData).filter(
+            p =>
+                p.name !== "ゾロアーク" &&
+                p.name !== "ヒスイゾロアーク"
+        );
+
+    pokemon.disguiseData =
+        candidates[
+            Math.floor(
+                Math.random() * candidates.length
+            )
+        ];
+}
+    
+    function has4xWeakness(types) {
+        for (const attackingType in typeChart) {
+            let totalMultiplier = 1;
+            types.forEach(defendingType => {
+                totalMultiplier *= typeChart[attackingType]?.[defendingType] ?? 1;
+            });
+            if (totalMultiplier >= 4) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+function determineOpponentItem(pokemon) {
+
+    // メガ可能ポケモン専用
+    if (MEGA_DATA[pokemon.name]) {
+        const items = [
+            'きあいのタスキ',
+            'しゅんそくスカーフ',
+            'せんせいのツメ',
+            'メガストーン'
+        ];
+
+        return items[
+            Math.floor(Math.random() * items.length)
+        ];
+    }
+
+    // 耐久値
+    const durability =
+        pokemon.baseHp +
+        pokemon.baseDefense +
+        pokemon.baseSpDefense;
+
+    // 超耐久
+    if (durability >= 300) {
+        const items = [
+            'オボンの実',
+            'たべのこし',
+            'たいきゅうチョッキ',
+            'ゴツゴツメット',
+            'せんせいのツメ',
+            'きのみバスケット',
+        ];
+
+        return items[
+            Math.floor(Math.random() * items.length)
+        ];
+    }
+
+    // 物理型
+    if (pokemon.baseAttack > pokemon.baseSpAttack) {
+        const items = [
+            'きあいのタスキ',
+            'ちからのはちまき',
+            'しゅんそくスカーフ',
+            'せんせいのツメ',
+            'たいきゅうチョッキ',
+            'きあいのハチマキ',
+
+        ];
+
+        return items[
+            Math.floor(Math.random() * items.length)
+        ];
+    }
+
+    // 特殊型
+    if (pokemon.baseSpAttack > pokemon.baseAttack) {
+        const items = [
+            'きあいのタスキ',
+            'ものしりメガネ',
+            'しゅんそくスカーフ',
+            'せんせいのツメ',
+            'たいきゅうチョッキ',
+            'きあいのハチマキ',
+        ];
+
+        return items[
+            Math.floor(Math.random() * items.length)
+        ];
+    }
+}
+    
+    async function startBattleSequence() {
+        disableMoves();
+        await handleAbilityEffectsOnEntry();
+         if(playerPokemon.ability === "いかく" && opponentPokemon.ability !== "クリアボディ") {
+            await showMessage(`じぶんの ${playerPokemon.name} の いかく！`);
+            await showMessage(`あいて の ${opponentPokemon.name} の こうげきが さがった！`);
+            opponentPokemon.statStages.attack -= 1;
+            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+        }
+         if(opponentPokemon.ability === "いかく" && playerPokemon.ability !== "クリアボディ") {
+            await showMessage(`あいて の ${opponentPokemon.name} の いかく！`);
+            await showMessage(`じぶんの ${playerPokemon.name} の こうげきが さがった！`);
+            playerPokemon.statStages.attack -= 1;
+            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+        }
+        if (playerPokemon.ability === "ダウンロード") {
+          await showMessage(`じぶんの ${playerPokemon.name} の ダウンロード！`);
+    if (opponentPokemon.defense < opponentPokemon.spDefense) {
+        playerPokemon.statStages.attack++;
+        await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    } else {
+        playerPokemon.statStages.spAttack++;
+        await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+}
+        if (opponentPokemon.ability === "ダウンロード") {
+          await showMessage(`あいての ${opponentPokemon.name} の ダウンロード！`);
+    if (playerPokemon.defense < playerPokemon.spDefense) {
+        opponentPokemon.statStages.attack++;
+        await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    } else {
+        opponentPokemon.statStages.spAttack++;
+        await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+}
+if (playerPokemon.ability === "ビーストブースト") {
+          await showMessage(`じぶんの ${playerPokemon.name} の ビーストブースト！`);
+    if (playerPokemon.spAttack < playerPokemon.attack) {
+        playerPokemon.statStages.attack++;
+        await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    } else {
+        playerPokemon.statStages.spAttack++;
+        await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+}
+ if (opponentPokemon.ability === "ビーストブースト") {
+          await showMessage(`あいての ${opponentPokemon.name} の ビーストブースト！`);
+    if (opponentPokemon.spAttack < opponentPokemon.attack) {
+        opponentPokemon.statStages.attack++;
+        await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    } else {
+        opponentPokemon.statStages.spAttack++;
+        await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+}
+if (playerPokemon.ability === "しろのいななき") {
+          await showMessage(`じぶんの ${playerPokemon.name} の しろのいななき！`);
+    if (playerPokemon.spAttack < playerPokemon.attack) {
+        playerPokemon.statStages.attack++;
+        await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    } else {
+        playerPokemon.statStages.spAttack++;
+        await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+}
+ if (opponentPokemon.ability === "しろのいななき") {
+          await showMessage(`あいての ${opponentPokemon.name} の しろのいななき！`);
+    if (opponentPokemon.spAttack < opponentPokemon.attack) {
+        opponentPokemon.statStages.attack++;
+        await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    } else {
+        opponentPokemon.statStages.spAttack++;
+        await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+}
+        await showMessage(
+    `${getShownName(playerPokemon)} は どうする？`,
+    500
+);
+        enableMoves();
+    }
+
+    async function megaEvolve(pokemon,isPlayer){
+
+    if(!canMegaEvolve(pokemon)) return;
+
+    const mega = MEGA_DATA[pokemon.name].form;
+
+    const oldName = pokemon.name;
+    pokemon.name = mega.name;
+    pokemon.types = mega.types;
+    pokemon.ability = mega.ability;
+
+    pokemon.baseAttack = mega.baseAttack;
+    pokemon.baseDefense = mega.baseDefense;
+    pokemon.baseSpAttack = mega.baseSpAttack;
+    pokemon.baseSpDefense = mega.baseSpDefense;
+    pokemon.baseSpeed = mega.baseSpeed;
+
+    const newStats = calculateStats(pokemon);
+
+    if (mega.moves) {
+    pokemon.moves = mega.moves.map(move => ({
+        ...move,
+        currentPp: move.pp
+    }));
+}
+
+    pokemon.attack = newStats.attack;
+    pokemon.defense = newStats.defense;
+    pokemon.spAttack = newStats.spAttack;
+    pokemon.spDefense = newStats.spDefense;
+    pokemon.speed = newStats.speed;
+
+    pokemon.megaEvolved = true;
+
+    if (isPlayer) {
+    updateMoves();
+}
+
+    const sprite = isPlayer ? player.sprite : opponent.sprite;
+
+    sprite.src = isPlayer
+        ? mega.spriteBack
+        : mega.spriteFront;
+
+    await showMessage(`${oldName} は メガシンカした！`);
+    if (pokemon.ability === "ブレインフォース") {
+
+    await showMessage(
+        `${pokemon.name} は オーラをまとい のうりょくが あがった！`
+    );
+
+    pokemon.statStages.attack =
+        Math.min(6, pokemon.statStages.attack + 2);
+
+    pokemon.statStages.defense =
+        Math.min(6, pokemon.statStages.defense + 2);
+
+    pokemon.statStages.spAttack =
+        Math.min(6, pokemon.statStages.spAttack + 2);
+
+    pokemon.statStages.spDefense =
+        Math.min(6, pokemon.statStages.spDefense + 2);
+
+    pokemon.statStages.speed =
+        Math.min(6, pokemon.statStages.speed + 2);
+
+    updateStatDisplay(
+        playerPokemon,
+        document.getElementById('player-stat-display')
+    );
+
+    updateStatDisplay(
+        opponentPokemon,
+        document.getElementById('opponent-stat-display')
+    );
+}
+}
+
+    function initBattleUI() {
+        currentTurn = 1;
+        turnCounter.textContent = `ターン: ${currentTurn}`;
+        weather.type = 'none';
+        weather.turns = 0;
+        updateWeatherIndicator();
+        field.type = 'none';
+        field.turns = 0;
+        updateFieldIndicator();
+const playerShown =
+    playerPokemon.disguiseData || playerPokemon;
+
+player.nameEl.textContent =
+    playerShown.name;
+
+player.maxHpEl.textContent =
+    playerPokemon.maxHp;
+
+player.sprite.src =
+    getSpriteUrl(playerShown, true);
+const opponentShown =
+    opponentPokemon.disguiseData || opponentPokemon;
+
+opponent.nameEl.textContent =
+    opponentShown.name;
+
+document.getElementById("opponent-max-hp").textContent =
+    opponentPokemon.maxHp;
+
+opponent.sprite.src =
+    getSpriteUrl(opponentShown);
+        const playerSizeClasses = playerPokemon.id === 'necrozma-ultra' || playerPokemon.id === 'eternatus-eternamax' ? 'h-28 sm:h-36 md:h-44' : 'h-24 sm:h-32 md:h-40';
+        player.sprite.className = `mx-auto ${playerSizeClasses} object-contain transition-all duration-1000`;
+
+        const opponentSizeClasses = opponentPokemon.id === 'necrozma-ultra' || opponentPokemon.id === 'eternatus-eternamax' ? 'h-28 sm:h-36 md:h-44' : 'h-24 sm:h-32 md:h-40';
+        opponent.sprite.className = `mx-auto ${opponentSizeClasses} object-contain transition-all duration-1000`;
+        
+        screenOverlay.classList.remove('active');
+        gameOverScreen.style.display = 'none';
+        player.sprite.classList.remove('sprite-faint');
+        opponent.sprite.classList.remove('sprite-faint');
+
+        updateHpBars();
+        updateStatusMarkers();
+        updateMoves();
+        updateSubstituteMarkers();
+
+        menu.style.display = 'grid';
+        winScreen.style.display = 'none';
+
+        setupTooltips();
+    }
+    
+function updateMoves() {
+    movesContainer.innerHTML = '';
+
+    // 通常技
+    playerPokemon.moves.forEach(move => {
+        const button = document.createElement('button');
+        button.textContent = move.name;
+
+        const isDisabled = move.currentPp === 0;
+
+        button.className =
+            `border-2 border-gray-800 rounded p-1
+            ${typeColors[move.type] || 'bg-gray-200'}
+            ${isDisabled ? 'opacity-50' : ''}`;
+
+        button.disabled = isDisabled;
+
+        button.onclick = () => startBattleRound(move);
+
+        button.onmouseover = () => {
+            moveTooltip.innerHTML = getMoveTooltipContent(move);
+            moveTooltip.style.display = 'block';
+        };
+
+        button.onmouseout = () => {
+            moveTooltip.style.display = 'none';
+        };
+
+        movesContainer.appendChild(button);
+    });
+
+    // Z技
+    if (canUseZMove(playerPokemon)) {
+    const zMove = createZMove(playerPokemon);
+
+    const zBtn = document.createElement('button');
+    zBtn.textContent = `Z技:${zMove.name}`;
+    zBtn.className =
+        "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
+
+    zBtn.onclick = () => {
+        startBattleRound(useZMove(playerPokemon));
+    };
+
+    zBtn.onmouseover = () => {
+        moveTooltip.innerHTML =
+            getMoveTooltipContent(zMove);
+        moveTooltip.style.display = "block";
+    };
+
+    zBtn.onmousemove = (e) => {
+        moveTooltip.style.left =
+            `${e.pageX + 15}px`;
+        moveTooltip.style.top =
+            `${e.pageY - 15}px`;
+    };
+
+    zBtn.onmouseout = () => {
+        moveTooltip.style.display = "none";
+    };
+
+    movesContainer.appendChild(zBtn);
+}
+
+    // メガ進化
+    if (canMegaEvolve(playerPokemon)) {
+        const megaBtn = document.createElement('button');
+
+        megaBtn.textContent = "メガシンカ";
+        megaBtn.className =
+            "border-2 border-red-500 bg-gray-800 text-white rounded p-1";
+
+        megaBtn.onclick = () => {
+            playerPokemon.pendingMega = true;
+            showMessage("どの技で メガシンカする？");
+        };
+
+        movesContainer.appendChild(megaBtn);
+    }
+}
+    
+    function getSpriteUrl(pokemon, back = false) {
+        if (typeof pokemon.id === 'string') {
+             const baseUrl = "https://play.pokemonshowdown.com/sprites/";
+             const folder = back ? "ani-back" : "ani";
+             const shiny = pokemon.isShiny ? "-shiny" : "";
+             return `${baseUrl}${folder}${shiny}/${pokemon.id}.gif`;
+        } else {
+             const shinyFolder = pokemon.isShiny ? 'shiny/' : '';
+             const backFolder = back ? 'back/' : '';
+             return `${POKE_API_BASE_URL}${backFolder}${shinyFolder}${pokemon.id}.gif`;
+        }
+    }
+
+    function getMoveTooltipContent(move) {
+        let effectText = `威力: ${move.power || '--'} | 命中: ${move.accuracy > 100 ? '--' : move.accuracy} | PP: ${move.currentPp}/${move.pp}`;
+        let effText = '';
+
+        if (move.category === 'status') {
+    effectText =
+        generateStatusMoveDescription(move.name) +
+        `<br>PP: ${move.currentPp}/${move.pp}`;
+} else {
+
+    effectText =
+    `威力: ${move.power || '--'} | 命中: ${
+        move.accuracy > 100 ? '--' : move.accuracy
+    } | PP: ${move.currentPp}/${move.pp}` +
+    `<br>${generateAttackMoveDescription(move.name)}`;
+
+    if(move.secondary) {
+        effectText += `<br>${move.secondary.chance}% の確率で ${generateEffectDescription(move.secondary)}`;
+    }
+
+const targetTypes =
+    opponentPokemon.ability === "イリュージョン" &&
+    opponentPokemon.disguiseData
+        ? opponentPokemon.disguiseData.types
+        : opponentPokemon.types;
+
+const effectiveness =
+    calculateTypeEffectiveness(move.type, targetTypes);
+    if (effectiveness > 1)
+        effText = '<span style="color: green;">こうかは ばつぐんだ！</span>';
+    else if (effectiveness < 1 && effectiveness > 0)
+        effText = '<span style="color: red;">こうかは いまひとつだ</span>';
+    else if (effectiveness === 0)
+        effText = '<span style="color: gray;">こうかがないみたいだ</span>';
+}
+        
+        return `
+            <p class="font-bold text-xs">${move.name}</p>
+            <p class="text-xs">タイプ: ${move.type}</p>
+            <p class="mt-1 text-xs">${effectText}</p>
+            <p class="mt-1 text-xs">${effText}</p>
+        `;
+    }
+
+    function generateStatusMoveDescription(moveName) {
+        switch(moveName) {
+            case '天の祈り': return '自分の HPを1/2回復する。';
+            case 'つきのひかり': return '自分の HPを1/2回復する。';
+            case 'あさのひざし': return '自分の HPを1/2回復する。';
+            case 'はねやすめ': return '自分の HPを1/2回復する。';
+            case 'じこさいせい': return '自分の HPを1/2回復する。';
+            case 'まもる': return '相手の こうげきを1ターン守る。';
+            case 'キングシールド': return '相手の こうげきを1ターン守る。<br> 直接 触れた 相手の こうげきを 2段階 さげる。';
+            case 'りゅうのまい': return '自分の こうげきと すばやさを 1段階ずつ あげる。';
+            case 'つるぎのまい': return '自分の こうげきを 2段階 あげる。';
+            case 'さいみんじゅつ': return '相手を ねむり状態にする。';
+            case 'ほたるび': return '自分の とくこうを 3段階と あげる。';
+            case 'ビルドアップ': return '自分の こうげきと ぼうぎょを 1段階ずつ あげる。';
+            case 'めいそう': return '自分の とくこうと とくぼうを 1段階ずつ あげる。';
+            case 'わるだくみ': return '自分の とくこうを 2段階 あげる。';
+            case 'こうそくいどう': return '自分の すばやさを 2段階と あげる。';
+            case 'ちょうのまい': return '自分の とくこう とくぼう すばやさを 1段階ずつ あげる。';
+            case 'のろい': return '自分の すばやさを 1段階 さげ,こうげき ぼうぎょを 1段階ずつ あげる。';
+            case 'おにび': return '相手を やけど状態にする。';
+            case 'ねむりごな': return '相手を ねむり状態にする。';
+            case 'きのこのほうし': return '相手を ねむり状態にする。';
+            case 'みがわり': return 'HPを けずって みがわりを だす。';
+            case 'あくび': return '相手を ねむけさせる。';
+            case 'でんじは': return '相手を まひ状態にする。';
+            case 'へびにらみ': return '相手を まひ状態にする。';
+            case 'てっぺき': return '自分の ぼうぎょを 2段階 あげる。';
+            case 'コットンガード': return '自分の ぼうぎょを 3段階 あげる。';
+            case 'きんぞくおん': return '相手の とくぼうを 2段階 さげる。';
+            case 'フェザーダンス': return '相手の こうげきを 2段階 さげる';
+            case 'どくどく': return '相手を もうどく状態にする。';
+            case 'コスモパワー': return '自分の ぼうぎょと とくぼうを 1段階 あげる。'
+            case 'カウンター': return '物理技を 倍返しだ！！';
+            case 'メタルバースト': return '攻撃技を 1.5倍返しだ！！';
+            default: return 'へんかわざ';
+        }
+    }
+
+    function generateAttackMoveDescription(moveName) {
+    switch(moveName) {
+        case 'インファイト': return '攻撃後に 自分の ぼうぎょ と とくぼうが 1段階 さがる。';
+        case 'ぶちかまし': return '攻撃後に 自分の ぼうぎょ と とくぼうが 1段階 さがる。';
+        case 'りゅうせいぐん': return '攻撃後に 自分の とくこうが 2段階 さがる。';
+        case 'はかいこうせん': return '攻撃後に 自分の とくこうが 3段階 さがる。';
+        case 'トライアタック': return '30%の確率で やけど まひ こおり 状態にする。';
+        case 'フレアドライブ': return '与えた ダメージの 1/3を 自分も うける。';
+        case 'ブレイブバード': return '与えた ダメージの 1/3を 自分も うける。';
+        case 'ウェーブタックル': return '与えた ダメージの 1/3を 自分も うける。';
+        case 'ふいうち': return '先制で 攻撃する。優先度+1 ';
+        case 'しんそく': return '先制で 攻撃する。優先度+2 ';
+        case 'かげうち': return '先制で 攻撃する。優先度+1 ';
+        case 'アクアジェット': return '先制で 攻撃する。優先度+1 ';
+        case 'じんらい': return '先制で 攻撃する。優先度+1 ';
+        case 'バレットパンチ': return '先制で 攻撃する。優先度+1 ';
+        case 'こおりのつぶて': return '先制で 攻撃する。優先度+1 ';
+        case 'であいがしら': return '先制で 攻撃する。優先度+2 ';
+        case 'シャドークロー': return '急所に 当たりやすい。急所率+1 ';
+        case 'げきりん': return '2〜3ターン 攻撃し、そのあと 混乱する。';
+        case 'すいりゅうれんだ': return '必ず急所にあたり 3回攻撃する。';
+        case 'あんこくきょうだ': return '必ず急所にあたる。';
+        case 'トリックフラワー': return '必ず急所にあたる。';
+        case 'トリプルアクセル': return '1~3回 攻撃する。';
+        case 'ドラゴンアロー': return '2回 攻撃する。';
+        case 'みずしゅりけん': return '2〜5回 攻撃する。';
+        case 'おはかまいり': return 'こんな技 あってはいけない。';
+        case 'ドゲザン': return '情けない技';
+        default: return 'こうげきわざ';
+    }
+}
+
+    function generateEffectDescription(secondary) {
+        switch(secondary.effect) {
+            case 'status': return {burn: 'やけど', freeze: 'こおり', paralyze: 'まひ', poison: 'どく', toxic: 'もうどく',hypnosis: 'さいみん'}[secondary.status] + 'にする';
+            case 'flinch': return '相手をひるませる';
+            case 'stat':
+                const statName = { attack: 'こうげき', defense: 'ぼうぎょ', spAttack: 'とくこう', spDefense: 'とくぼう', speed: 'すばやさ' }[secondary.stat];
+                const target = secondary.self ? '自分' : '相手';
+                const verb = secondary.stage < 0 ? 'さげる' : 'あげる';
+                return `${target}の${statName}を${verb}`;
+            default: return '';
+        }
+    }
+    
+    function setupTooltips() {
+
+    const bind = (spriteObj, pokemonGetter) => {
+        const container = spriteObj.sprite.parentElement;
+
+        container.onmouseover = () => {
+            spriteObj.tooltip.innerHTML =
+                getTooltipContent(pokemonGetter());
+            spriteObj.tooltip.classList.remove("hidden");
+        };
+
+        container.onmouseout = () => {
+            spriteObj.tooltip.classList.add("hidden");
+        };
+    };
+
+    bind(player, () => playerPokemon);
+    bind(opponent, () => opponentPokemon);
+}
+
+function getTooltipContent(pokemon) {
+
+    const shownPokemon =
+        pokemon.disguiseData || pokemon;
+
+    const evs = shownPokemon.evs || {
+        hp: 0,
+        atk: 0,
+        def: 0,
+        spa: 0,
+        spd: 0,
+        spe: 0
+    };
+
+    return `
+        <p class="font-bold text-xs">${shownPokemon.name}</p>
+        <p class="text-xs">タイプ: ${shownPokemon.types.join(' / ')}</p>
+        <p class="text-xs">とくせい: ${shownPokemon.ability}</p>
+        <p class="text-xs">せいかく: ${shownPokemon.nature}</p>
+
+        <p class="mt-1 text-xs">
+            H:${shownPokemon.baseHp}
+            A:${shownPokemon.baseAttack}
+            B:${shownPokemon.baseDefense}
+        </p>
+
+        <p class="text-xs">
+            C:${shownPokemon.baseSpAttack}
+            D:${shownPokemon.baseSpDefense}
+            S:${shownPokemon.baseSpeed}
+        </p>
+
+        <p class="mt-1 font-bold text-xs">努力値</p>
+        <p class="text-xs">
+            H:${evs.hp}
+            A:${evs.atk}
+            B:${evs.def}<br>
+            C:${evs.spa}
+            D:${evs.spd}
+            S:${evs.spe}
+        </p>
+    `;
+}
+
+    async function startBattleRound(playerMove) {
+      playerPokemon.hasMoved = false;
+opponentPokemon.hasMoved = false;
+      if(isBattleInProgress) return;
+        isBattleInProgress = true;
+        disableMoves();
+        playerPokemon.isFlinched = false;
+        opponentPokemon.isFlinched = false;
+        
+        if (playerPokemon.isRampaging) {
+            playerPokemon.rampageTurns--;
+           playerMove = playerPokemon.moves.find(m => m.name === "げきりん");
+        } else {
+             playerMove.currentPp--;
+        }
+
+        const opponentMove = getOpponentMove();
+        playerPokemon.selectedMove = playerMove;
+opponentPokemon.selectedMove = opponentMove;
+        if (
+    canMegaEvolve(opponentPokemon) &&
+    !opponentPokemon.megaEvolved
+) {
+    opponentPokemon.pendingMega = true;
+}
+if (playerPokemon.pendingMega) {
+    await megaEvolve(playerPokemon, true);
+    playerPokemon.pendingMega = false;
+}
+
+if (opponentPokemon.pendingMega) {
+    await megaEvolve(opponentPokemon, false);
+    opponentPokemon.pendingMega = false;
+}
+        if(opponentMove.name !== 'わるあがき') opponentMove.currentPp--;
+        let playerClaw = false;
+let opponentClaw = false;
+
+if (
+    playerPokemon.item?.name === "せんせいのツメ" &&
+    Math.random() < 0.33
+) {
+    playerClaw = true;
+    await showMessage(
+        `${playerPokemon.name} の せんせいのツメが はつどうした！`
+    );
+}
+
+if (
+    opponentPokemon.item?.name === "せんせいのツメ" &&
+    Math.random() < 0.33
+) {
+    opponentClaw = true;
+    await showMessage(
+        `${opponentPokemon.name} の せんせいのツメが はつどうした！`
+    );
+}
+
+let playerDlaw = false;
+let opponentDlaw = false;
+
+if (
+    playerPokemon.ability === "クイックドロウ" &&
+    Math.random() < 0.33
+) {
+    playerDlaw = true;
+    await showMessage(
+        `${playerPokemon.name} の クイックドロウが はつどうした！`
+    );
+}
+
+if (
+    opponentPokemon.ability === "クイックドロウ" &&
+    Math.random() < 0.33
+) {
+    opponentDlaw = true;
+    await showMessage(
+        `${opponentPokemon.name} の クイックドロウが はつどうした！`
+    );
+}
+        const playerMovePriority = playerMove.priority || 0;
+        const opponentMovePriority = opponentMove.priority || 0;
+        
+        let playerGoesFirst;
+
+if (playerClaw && !opponentClaw) {
+
+    playerGoesFirst = true;
+
+} else if (!playerClaw && opponentClaw) {
+
+    playerGoesFirst = false;
+
+} else if (playerMovePriority > opponentMovePriority) {
+
+    playerGoesFirst = true;
+
+} else if (opponentMovePriority > playerMovePriority) {
+
+    playerGoesFirst = false;
+
+} else if (playerDlaw && !opponentDlaw) {
+
+    playerGoesFirst = true;
+
+} else if (!playerDlaw && opponentDlaw) {
+
+    playerGoesFirst = false;
+
+} else if (playerMovePriority > opponentMovePriority) {
+
+    playerGoesFirst = true;
+
+} else if (opponentMovePriority > playerMovePriority) {
+
+    playerGoesFirst = false;
+
+} else {
+
+    const pSpeed = getPokemonSpeed(playerPokemon);
+    const oSpeed = getPokemonSpeed(opponentPokemon);
+
+    if (pSpeed > oSpeed) playerGoesFirst = true;
+    else if (pSpeed < oSpeed) playerGoesFirst = false;
+    else playerGoesFirst = Math.random() < 0.5;
+}
+
+        const first = { pokemon: playerGoesFirst ? playerPokemon : opponentPokemon, move: playerGoesFirst ? playerMove : opponentMove };
+        const second = { pokemon: playerGoesFirst ? opponentPokemon : playerPokemon, move: playerGoesFirst ? opponentMove : playerMove };
+        
+        let gameOver = await handleAttack(first.pokemon, second.pokemon, first.move, true);
+        if (gameOver) { isBattleInProgress = false; return; }
+        
+        if (second.pokemon.currentHp > 0 && !second.pokemon.isFlinched) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            gameOver = await handleAttack(second.pokemon, first.pokemon, second.move, false);
+            if (gameOver) { isBattleInProgress = false; return; }
+        } else if (second.pokemon.isFlinched) {
+            await showMessage(` ${second.pokemon.name} は ひるんで うごけない！`);
+        }
+
+        gameOver = await handleEndOfTurnEffects();
+        if (gameOver) { isBattleInProgress = false; return; }
+        
+        currentTurn++;
+        turnCounter.textContent = `ターン: ${currentTurn}`;
+        
+        if (playerPokemon.isRampaging && playerPokemon.currentHp > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            isBattleInProgress = false;
+            startBattleRound(null);
+        } else {
+            await showMessage(
+    `${getShownName(playerPokemon)} は どうする？`,
+    500
+);
+            isBattleInProgress = false;
+            enableMoves();
+            updateMoves();
+        }
+    }
+    
+function getOpponentMove() {
+  const aiType =
+    opponentPokemon.ai || "aggressive";
+      // 自分のHPが赤なら、相手は優先度+1以上の攻撃技を最優先
+if (playerPokemon.currentHp / playerPokemon.maxHp <= 0.15) {
+
+    const priorityAttackMoves = opponentPokemon.moves.filter(m =>
+        (m.priority ?? 0) > 0 &&
+        m.category !== "status" &&
+        m.power && m.power > 0
+    );
+
+    if (priorityAttackMoves.length > 0) {
+        return priorityAttackMoves[
+            Math.floor(Math.random() * priorityAttackMoves.length)
+        ];
+    }
+}
+        if (opponentPokemon.isRampaging) {
+            opponentPokemon.rampageTurns--;
+            return opponentPokemon.moves.find(m => m.name === "げきりん");
+        }
+
+        const usableMoves = opponentPokemon.moves.filter(m => m.currentPp > 0);
+        if (usableMoves.length === 0) {
+            // Struggle
+            return {name: "わるあがき", power: 50, type: "ノーマル", category: "physical", accuracy: 101, isStruggle: true};
+        }
+
+        if (difficulty === 'easy') {
+            return usableMoves[Math.floor(Math.random() * usableMoves.length)];
+        }
+
+        const validMoves = [];
+        let bestScore = -1;
+        
+        for (const move of usableMoves) {
+          let aiPower = move.power || 0;
+
+switch (move.name) {
+    case "すいりゅうれんだ":
+        aiPower = 75;
+        break;
+}
+
+    let score = 0;
+    let typeEff = 1;
+
+    // 無効
+    if (
+        (move.type === 'じめん' && playerPokemon.ability === 'ふゆう') ||
+        (move.type === 'でんき' && playerPokemon.ability === 'ちくでん')
+    ) {
+        score = 0;
+
+    // 変化技
+    } else if (move.category === 'status') {
+
+        score = 80;
+
+        const hasStatUp =
+            move.name.includes('まい') ||
+            move.name.includes('ビルド') ||
+            move.name.includes('めいそう') ||
+            move.name.includes('てっぺき') ||
+            move.name.includes('わるだくみ');
+
+        if (
+            hasStatUp &&
+            opponentPokemon.currentHp /
+            opponentPokemon.maxHp > 0.6
+        ) {
+            score += 70;
+        }
+
+    // 攻撃技
+    } else {
+
+        const targetTypes =
+(
+    currentTurn === 1 &&
+    playerPokemon.disguiseData &&
+    !playerPokemon.diszoroaBroken
+)
+? playerPokemon.disguiseData.types
+: playerPokemon.types;
+
+typeEff =
+    calculateTypeEffectiveness(
+        move.type,
+        targetTypes
+    );
+
+        const stab =
+    opponentPokemon.types.includes(move.type)
+        ? 1.5
+        : 1;
+
+let aiPower = move.power || 0;
+
+if (move.name === "すいりゅうれんだ") {
+    aiPower = 75;
+}
+
+score =
+    aiPower *
+    stab *
+    typeEff;
+    }
+
+
+    // AI補正
+    switch(aiType){
+
+        case "aggressive":
+
+            if(move.category === "status"){
+                score = 0;
+                break;
+            }
+
+            if(typeEff < 1){
+                score = 0;
+                break;
+            }
+
+score =
+    aiPower *
+    (
+        opponentPokemon.types.includes(move.type)
+            ? 1.5
+            : 1
+    ) *
+    typeEff;
+
+            break;
+
+        case "setup":
+            if(move.category === "status"){
+                score *= 2.5;
+            }
+            break;
+
+        case "smart":
+            if(typeEff > 1){
+                score *= 2;
+            }
+            break;
+
+        case "defensive":
+
+    // 変化技
+    if(move.category === "status"){
+
+        score = 80;
+
+// タイプで無効になる変化技
+if (
+    (
+        move.name === "どくどく" &&
+        (
+            playerPokemon.types.includes("どく") ||
+            playerPokemon.types.includes("はがね")
+        )
+    ) ||
+
+    (
+        move.name === "でんじは" &&
+        playerPokemon.types.includes("でんき")
+    ) ||
+
+    (
+        (
+            move.name === "ねむりごな" ||
+            move.name === "きのこのほうし" ||
+            move.name === "やどりぎのたね"
+        ) &&
+        playerPokemon.types.includes("くさ")
+    )
+){
+    score = 0;
+}
+
+        // 回復技
+        if(
+    (
+        move.name === "じこさいせい" ||
+        move.name === "つきのひかり" ||
+        move.name === "ねがいごと" ||
+        move.name === "はねやすめ"
+    )
+){
+    const hpRate =
+        opponentPokemon.currentHp /
+        opponentPokemon.maxHp;
+
+    if(hpRate < 0.25){
+        score += 220;
+    }
+    else if(hpRate < 0.5){
+        score += 80;
+    }
+    else{
+        score = 0;
+    }
+}
+
+        // 毒撒き
+        if(
+            move.name === "どくどく" &&
+            !playerPokemon.status
+        ){
+            score += 120;
+        }
+
+        if(
+    move.name === "でんじは" &&
+    (
+        playerPokemon.status ||
+        playerPokemon.types.includes("でんき")
+    )
+){
+    score = 0;
+}
+
+        // 守る
+        if(
+            move.name === "まもる" &&
+            !opponentPokemon.protectUsed
+        ){
+            score += 100;
+        }
+
+        if(
+    move.name === "みがわり" &&
+    !opponentPokemon.hasSubstitute &&
+    opponentPokemon.currentHp > opponentPokemon.maxHp * 0.25
+){
+    score += 100;
+}
+else if(move.name === "みがわり"){
+    score = 0;
+}
+
+        if(
+    move.name === "やどりぎのたね" &&
+    !playerPokemon.seeded
+){
+    score += 100;
+}
+else if(move.name === "やどりぎのたね"){
+    score = 0;
+}
+
+        // 積み技
+        if(
+            move.name === "てっぺき" ||
+            move.name === "めいそう"
+        ){
+            score += 80;
+        }
+
+    } else {
+
+        // 攻撃技も普通に評価
+score =
+    aiPower *
+    (
+        opponentPokemon.types.includes(move.type)
+            ? 1.5
+            : 1
+    ) *
+    typeEff;
+
+score *= 0.7;
+    }
+
+break;
+
+        case "finisher":
+            if(
+                playerPokemon.currentHp /
+                playerPokemon.maxHp < 0.4
+            ){
+                score *= 2.2;
+            }
+            break;
+    }
+
+    if(difficulty === "hard"){
+        score *= 1.1;
+    }
+
+    if(score > 0){
+        validMoves.push({move, score});
+    }
+}
+        
+        if (validMoves.length === 0) {
+
+    const attackMoves = usableMoves.filter(m => {
+        if (m.category === "status") return false;
+
+        return calculateTypeEffectiveness(
+            m.type,
+            playerPokemon.types
+        ) > 0;
+    });
+
+    if (attackMoves.length > 0) {
+        attackMoves.sort((a,b)=>
+            (b.power || 0) - (a.power || 0)
+        );
+        return attackMoves[0];
+    }
+
+    return usableMoves[
+        Math.floor(Math.random() * usableMoves.length)
+    ];
+}
+        
+        validMoves.sort((a,b) => b.score - a.score);
+        
+        if (difficulty === 'ノーマル' || validMoves[0].score > 150) {
+            return validMoves[0].move;
+        }
+        
+        const topMoves = validMoves.filter(m => m.score >= validMoves[0].score * 0.8);
+        return topMoves[Math.floor(Math.random() * topMoves.length)].move;
+    }
+
+    function calculateSelfConfusionDamage(attacker) {
+        const level = 50;
+        const movePower = 40;
+        const attackStat = attacker.attack * getStatModifier(attacker.statStages.attack);
+        const defenseStat = attacker.defense * getStatModifier(attacker.statStages.defense);
+        
+        let damage = Math.floor(Math.floor(Math.floor(2 * level / 5 + 2) * movePower * attackStat / defenseStat) / 50) + 2;
+        damage = Math.floor(damage * (Math.random() * (1.0 - 0.85) + 0.85));
+        return Math.max(1, damage);
+    }
+
+    async function handleAttack(attacker, defender, move, isFirstAttacker) {
+        const isPlayerAttacking = attacker === playerPokemon;
+        const defenderUI = isPlayerAttacking ? opponent : player;
+        const hpBeforeDamage = defender.currentHp;
+if (move.isDynamicType) {
+
+    const typePool = [
+        "ノーマル","どく","でんき","こおり",
+    ];
+
+    // ランダムにタイプを決める
+    const chosenType = typePool[Math.floor(Math.random() * typePool.length)];
+    move.dynamicAppliedType = chosenType;
+   
+    await showMessage(` 技のタイプが ${chosenType} に変化した！`);
+
+    // ⭐ 追加効果メッセージが必要なのでここに用意
+    let effectMessage = "";
+
+    switch(chosenType) {
+
+        case "ノーマル":
+            defender.status = "sleep";
+            defender.statusTurns = Math.floor(Math.random()*2) + 2;
+            effectMessage = `${defender.name} は ねむってしまった！`;
+            break;
+
+        case "どく":
+            defender.status = "toxic";
+            effectMessage = `${defender.name} は もうどくに かかってしまった！`;
+            break;
+
+        case "でんき":
+            defender.status = "paralyze";
+            effectMessage = `${defender.name} は まひ してしまった！`;
+            break;
+
+        case "こおり":
+            defender.status = "freeze";
+            effectMessage = `${defender.name} は こおりついた！`;
+            break;
+ 
+    }
+
+    // 🎤←ここでメッセージを表示
+    if(effectMessage !== "") {
+        await showMessage(effectMessage);
+    }
+
+    updateStatusMarkers();
+}
+        if (move.name !== "まもる") {
+    attacker.protectUsed = false;
+}
+
+        if (attacker.pendingMega) {
+    await megaEvolve(attacker, attacker === playerPokemon);
+    attacker.pendingMega = false;
+}
+
+        if (attacker.isConfused) {
+            attacker.confusionTurns--;
+            await showMessage(`${attacker.name} は こんらんしている！`);
+            if (attacker.confusionTurns <= 0) {
+                attacker.isConfused = false;
+                await showMessage(`${attacker.name} は こんらんが とけた！`);
+            } else {
+                if (Math.random() < 0.33) {
+                    await showMessage(`わけもわからず じぶんを こうげきした！`);
+                    const selfDamage = calculateSelfConfusionDamage(attacker);
+                    attacker.currentHp = Math.max(0, attacker.currentHp - selfDamage);
+                    updateHpBars();
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+                    if (attacker.currentHp <= 0) {
+                        const faintedSprite = isPlayerAttacking ? player.sprite : opponent.sprite;
+                        faintedSprite.classList.add('sprite-faint');
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await showMessage(`${isPlayerAttacking ? "" : "あいて の "}${attacker.name} は たおれた${isPlayerAttacking ? "..." : "！"}`);
+                        endGame(!isPlayerAttacking);
+                        return true;
+                    }
+                    return false; // Action ends
+                }
+            }
+        }
+if (move.name === 'げきりゅうれんげきけん') {
+    let hits;
+    
+    // スキルリンク
+    if (attacker.ability === 'スキルリンク') {
+        hits = 3;
+    } else {
+        hits = 3;
+    }
+
+    await showMessage(`${attacker.name} の げきりゅうれんげきけん！`);
+    
+    let totalHits = 0;
+
+for (let i = 0; i < hits; i++) {
+    if (defender.currentHp <= 0) break;
+
+    const { damage } = calculateDamage(move, attacker, defender);
+
+    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+
+if (!result) break; // まもる用
+totalHits++;
+if (attacker.currentHp <= 0) {
+    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    return true;
+}
+
+if (defender.currentHp <= 0) {
+    if (await checkFainted(defender, defender === playerPokemon)) return true;
+    break;
+}
+
+    defender.lastDamageTaken = damage;
+    defender.lastDamageCategory = move.category;
+
+    // 🔥 おうじゃのしるし
+    if (
+        attacker.item?.name === 'おうじゃのしるし' &&
+        move.category !== 'status'
+    ) {
+        if (Math.random() < 0.2) {
+            defender.isFlinched = true;
+        }
+    }
+
+    const isLastHit = i === hits - 1;
+    const delay = isLastHit ? 1 : 1000;
+    await new Promise(r => setTimeout(r, delay));
+}
+
+    await showMessage(`${totalHits}かい あたった！`);
+
+    const isPlayerDefender = defender === playerPokemon;
+
+if (defender.currentHp <= 0) {
+    const isPlayerDefender = defender === playerPokemon;
+    if (await checkFainted(defender, isPlayerDefender)) return true;
+}
+attacker.statStages.speed = Math.min(
+    6,
+    attacker.statStages.speed + 1
+);
+
+await showMessage(
+    `${attacker.name} の すばやさが あがった！`
+);
+
+updateStatDisplay(
+    playerPokemon,
+    document.getElementById('player-stat-display')
+);
+
+updateStatDisplay(
+    opponentPokemon,
+    document.getElementById('opponent-stat-display')
+);
+    return false;
+}
+if (move.name === 'トリプルアクセル') {
+
+    let hits;
+
+    if (attacker.ability === 'スキルリンク') {
+        hits = 3;
+    } else {
+        const rand = Math.random();
+        if (rand < 0.1) hits = 0 ;
+        else if (rand < 0.2) hits = 1;
+        else if (rand < 0.3) hits = 2;
+        else hits = 3;
+    }
+    await showMessage(`${attacker.name} の トリプルアクセル！`);
+
+    // ⭐ へんげんじざい
+    if (
+        attacker.ability === "へんげんじざい" &&
+        move.type &&
+        (
+            attacker.types.length !== 1 ||
+            attacker.types[0] !== move.type
+        )
+    ) {
+        attacker.types = [move.type];
+
+        await showMessage(
+            `${attacker.name} の へんげんじざい！\n${move.type}タイプに なった！`
+        );
+    }
+
+    
+    let totalHits = 0;
+
+    for (let i = 0; i < hits; i++) {
+    if (defender.currentHp <= 0) break;
+
+    const { damage } = calculateDamage(move, attacker, defender);
+
+    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+
+if (!result) break; // まもる用
+totalHits++;
+if (attacker.currentHp <= 0) {
+    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    return true;
+}
+
+if (defender.currentHp <= 0) {
+    if (await checkFainted(defender, defender === playerPokemon)) return true;
+    break;
+}
+
+    defender.lastDamageTaken = damage;
+    defender.lastDamageCategory = move.category;
+
+    // 🔥 おうじゃのしるし
+    if (
+        attacker.item?.name === 'おうじゃのしるし' &&
+        move.category !== 'status'
+    ) {
+        if (Math.random() < 0.2) {
+            defender.isFlinched = true;
+        }
+    }
+
+    const isLastHit = i === hits - 1;
+    const delay = isLastHit ? 1 : 1000;
+    await new Promise(r => setTimeout(r, delay));
+}
+
+    await showMessage(`${totalHits}かい あたった！`);
+
+    const isPlayerDefender = defender === playerPokemon;
+
+if (defender.currentHp <= 0) {
+    const isPlayerDefender = defender === playerPokemon;
+    if (await checkFainted(defender, isPlayerDefender)) return true;
+}
+
+    return false;
+}
+if (move.name === 'みずしゅりけん') {
+
+    let hits;
+
+    if (attacker.ability === 'スキルリンク') {
+        hits = 5;
+    } else {
+        const rand = Math.random();
+        if (rand < 0.05) hits = 2;
+        else if (rand < 0.1) hits = 3;
+        else if (rand < 0.15) hits = 4;
+        else hits = 5;
+    }
+        await showMessage(`${attacker.name} の みずしゅりけん！`);
+
+
+    // ⭐ へんげんじざい
+    if (
+        attacker.ability === "へんげんじざい" &&
+        move.type &&
+        (
+            attacker.types.length !== 1 ||
+            attacker.types[0] !== move.type
+        )
+    ) {
+        attacker.types = [move.type];
+
+        await showMessage(
+            `${attacker.name} の へんげんじざい！\n${move.type}タイプに なった！`
+        );
+    }
+
+
+    let totalHits = 0;
+
+for (let i = 0; i < hits; i++) {
+    if (defender.currentHp <= 0) break;
+
+    const { damage } = calculateDamage(move, attacker, defender);
+
+    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+
+if (!result) break; // まもる用
+totalHits++;
+if (attacker.currentHp <= 0) {
+    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    return true;
+}
+
+if (defender.currentHp <= 0) {
+    if (await checkFainted(defender, defender === playerPokemon)) return true;
+    break;
+}
+
+    defender.lastDamageTaken = damage;
+    defender.lastDamageCategory = move.category;
+
+    // 🔥 おうじゃのしるし
+    if (
+        attacker.item?.name === 'おうじゃのしるし' &&
+        move.category !== 'status'
+    ) {
+        if (Math.random() < 0.1) {
+            defender.isFlinched = true;
+        }
+    }
+
+    const isLastHit = i === hits - 1;
+    const delay = isLastHit ? 1 : 1000;
+    await new Promise(r => setTimeout(r, delay));
+}
+
+    await showMessage(`${totalHits}かい あたった！`);
+
+    const isPlayerDefender = defender === playerPokemon;
+
+if (defender.currentHp <= 0) {
+    const isPlayerDefender = defender === playerPokemon;
+    if (await checkFainted(defender, isPlayerDefender)) return true;
+}
+    return false;
+}
+if (move.name === 'ドラゴンアロー') {
+    let hits;
+
+    // スキルリンク
+    if (attacker.ability === 'スキルリンク') {
+        hits = 2;
+    } else {
+        const rand = Math.random();
+        hits = 2;
+    }
+
+    await showMessage(`${attacker.name} の ドラゴンアロー！`);
+
+    let totalHits = 0;
+
+for (let i = 0; i < hits; i++) {
+    if (defender.currentHp <= 0) break;
+
+    const { damage } = calculateDamage(move, attacker, defender);
+
+    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+
+if (!result) break; // まもる用
+totalHits++;
+if (attacker.currentHp <= 0) {
+    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    return true;
+}
+
+if (defender.currentHp <= 0) {
+    if (await checkFainted(defender, defender === playerPokemon)) return true;
+    break;
+}
+
+    defender.lastDamageTaken = damage;
+    defender.lastDamageCategory = move.category;
+
+    // 🔥 おうじゃのしるし
+    if (
+        attacker.item?.name === 'おうじゃのしるし' &&
+        move.category !== 'status'
+    ) {
+        if (Math.random() < 0.2) {
+            defender.isFlinched = true;
+        }
+    }
+
+    const isLastHit = i === hits - 1;
+    const delay = isLastHit ? 1 : 1000;
+    await new Promise(r => setTimeout(r, delay));
+}
+
+    await showMessage(`${totalHits}かい あたった！`);
+
+    const isPlayerDefender = defender === playerPokemon;
+
+if (defender.currentHp <= 0) {
+    const isPlayerDefender = defender === playerPokemon;
+    if (await checkFainted(defender, isPlayerDefender)) return true;
+}
+
+    return false;
+}
+if (move.name === 'すいりゅうれんだ') {
+
+    let hits;
+
+    // スキルリンク
+    if (attacker.ability === 'スキルリンク') {
+        hits = 3;
+    } else {
+        const rand = Math.random();
+       hits = 3;
+    }
+
+    await showMessage(`${attacker.name} の すいりゅうれんだ！`);
+
+    let totalHits = 0;
+
+for (let i = 0; i < hits; i++) {
+    if (defender.currentHp <= 0) break;
+
+    const { damage } = calculateDamage(move, attacker, defender);
+
+    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+
+if (!result) break; // まもる用
+totalHits++;
+if (attacker.currentHp <= 0) {
+    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    return true;
+}
+
+if (defender.currentHp <= 0) {
+    if (await checkFainted(defender, defender === playerPokemon)) return true;
+    break;
+}
+
+    defender.lastDamageTaken = damage;
+    defender.lastDamageCategory = move.category;
+
+    // 🔥 おうじゃのしるし
+    if (
+        attacker.item?.name === 'おうじゃのしるし' &&
+        move.category !== 'status'
+    ) {
+        if (Math.random() < 0.2) {
+            defender.isFlinched = true;
+        }
+    }
+
+    const isLastHit = i === hits - 1;
+    const delay = isLastHit ? 1 : 1000;
+    await new Promise(r => setTimeout(r, delay));
+}
+
+    await showMessage(`${totalHits}かい あたった！`);
+
+    const isPlayerDefender = defender === playerPokemon;
+
+if (defender.currentHp <= 0) {
+    const isPlayerDefender = defender === playerPokemon;
+    if (await checkFainted(defender, isPlayerDefender)) return true;
+}
+
+    return false;
+}
+        if (attacker.status === 'sleep') {
+            attacker.statusTurns--;
+            if (attacker.statusTurns <= 0) {
+                attacker.status = null;
+                await showMessage(`${attacker.name} は めをさました！`);
+                updateStatusMarkers();
+            } else {
+                await showMessage(`${attacker.name} は ぐうぐう ねむっている！`);
+                return false;
+            }
+        }
+        if (attacker.status === 'freeze') {
+            if (Math.random() < 0.2) {
+                attacker.status = null;
+                await showMessage(`${attacker.name} の こおりが とけた！`);
+                updateStatusMarkers();
+            } else {
+                await showMessage(`${attacker.name} は こおってしまって うごけない！`);
+                return false;
+            }
+        }
+
+        await showMessage(`${attacker.name} の ${move.name}！`);
+
+        if (move.name === "ふいうち") {
+
+    // 相手が変化技
+    if (
+        defender.selectedMove &&
+        defender.selectedMove.category === "status"
+    ) {
+        await showMessage("しかし しっぱいした！");
+        return false;
+    }
+
+    // 相手がすでに行動済み
+    if (defender.hasMoved) {
+        await showMessage("しかし しっぱいした！");
+        return false;
+    }
+}
+if (move.name === "じんらい") {
+
+    // 相手が変化技
+    if (
+        defender.selectedMove &&
+        defender.selectedMove.category === "status"
+    ) {
+        await showMessage("しかし しっぱいした！");
+        return false;
+    }
+
+    // 相手がすでに行動済み
+    if (defender.hasMoved) {
+        await showMessage("しかし しっぱいした！");
+        return false;
+    }
+}
+
+       if (
+    attacker.ability === "バトルスイッチ" &&
+    attacker.name === "ギルガルド" &&
+    (
+        move.category === "physical" ||
+        move.category === "special"
+    )
+) {
+    attacker.baseAttack = 150;
+    attacker.baseDefense = 50;
+    attacker.baseSpAttack = 150;
+    attacker.baseSpDefense = 50;
+
+    Object.assign(attacker, calculateStats(attacker));
+
+    attacker.form = "blade";
+
+    attacker.spriteFront =
+        AEGISLASH_FORM.blade.spriteFront;
+    attacker.spriteBack =
+        AEGISLASH_FORM.blade.spriteBack;
+
+    if (attacker === playerPokemon) {
+        player.sprite.src = attacker.spriteBack;
+    } else {
+        opponent.sprite.src = attacker.spriteFront;
+    }
+
+    await showMessage(
+        `${attacker.name} は ブレードフォルムに なった！`
+    );
+}
+        
+        if (attacker.status === 'paralyze' && Math.random() < 0.125) {
+             await showMessage(`${attacker.name} は しびれて うごけない！`);
+            return false;
+        }
+        
+        if (
+    attacker.ability === "バトルスイッチ" &&
+    attacker.name === "ギルガルド" &&
+    move.name === "キングシールド"
+) {
+    attacker.baseAttack = 50;
+    attacker.baseDefense = 150;
+    attacker.baseSpAttack = 50;
+    attacker.baseSpDefense = 150;
+
+    Object.assign(attacker, calculateStats(attacker));
+
+    attacker.form = "shield";
+
+    attacker.spriteFront =
+        AEGISLASH_FORM.shield.spriteFront;
+    attacker.spriteBack =
+        AEGISLASH_FORM.shield.spriteBack;
+
+    if (attacker === playerPokemon) {
+        player.sprite.src = attacker.spriteBack;
+    } else {
+        opponent.sprite.src = attacker.spriteFront;
+    }
+
+    await showMessage(
+        `${attacker.name} は シールドフォルムに なった！`
+    );
+}
+
+
+if (move.category === 'status') {
+    await handleStatusMove(attacker, defender, move);
+    return false;
+}
+       if (defender.isProtected) {
+
+    // ふかしのこぶしなら貫通
+    if (attacker.ability === "ふかしのこぶし") {
+    } else {
+
+        // まず「まもっている！」
+        await showMessage(
+            `${defender.name} は まもっている！`
+        );
+
+        // キングシールドならその後に攻撃下降
+        if (
+            defender.isKingShield &&
+            move.isContact
+        ) {
+            attacker.statStages.attack = Math.max(
+                -6,
+                attacker.statStages.attack - 2
+            );
+
+            updateStatDisplay(
+                playerPokemon,
+                document.getElementById('player-stat-display')
+            );
+            updateStatDisplay(
+                opponentPokemon,
+                document.getElementById('opponent-stat-display')
+            );
+
+            await showMessage(
+                `${attacker.name} の こうげきが がくっと さがった！`
+            );
+        }
+
+        return false;
+    }
+}
+
+        function getActualAccuracy(attacker, defender, move) {
+    let acc = move.accuracy;
+
+    // けむりだま × げいげきスコープ
+    if (
+        defender.item?.name === 'けむりだま' &&
+        attacker.item?.name === 'げいげきスコープ'
+    ) {
+        acc = 40;
+    }
+
+    return acc;
+}
+
+function isMultiHitMove(move) {
+    return [
+        'つららばり',
+        'ロックブラスト',
+        'タネマシンガン',
+        'スイープビンタ',
+        'トリプルアクセル',
+        'みずしゅりけん'
+    ].includes(move.name);
+}
+
+// ⭐ 特性：へんげんじざい
+if (
+    attacker.ability === "へんげんじざい" &&
+    move.type &&
+    (
+        attacker.types.length !== 1 ||
+        attacker.types[0] !== move.type
+    )
+) {
+    attacker.types = [move.type];
+
+    await showMessage(
+        `${attacker.name} の へんげんじざい！\n${move.type}タイプに なった！`
+    );
+}
+
+const acc = getActualAccuracy(attacker, defender, move);
+let isHit = acc > 100 || Math.random() * 100 < acc;
+
+if (attacker.ability === 'ノーガード' || defender.ability === 'ノーガード') {
+    isHit = true;
+}
+
+if (!isHit) {
+    await showMessage(`しかし こうげきは はずれた！`);
+    return false;
+}
+
+if (isMultiHitMove(move)) {
+    return await handleMultiHit(attacker, defender, move);
+}
+
+
+        const { damage, effectivenessMessage, healing } = calculateDamage(move, attacker, defender);
+        let finalDamage = damage;
+        
+        if(effectivenessMessage === 'きゅうしょにあたった！') await showMessage(effectivenessMessage);
+
+        if (healing > 0 && attacker.currentHp < attacker.maxHp) {
+    attacker.currentHp = Math.min(
+        attacker.maxHp,
+        attacker.currentHp + healing
+    );
+
+    await showMessage(
+        `${attacker.name} は たいりょくを かいふくした！`
+    );
+}
+
+if (defender.hasSubstitute && !move.isSound) {
+            if (effectivenessMessage && effectivenessMessage !== 'きゅうしょにあたった！') await showMessage(effectivenessMessage);
+            defender.substituteHp -= finalDamage;
+            await showMessage(`${defender.name} の みがわりが こうげきを うけた！`);
+            if (defender.substituteHp <= 0) {
+                defender.hasSubstitute = false;
+                defender.substituteHp = 0;
+                updateSubstituteMarkers();
+                await showMessage(`${defender.name} の みがわりは こわれた！`);
+            }
+        } else {
+            if (effectivenessMessage && effectivenessMessage !== 'きゅうしょにあたった！') await showMessage(effectivenessMessage);
+            defender.lastDamageCategory = move.category;
+            const hitCount =
+(
+    attacker.ability === "おやこあい" &&
+    move.category !== "status"
+)
+? 2
+: 1;
+
+for(let hit = 0; hit < hitCount; hit++){
+
+    const currentDamage =
+        hit === 0
+        ? finalDamage
+        : Math.max(1, Math.floor(finalDamage * 0.5));
+
+    if(hit === 1){
+        await showMessage(
+            `${attacker.name} の おやこあい！`
+        );
+    }
+    
+    const hpBeforeHit = defender.currentHp;
+
+
+    defender.currentHp = Math.max(
+        0,
+        defender.currentHp - currentDamage
+    );
+    if (
+    currentDamage > 0 &&
+    defender.ability === "イリュージョン" &&
+    !defender.diszoroaBroken
+) {
+    defender.diszoroaBroken = true;
+
+    defender.disguiseData = null;
+
+    if (defender === playerPokemon) {
+        player.nameEl.textContent = defender.name;
+        player.sprite.src =
+            "https://play.pokemonshowdown.com/sprites/ani-back/zoroark-hisui.gif";
+    } else {
+        opponent.nameEl.textContent = defender.name;
+        opponent.sprite.src =
+            "https://play.pokemonshowdown.com/sprites/ani/zoroark-hisui.gif";
+    }
+
+    await showMessage(
+        `${defender.name} の イリュージョンが とけた！`
+    );
+}
+
+    if (defender.currentHp <= 0) {
+
+    const ignoreSash =
+        attacker.item?.name === 'げいげきスコープ';
+
+    if (
+        defender.item &&
+        defender.item.name === 'きあいのタスキ' &&
+        !defender.item.used &&
+        hpBeforeHit === defender.maxHp &&
+        !ignoreSash
+    ) {
+        defender.item.used = true;
+        defender.currentHp = 1;
+        await showMessage(
+            `${defender.name} は きあいのタスキで もちこたえた！`
+        );
+        updateHpBars();
+
+        } else if (
+    defender.item &&
+    defender.item.name === 'きあいのハチマキ' &&
+    Math.random() < 0.33
+) {
+    defender.currentHp = 1;
+    await showMessage(
+        `${defender.name} は きあいのハチマキで もちこたえた！`
+    );
+    updateHpBars();
+} else if (defender.ability === 'きずなへんげ' && hpBeforeHit === defender.maxHp) {
+                defender.currentHp = 1;
+                await showMessage(`${defender.name} は きずなのちからで もちこたえた！`);
+                updateHpBars();   
+             } else if (defender.ability === 'トレーニング' && hpBeforeHit === defender.maxHp) {
+                defender.currentHp = 1;
+                await showMessage(`${defender.name}モードです`);
+                updateHpBars(); 
+    } else if (
+        defender.ability === 'がんじょう' &&
+        hpBeforeHit === defender.maxHp
+    ) {
+        defender.currentHp = 1;
+        await showMessage(
+            `${defender.name} は がんじょうで もちこたえた！`
+        );
+        updateHpBars();
+
+    } else {
+
+    defenderUI.sprite.classList.add('sprite-shake');
+    setTimeout(
+        () => defenderUI.sprite.classList.remove('sprite-shake'),
+        500
+    );
+
+    updateHpBars();
+
+    break;
+}
+}
+
+    defender.lastDamageTaken = currentDamage;
+    defender.lastDamageCategory = move.category;
+
+    defenderUI.sprite.classList.add('sprite-shake');
+    setTimeout(
+        () => defenderUI.sprite.classList.remove('sprite-shake'),
+        500
+    );
+
+    updateHpBars();
+
+        await handlePostAttackEffects(
+        attacker,
+        defender,
+        move,
+        isFirstAttacker,
+        currentDamage
+    );
+
+    if(defender.currentHp <= 0){
+        break;
+    }
+
+    if(hit === 0 && hitCount === 2){
+        await new Promise(resolve =>
+            setTimeout(resolve, 300)
+        );
+    }
+}
+            // おうじゃのしるし
+const hasFlinchEffect = move.secondary?.effect === 'flinch';
+
+if (
+    attacker.item?.name === 'おうじゃのしるし' &&
+    move.category !== 'status' &&
+    defender.currentHp > 0 &&
+    !hasFlinchEffect
+) {
+    if (Math.random() < 0.33) {
+        defender.isFlinched = true;
+    }
+}
+        }
+
+        updateHpBars();
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        
+        if (defender.currentHp <= 0) {
+
+    const faintedSprite =
+        isPlayerAttacking
+            ? opponent.sprite
+            : player.sprite;
+
+    faintedSprite.classList.add('sprite-faint');
+
+    await new Promise(resolve =>
+        setTimeout(resolve, 1000)
+    );
+
+    await showMessage(
+        `${isPlayerAttacking ? "あいて の " : ""}${defender.name} は たおれた${isPlayerAttacking ? "！" : "..."}`
+    );
+
+    if (!isPlayerAttacking) {
+        screenOverlay.classList.add('active');
+        await new Promise(resolve =>
+            setTimeout(resolve, 1500)
+        );
+    }
+
+    endGame(isPlayerAttacking);
+    return true;
+}
+        
+        const berryHealed = await checkAndUseItem(defender);
+        if(berryHealed) await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (move.name === 'げきりん' && !attacker.isRampaging) {
+            attacker.isRampaging = true;
+            attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
+        }
+        attacker.hasMoved = true;
+    }
+    
+    async function applyDamage(attacker, defender, damage, move, defenderUI) {
+
+    // まもる
+    if (defender.isProtected) {
+
+    // ふかしのこぶしなら貫通
+    if (attacker.ability !== "ふかしのこぶし") {
+
+        if (
+            defender.isKingShield &&
+            move.isContact
+        ) {
+            attacker.statStages.attack = Math.max(
+                -6,
+                attacker.statStages.attack - 2
+            );
+
+            updateStatDisplay(
+                playerPokemon,
+                document.getElementById('player-stat-display')
+            );
+            updateStatDisplay(
+                opponentPokemon,
+                document.getElementById('opponent-stat-display')
+            );
+
+            await showMessage(
+                `${attacker.name} の こうげきが がくっと さがった！`
+            );
+        }
+
+        await showMessage(
+            `${defender.name} は まもっている！`
+        );
+
+        return { hit: false };
+    }
+}
+
+    // みがわり
+    if (defender.hasSubstitute && !move.isSound) {
+        defender.substituteHp -= damage;
+        await showMessage(`${defender.name} の みがわりが こうげきを うけた！`);
+
+        if (defender.substituteHp <= 0) {
+            defender.hasSubstitute = false;
+            defender.substituteHp = 0;
+            updateSubstituteMarkers();
+            await showMessage(`${defender.name} の みがわりは こわれた！`);
+        }
+
+        return { hit: true };
+    }
+
+    // 本体ダメージ
+    defender.currentHp = Math.max(0, defender.currentHp - damage);
+    defender.lastDamageTaken = damage;
+    defender.lastDamageCategory = move.category;
+
+    updateHpBars();
+
+    // ⭐ ここでまず defender の瀕死チェック
+    if (defender.currentHp <= 0) {
+        const isPlayerDefender = defender === playerPokemon;
+        await checkFainted(defender, isPlayerDefender);
+        return { hit: true, fainted: true };
+    }
+
+    // ⭐ 接触ダメージ
+    if (move.isContact) {
+        if (defender.item?.name === 'ゴツゴツメット') {
+            const recoil = Math.floor(attacker.maxHp / 6);
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
+            await showMessage(`${attacker.name} は ゴツゴツメットで ダメージをうけた！`);
+        }
+
+        if (defender.ability === 'さめはだ' || defender.ability === 'てつのとげ') {
+            const recoil = Math.floor(attacker.maxHp / 6);
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
+            await showMessage(`${attacker.name} は 相手の特性で ダメージをうけた！`);
+        }
+
+        updateHpBars();
+
+        // ⭐ ここが今回の本質
+        if (attacker.currentHp <= 0) {
+            const isPlayerAttacker = attacker === playerPokemon;
+            await checkFainted(attacker, isPlayerAttacker);
+            return { hit: true, fainted: true };
+        }
+    }
+
+    return { hit: true, fainted: false };
+}
+
+    async function handlePostAttackEffects(attacker, defender, move, isFirstAttacker, finalDamage) {
+        const isPlayerAttacking = attacker === playerPokemon;
+        
+        if (move.secondary && !defender.hasSubstitute) {
+
+    const effects = Array.isArray(move.secondary)
+        ? move.secondary
+        : [move.secondary];
+
+    for (const effect of effects) {
+
+        let chance = effect.chance;
+        if (attacker.ability === 'てんのめぐみ') chance *= 2;
+
+        if (Math.random() * 100 < chance) {
+
+            const target =
+                effect.self ? attacker : defender;
+
+            switch(effect.effect) {
+
+                case 'flinch':
+                    if (isFirstAttacker) {
+                        target.isFlinched = true;
+                    }
+                    break;
+
+                case 'stat':
+                    if (
+                        target.ability !== 'クリアボディ' ||
+                        effect.stage > 0
+                    ) {
+                        target.statStages[effect.stat] =
+                            Math.max(
+                                -6,
+                                Math.min(
+                                    6,
+                                    target.statStages[effect.stat] + effect.stage
+                                )
+                            );
+
+                        const statName = {
+                            attack:'こうげき',
+                            defense:'ぼうぎょ',
+                            spAttack:'とくこう',
+                            spDefense:'とくぼう',
+                            speed:'すばやさ'
+                        }[effect.stat];
+
+                        const verb =
+                            effect.stage < 0
+                                ? 'さがった'
+                                : 'あがった';
+
+                        await showMessage(
+                            `${target.name} の ${statName} が ${verb}！`
+                        );
+
+                        if (
+    effect.stage < 0 &&
+    target.item?.name === "しろいハーブ"
+) {
+    for (const stat in target.statStages) {
+        if (target.statStages[stat] < 0) {
+            target.statStages[stat] = 0;
+        }
+    }
+
+    await showMessage(
+        `${target.name} の しろいハーブ！`
+    );
+
+    await showMessage(
+        `${target.name} の のうりょくが もとにもどった！`
+    );
+
+    target.item = null;
+}
+
+                        updateStatDisplay(
+                            playerPokemon,
+                            document.getElementById('player-stat-display')
+                        );
+                        updateStatDisplay(
+                            opponentPokemon,
+                            document.getElementById('opponent-stat-display')
+                        );
+                    }
+                    break;
+
+                case 'triAttack':
+
+                    if(target.status === null){
+
+                        const statuses = [
+                            'burn',
+                            'paralyze',
+                            'freeze'
+                        ];
+
+                        const status =
+                            statuses[
+                                Math.floor(
+                                    Math.random() * statuses.length
+                                )
+                            ];
+
+                        if(
+                            !(status === 'burn' &&
+                              target.types.includes('ほのお')) &&
+                            !(status === 'paralyze' &&
+                              target.types.includes('でんき')) &&
+                            !(status === 'freeze' &&
+                              target.types.includes('こおり'))
+                        ){
+
+                            target.status = status;
+
+                            const statusName = {
+                                burn:'やけど',
+                                paralyze:'まひ',
+                                freeze:'こおり'
+                            }[status];
+
+                            await showMessage(
+                                `${target.name} は ${statusName} になった！`
+                            );
+
+                            updateStatusMarkers();
+                        }
+                    }
+                    break;
+
+                case 'tetraAttack':
+
+                    if(target.status === null){
+
+                        const statuses = [
+                            'toxic',
+                            'paralyze',
+                            'freeze',
+                            'sleep'
+                        ];
+
+                        const status =
+                            statuses[
+                                Math.floor(
+                                    Math.random() * statuses.length
+                                )
+                            ];
+
+                        if(
+                            !(status === 'toxic' &&
+                              target.types.includes('どく')) &&
+                            !(status === 'paralyze' &&
+                              target.types.includes('でんき')) &&
+                            !(status === 'freeze' &&
+                              target.types.includes('こおり'))
+                        ){
+
+                            target.status = status;
+
+                            if(status === 'sleep'){
+                                target.statusTurns =
+                                    Math.floor(Math.random()*3)+2;
+                            }
+
+                            const statusName = {
+                                toxic:'もうどく',
+                                paralyze:'まひ',
+                                freeze:'こおり',
+                                sleep:'ねむり'
+                            }[status];
+
+                            await showMessage(
+                                `${target.name} は ${statusName} になった！`
+                            );
+
+                            updateStatusMarkers();
+                        }
+                    }
+                    break;
+
+                case 'status':
+                    if (target.status === null) {
+
+                        if (
+                            !(
+                                (effect.status === 'burn' &&
+                                 target.types.includes('ほのお')) ||
+
+                                (effect.status === 'freeze' &&
+                                 target.types.includes('こおり')) ||
+
+                                (effect.status === 'paralyze' &&
+                                 target.types.includes('でんき')) ||
+
+                                (effect.status === 'poison' &&
+                                 (
+                                     target.types.includes('どく') ||
+                                     target.types.includes('はがね')
+                                 ))
+                            )
+                        ) {
+
+                            target.status = effect.status;
+
+                            if(effect.status === 'sleep'){
+                                target.statusTurns =
+                                    Math.floor(Math.random()*3)+2;
+                            }
+
+                            const statusName = {
+                                burn:'やけど',
+                                paralyze:'まひ',
+                                freeze:'こおり',
+                                poison:'どく',
+                                toxic:'もうどく',
+                                sleep:'ねむり'
+                            }[effect.status];
+
+                            await showMessage(
+                                `${target.name} は ${statusName} になった！`
+                            );
+
+                            updateStatusMarkers();
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+}
+        
+        if (move.name === "ほのおのうず" && defender.currentHp > 0) {
+
+    defender.firespinTurns = 6; // 4ターン継続（公式準拠）
+
+    await showMessage(`${defender.name} は ほのおのうずに しばりつけられた！`);
+}
+if (move.name === "マグマストーム" && defender.currentHp > 0) {
+
+    defender.magmastormTurns = 6; // 4ターン継続（公式準拠）
+
+    await showMessage(`${defender.name} は マグマストームに しばりつけられた！`);
+}
+
+        
+        const recoilMoves = ["フレアドライブ", "ワイルドボルト", "ブレイブバード", "もろはのずつき","すてみタックル","ボルテッカー","ウェーブタックル"];
+        if (recoilMoves.includes(move.name)) {
+            const recoilDamage = Math.floor(finalDamage / 3);
+            if (recoilDamage > 0 && attacker.ability !== 'マジックガード') {
+                 await showMessage(`${attacker.name} は はんどうで ダメージを うけた！`);
+                 attacker.currentHp = Math.max(0, attacker.currentHp - recoilDamage);
+                 updateHpBars();
+                 if(await checkAndUseItem(attacker)) await new Promise(resolve => setTimeout(resolve, 1000));
+                 if (await checkFainted(attacker, isPlayerAttacking)) return true;
+            }
+        }
+        
+        if (move.isContact && defender.ability === 'さめはだ' && attacker.ability !== 'マジックガード' && !defender.hasSubstitute) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await showMessage(`${defender.name} の さめはだ！ ${attacker.name}は ダメージを うけた！`);
+            attacker.currentHp = Math.max(0, attacker.currentHp - Math.floor(attacker.maxHp / 8));
+            updateHpBars();
+            if(await checkAndUseItem(attacker)) await new Promise(resolve => setTimeout(resolve, 1000));
+            if (await checkFainted(attacker, isPlayerAttacking)) return true;
+        }
+if (move.isContact && defender.ability === 'てつのとげ' && attacker.ability !== 'マジックガード' && !defender.hasSubstitute) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await showMessage(`${defender.name} の てつのとげ！ ${attacker.name}は ダメージを うけた！`);
+            attacker.currentHp = Math.max(0, attacker.currentHp - Math.floor(attacker.maxHp / 8));
+            updateHpBars();
+            if(await checkAndUseItem(attacker)) await new Promise(resolve => setTimeout(resolve, 1000));
+            if (await checkFainted(attacker, isPlayerAttacking)) return true;
+        }
+
+        // ⭐ 特性：せいでんき（接触時 30%でまひ）
+if (
+    move.isContact &&
+    defender.ability === 'せいでんき' &&
+    !defender.hasSubstitute &&                  // みがわり貫通なし
+    attacker.status === null &&                 // すでに状態異常ならNG
+    !attacker.types.includes("でんき")        // 電気タイプは麻痺しない
+) {
+    if (Math.random() < 0.33) { // 30%
+        attacker.status = 'paralyze';
+        await showMessage(`${defender.name} の せいでんき！`);
+        await showMessage(`しびれてしまった！`);
+        updateStatusMarkers();
+    }
+}
+
+// ⭐ 特性：せいでんき（接触時 30%でまひ）
+if (
+    move.isContact &&
+    defender.ability === 'ほのおのからだ' &&
+    !defender.hasSubstitute &&                  // みがわり貫通なし
+    attacker.status === null &&                 // すでに状態異常ならNG
+    !attacker.types.includes("ほのお")        // 電気タイプは麻痺しない
+) {
+    if (Math.random() < 0.33) { // 30%
+        attacker.status = 'burn';
+        await showMessage(`${defender.name} の ほのおのからだ！`);
+        await showMessage(`やけどしてしまった！`);
+        updateStatusMarkers();
+    }
+}
+
+        
+        if (move.isContact && defender.item && defender.item.name === 'ゴツゴツメット') {
+            const helmetDamage = Math.floor(attacker.maxHp / 6);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await showMessage(`${defender.name} の ゴツゴツメット！`);
+            attacker.currentHp = Math.max(0, attacker.currentHp - helmetDamage);
+            updateHpBars();
+
+            if (await checkAndUseItem(attacker)) 
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+            if (await checkFainted(attacker, isPlayerAttacking)) 
+                return true;
+        }
+        
+        if (move.self && move.self.stats) {
+            let messages = [];
+            move.self.stats.forEach(s => {
+                attacker.statStages[s.stat] = Math.max(-6, attacker.statStages[s.stat] + s.stage);
+                const statName = { attack: 'こうげき', defense: 'ぼうぎょ', spAttack: 'とくこう', spDefense: 'とくぼう', speed: 'すばやさ' }[s.stat];
+                messages.push(statName);
+            });
+            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+            await showMessage(`${attacker.name} の ${messages.join(' と ')}が さがった！`);
+                if (
+        attacker.item?.name === "しろいハーブ" &&
+        move.self.stats.some(s => s.stage < 0)
+    ) {
+
+        let activated = false;
+
+        for (const stat in attacker.statStages) {
+
+            if (attacker.statStages[stat] < 0) {
+                attacker.statStages[stat] = 0;
+                activated = true;
+            }
+
+        }
+
+        if (activated) {
+
+    await showMessage(
+        `${attacker.name} の しろいハーブ！`
+    );
+
+    for (const stat in attacker.statStages) {
+
+        if (attacker.statStages[stat] < 0) {
+            attacker.statStages[stat] = 0;
+        }
+
+    }
+
+    updateStatDisplay(
+        playerPokemon,
+        document.getElementById('player-stat-display')
+    );
+
+    updateStatDisplay(
+        opponentPokemon,
+        document.getElementById('opponent-stat-display')
+    );
+
+    await showMessage(
+        `${attacker.name} の のうりょくが もとにもどった！`
+    );
+
+    attacker.item = null;
+}
+    }
+        }
+
+        if (attacker.isRampaging && attacker.rampageTurns <= 0) {
+            attacker.isRampaging = false;
+            attacker.isConfused = true;
+            attacker.confusionTurns = Math.floor(Math.random() * 3) + 2; // 2-4 turns
+            await showMessage(`${attacker.name} は あばれつかれて こんらんした！`);
+        }
+
+        return false;
+    }
+
+    async function handleStatusMove(attacker, defender, move) {
+        if (move.accuracy < 101 && Math.random() * 100 >= move.accuracy) {
+            await showMessage(`しかし うまくきまらなかった！`); return;
+        }
+        let message = '';
+        switch(move.name) {
+            case '天の祈り':
+            case 'はねやすめ':
+            case 'じこさいせい':
+            case 'あさのひざし':
+            case 'つきのひかり':const recoverAmount = Math.floor(attacker.maxHp * 1/2);attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + recoverAmount);updateHpBars();message = `${attacker.name} は たいりょくを かいふくした！`;break;
+            case 'キングシールド':
+
+    if (attacker.protectUsed) {
+
+        if (Math.random() < 1/3) {
+            attacker.isProtected = true;
+            attacker.isKingShield = true;
+            message = '';
+        } else {
+            attacker.isProtected = false;
+            attacker.isKingShield = false;
+            message = `しかし しっぱいした！`;
+        }
+
+    } else {
+
+        attacker.isProtected = true;
+        attacker.isKingShield = true;
+        message = '';
+    }
+
+    attacker.protectUsed = attacker.isProtected;
+
+    break;
+            case 'まもる':
+
+    if (attacker.protectUsed) {
+
+        if (Math.random() < 1/3) {
+            attacker.isProtected = true;
+            message = `${attacker.name} は まもっている！`;
+        } else {
+            attacker.isProtected = false;
+            message = `しかし しっぱいした！`;
+        }
+
+    } else {
+
+        attacker.isProtected = true;
+        message = `${attacker.name} は まもっている！`;
+    }
+
+    attacker.protectUsed = attacker.isProtected;
+
+    break;
+            case 'ぜんかいふく':attacker.currentHp = attacker.maxHp;updateHpBars();message = `${attacker.name} は たいりょくを ぜんかいふくした！`;break;
+            case 'りゅうのまい': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 1); attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 1); message = `${attacker.name} の こうげきと すばやさが あがった！`; break;
+            case 'つるぎのまい': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 2); message = `${attacker.name} の こうげきが ぐーんと あがった！`; break;
+            case 'ほたるび': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 3); message = `${attacker.name} の とくこうが ぐぐーんと あがった！`; break;
+            case 'きんぞくおん': defender.statStages.spDefense = Math.max(-6, defender.statStages.spDefense - 2);
+            message = `${defender.name} の とくぼうが がくっと さがった！`; break;
+            case 'フェザーダンス': defender.statStages.attack = Math.max(-6, defender.statStages.attack - 2);
+            message = `${defender.name} の こうげきが がくっと さがった！`; break;
+            case 'ビルドアップ': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 1); attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); message = `${attacker.name} の こうげきと ぼうぎょが あがった！`; break;
+            case 'めいそう': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.spDefense + 1); message = `${attacker.name} の とくこうと とくぼうが あがった！`; break;
+            case 'コスモパワー': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.sDefense + 1); message = `${attacker.name} の ぼうぎょと とくぼうが あがった！`; break;
+            case 'わるだくみ': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 2); message = `${attacker.name} の とくこうが ぐーんと あがった！`; break;
+            case 'こうそくいどう': attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 2); message = `${attacker.name} の すばやさが ぐーんと あがった！`; break;
+            case 'ちょうのまい': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.spDefense + 1); attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 1); message = `${attacker.name} の とくこうと とくぼうと すばやさが あがった！`; break;
+            case 'からをやぶる': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 2); attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 2); attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 2); attacker.statStages.defense = Math.max(-6, attacker.statStages.defense - 1); attacker.statStages.spDefense = Math.max(-6, attacker.statStages.spDefense - 1);  message = `${attacker.name} の こうげきと とくこうと すばやさが ぐーんとあがって ぼうぎょと とくぼうが さがった！`; break;
+            case 'のろい': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 1); attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); attacker.statStages.speed = Math.max(-6, attacker.statStages.speed - 1); message = `${attacker.name} の すばやさが さがり こうげきと ぼうぎょが あがった！`; break;
+            case 'おにび': if (!defender.types.includes("ほのお") && defender.status === null) { defender.status = 'burn'; message = `あいて の ${defender.name} は やけどを おった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'さいみんじゅつ': if(defender.status === null) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'Zさいみんじゅつ': if (defender.status === null) { defender.status = 'sleep'; message = `あいて の ${defender.name} は ねむった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'どくどく': if (!defender.types.includes("どく") && !defender.types.includes("はがね") && defender.status === null) { defender.status = 'toxic'; message = `あいて の ${defender.name} は もうどくを あびた！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'ねむりごな' :
+            case 'きのこのほうし': if(!defender.types.includes("くさ") && defender.status === null) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'オーロラベール':
+
+    if (weather.type !== 'snow') {
+
+        message =
+            'しかし ゆきが ふっていない！';
+
+    } else if (attacker.auroraVeil > 0) {
+
+        message =
+            'しかし すでに オーロラベールがある！';
+
+    } else {
+
+        attacker.auroraVeil =
+            attacker.item?.name === 'ひかりのねんど'
+            ? 8
+            : 5;
+
+        message =
+            `${attacker.name} の まわりを オーロラベールが つつんだ！`;
+    }
+
+    break;
+            case 'やどりぎのたね':
+    if (defender.types.includes("くさ")) {
+        message = "こうかがないみたいだ...";
+        break;
+    }
+
+    if (defender.seeded) {
+        message = "しかし きかなかった！";
+        break;
+    }
+
+    defender.seeded = true;
+    defender.seedSource = attacker;
+
+    message = `${defender.name} に やどりぎを うえつけた！`;
+    break;
+            case 'みがわり':
+                if (attacker.hasSubstitute) { message = `しかし うまくきまらなかった！`; } 
+                else {
+                    const cost = Math.floor(attacker.maxHp / 4);
+                    if (attacker.currentHp > cost) {
+                        attacker.currentHp -= cost;
+                        attacker.hasSubstitute = true;
+                        attacker.substituteHp = cost;
+                        updateSubstituteMarkers();
+                        message = `${attacker.name} は みがわりを だした！`;
+                    } else { message = `しかし たいりょくが たりない！`; }
+                }
+                updateHpBars();
+                break;
+            case 'あくび': message = `あいて の ${defender.name} は ねむけに おそわれた！`; break;
+            case 'てっぺき': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 2); message = `${attacker.name} の ぼうぎょが ぐーんと あがった！`; break;
+            case 'コットンガード': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 3); message = `${attacker.name} の ぼうぎょが ぐぐーんと あがった！`; break;
+            case 'でんじは' :
+            case 'へびにらみ' :
+                if (!defender.types.includes("でんき") && defender.status === null) { 
+                    defender.status = 'paralyze'; 
+                    message = `あいて の ${defender.name} は からだが しびれた！`; 
+                } else { 
+                    message = `しかし うまくきまらなかった！`; 
+                } 
+                break;
+            default: message = 'しかし うまくきまらなかった！'; break;
+        }
+        updateStatusMarkers();
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+        if (message) {
+    await showMessage(message);
+}
+    }
+
+   async function handleEndOfTurnEffects() {
+        async function applySpeedBoost(pokemon) {
+        if (pokemon.ability === "かそく") {
+        // すでに最大ランクならスキップ（+6まで）
+            if (pokemon.statStages.speed < 6) {
+                pokemon.statStages.speed++;
+                updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+                 updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+                await showMessage(`${pokemon.name} の かそく！ すばやさが あがった！`);
+                }
+            }
+         } 
+
+                  if (await applyLeechSeed(playerPokemon, true)) return true;
+if (await applyLeechSeed(opponentPokemon, false)) return true;
+         // ⭐ ムラッ気ミント効果
+if (playerPokemon.ability === 'ムラッけ') {
+    await applyMoody(playerPokemon);
+}
+if (opponentPokemon.ability === 'ムラッけ') {
+    await applyMoody(opponentPokemon);
+}
+        if (playerPokemon.isProtected) playerPokemon.isProtected = false;
+        if (opponentPokemon.isProtected) opponentPokemon.isProtected = false;
+        if(field.type === 'psyco') {
+             field.turns--;
+    if (field.turns === 0) {
+        field.type = 'none';
+        await showMessage('あしもとは もとに もどった！');
+        updateFieldIndicator();
+    }
+}
+        if(weather.type === 'sandstorm') {
+            await showMessage('すなあらしが ふきあれる！');
+            if(!playerPokemon.types.includes('いわ') && !playerPokemon.types.includes('じめん') && !playerPokemon.types.includes('はがね') && playerPokemon.currentHp > 0) {
+                 playerPokemon.currentHp -= Math.floor(playerPokemon.maxHp / 16);
+                 await showMessage(`${playerPokemon.name}は すなあらしで ダメージを うけた！`);
+                 updateHpBars();
+                 if (await checkFainted(playerPokemon, true)) return true;
+            }
+             if(!opponentPokemon.types.includes('いわ') && !opponentPokemon.types.includes('じめん') && !opponentPokemon.types.includes('はがね') && opponentPokemon.currentHp > 0) {
+                 opponentPokemon.currentHp -= Math.floor(opponentPokemon.maxHp / 16);
+                 await showMessage(`あいての ${opponentPokemon.name}は すなあらしで ダメージを うけた！`);
+                 updateHpBars();
+                 if (await checkFainted(opponentPokemon, false)) return true;
+            }
+            weather.turns--;
+            if (weather.turns === 0) {
+                weather.type = 'none';
+                await showMessage('すなあらしは おさまった！');
+                updateWeatherIndicator();
+            }
+        }
+        if(weather.type === 'rain') {
+            await showMessage('あめが ふっている！');
+             weather.turns--;
+    if (weather.turns === 0) {
+        weather.type = 'none';
+        await showMessage('あめは やんだ！');
+        updateWeatherIndicator();
+    }
+}
+if(weather.type === 'snow') {
+            await showMessage('ゆきが ふっている！');
+            if(!playerPokemon.types.includes('こおり') && playerPokemon.currentHp > 0) {
+                 playerPokemon.currentHp -= Math.floor(playerPokemon.maxHp / 16);
+                 await showMessage(`${playerPokemon.name}は さむさで ダメージを うけた！`);
+                 updateHpBars();
+                 if (await checkFainted(playerPokemon, true)) return true;
+            }
+             if(!opponentPokemon.types.includes('こおり') && opponentPokemon.currentHp > 0) {
+                 opponentPokemon.currentHp -= Math.floor(opponentPokemon.maxHp / 16);
+                 await showMessage(`あいての ${opponentPokemon.name}は さむさで ダメージを うけた！`);
+                 updateHpBars();
+                 if (await checkFainted(opponentPokemon, false)) return true;
+            }
+            weather.turns--;
+    if (weather.turns === 0) {
+        weather.type = 'none';
+        await showMessage('ゆきは やんだ！');
+        updateWeatherIndicator();
+    }
+}
+        async function applyLeechSeed(target, isPlayer) {
+    if (!target.seeded || target.currentHp <= 0) return false;
+
+    const damage = Math.floor(target.maxHp / 8);
+
+    target.currentHp = Math.max(0, target.currentHp - damage);
+
+    await showMessage(`${target.name} の HPが すいとられた！`);
+    updateHpBars();
+
+    // ⭐ ここ追加（最重要）
+    if (await checkFainted(target, isPlayer)) return true;
+
+    if (target.seedSource && target.seedSource.currentHp > 0) {
+        target.seedSource.currentHp = Math.min(
+            target.seedSource.maxHp,
+            target.seedSource.currentHp + damage
+        );
+
+        await showMessage(`${target.seedSource.name} は HPを かいふくした！`);
+        updateHpBars();
+    }
+    playerPokemon.isProtected = false;
+opponentPokemon.isProtected = false;
+
+    return false;
+}
+async function applyMoody(pokemon) {
+    const stats = ['attack', 'defense', 'spAttack', 'spDefense', 'speed'];
+    const statLabels = {
+        attack: 'こうげき',
+        defense: 'ぼうぎょ',
+        spAttack: 'とくこう',
+        spDefense: 'とくぼう',
+        speed: 'すばやさ'
+    };
+
+    // 上昇候補（+6除外）
+    const incCandidates = stats.filter(s => pokemon.statStages[s] < 6);
+    if (incCandidates.length === 0) return;
+
+    const incStat = incCandidates[Math.floor(Math.random() * incCandidates.length)];
+    pokemon.statStages[incStat] = Math.min(6, pokemon.statStages[incStat] + 2);
+
+    // 下降候補（今上がった能力と -6除外）
+    const decCandidates = stats.filter(s =>
+        s !== incStat && pokemon.statStages[s] > -6
+    );
+
+    let decStat = null;
+    if (decCandidates.length > 0) {
+        decStat = decCandidates[Math.floor(Math.random() * decCandidates.length)];
+        pokemon.statStages[decStat] = Math.max(-6, pokemon.statStages[decStat] - 1);
+    }
+
+    updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+
+    // メッセージ
+    let message;
+    if (decStat) {
+        message = `${pokemon.name}の${statLabels[incStat]}がぐーんと上がって、${statLabels[decStat]}が下がった！`;
+    } else {
+        message = `${pokemon.name}の${statLabels[incStat]}がぐーんと上がった！`;
+    }
+
+    await showMessage(message);
+}
+            
+        // ⭐ マグマストーム継続ダメージ（プレイヤー）
+if (playerPokemon.firespinTurns > 0 && playerPokemon.currentHp > 0) {
+    playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp - Math.floor(playerPokemon.maxHp / 8));
+    playerPokemon.firespinTurns--;
+
+    await showMessage(`${playerPokemon.name} は ほのおのうずの ダメージを うけた！`);
+    updateHpBars();
+    if (await checkFainted(playerPokemon, true)) return true;
+
+    if (playerPokemon.magmastormTurns === 0) {
+        await showMessage(`ほのおのうずの こうかが きれた！`);
+    }
+}
+
+// ⭐ マグマストーム継続ダメージ（相手）
+if (opponentPokemon.firespinTurns > 0 && opponentPokemon.currentHp > 0) {
+    opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp - Math.floor(opponentPokemon.maxHp / 8));
+    opponentPokemon.firespinTurns--;
+
+    await showMessage(`あいての ${opponentPokemon.name} は ほのおのうずの ダメージを うけた！`);
+    updateHpBars();
+    if (await checkFainted(opponentPokemon, false)) return true;
+
+    if (opponentPokemon.magmastormTurns === 0) {
+        await showMessage(`ほのおのうずの こうかが きれた！`);
+    }
+}
+if (playerPokemon.magmastormTurns > 0 && playerPokemon.currentHp > 0) {
+    playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp - Math.floor(playerPokemon.maxHp / 8));
+    playerPokemon.magmastormTurns--;
+
+    await showMessage(`${playerPokemon.name} は マグマストームの ダメージを うけた！`);
+    updateHpBars();
+    if (await checkFainted(playerPokemon, true)) return true;
+
+    if (playerPokemon.magmastormTurns === 0) {
+        await showMessage(`マグマストームの こうかが きれた！`);
+    }
+}
+
+// ⭐ マグマストーム継続ダメージ（相手）
+if (opponentPokemon.magmastormTurns > 0 && opponentPokemon.currentHp > 0) {
+    opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp - Math.floor(opponentPokemon.maxHp / 8));
+    opponentPokemon.magmastormTurns--;
+
+    await showMessage(`あいての ${opponentPokemon.name} は マグマストームの ダメージを うけた！`);
+    updateHpBars();
+    if (await checkFainted(opponentPokemon, false)) return true;
+
+    if (opponentPokemon.magmastormTurns === 0) {
+        await showMessage(`マグマストームの こうかが きれた！`);
+    }
+}
+        if (await handleStatusDamage(playerPokemon, true)) return true;
+        if (await handleStatusDamage(opponentPokemon, false)) return true;
+        if (await applyBerryBasketEffect(playerPokemon, true)) return true;
+        if (await applyBerryBasketEffect(opponentPokemon, false)) return true;
+        await applySpeedBoost(playerPokemon);
+        await applySpeedBoost(opponentPokemon);
+        
+        async function leftoversEffect(pokemon, isPlayer) {
+            if (
+                pokemon.item &&
+                pokemon.item.name === "たべのこし" &&
+                pokemon.currentHp > 0 &&
+                pokemon.currentHp < pokemon.maxHp
+            ) {
+                const heal = Math.floor(pokemon.maxHp / 16);
+                pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + heal);
+                await showMessage(`${pokemon.name} は たべのこしで かいふくした！`);
+                updateHpBars();
+                await new Promise(resolve => setTimeout(resolve, 800));
+                return await checkFainted(pokemon, isPlayer);
+            }
+            return false;
+        }
+
+        if (await leftoversEffect(playerPokemon, true)) return true;
+        if (await leftoversEffect(opponentPokemon, false)) return true;
+
+        // ⭐ きのみバスケット効果 ⭐
+async function applyBerryBasketEffect(pokemon, isPlayer) {
+    if (!pokemon.item || pokemon.item.name !== 'きのみバスケット') return false;
+
+    const effect = Math.floor(Math.random() * 4);
+
+    switch(effect) {
+        case 0:
+            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + Math.floor(pokemon.maxHp / 3));
+            await showMessage(`${pokemon.name} の きのみバスケット！ `);
+            await showMessage(`おいしいきのみを たべた！`);
+            await showMessage(`HPが かいふくした！`);
+            break;
+
+        case 1:
+            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + Math.floor(pokemon.maxHp / 4));
+            await showMessage(`${pokemon.name} の きのみバスケット！ `);
+            await showMessage(`こつぶのきのみを たべた！`);
+            await showMessage(`HPが すこしかいふくした！`);
+            break;
+
+        case 2:
+            pokemon.currentHp = Math.max(1, pokemon.currentHp - Math.floor(pokemon.maxHp * (1/4)));
+            await showMessage(`${pokemon.name} の きのみバスケット！`);
+            await showMessage(`にがいきのみだった…`);
+            await showMessage(`HPが すこしへってしまった！`);
+            break;    
+
+        case 3:
+            pokemon.currentHp = Math.max(1, pokemon.currentHp - Math.floor(pokemon.maxHp * (1/3)));
+            await showMessage(`${pokemon.name} の きのみバスケット！`);
+            await showMessage(`まずいきのみだった……`);
+            await showMessage(`HPが おおきくへってしまった！`);
+            break;
+    }
+
+    updateHpBars();
+    await new Promise(resolve => setTimeout(resolve, 600));
+    return pokemon.currentHp <= 0;
+}
+        return false;
+    }
+
+    async function handleStatusDamage(pokemon, isPlayer) {
+    if (!pokemon || pokemon.currentHp <= 0) return false;
+        if (pokemon.ability === 'マジックガード') {
+            return false;
+        }
+
+        let damage = 0;
+    let message = '';
+
+    switch (pokemon.status) {
+        case 'burn':
+            damage = Math.floor(pokemon.maxHp / 8);
+            message = `${pokemon.name} は やけどの ダメージを うけた！`;
+            break;
+
+        case 'poison':
+            damage = Math.floor(pokemon.maxHp / 8);
+            message = `${pokemon.name} は どくの ダメージを うけた！`;
+            break;
+
+        case 'toxic': // ⭐猛毒
+            if (!pokemon.toxicCounter) pokemon.toxicCounter = 1;
+
+            damage = Math.floor(pokemon.maxHp * pokemon.toxicCounter / 16);
+            message = `${pokemon.name} は もうどくで ダメージを うけた！`;
+
+            pokemon.toxicCounter++; // ⭐ダメージ後に増やす
+            break;
+
+        case 'hypnosis':
+            damage = Math.floor(pokemon.maxHp / 8);
+            message = `${pokemon.name} は メンタルへの ダメージを うけた！`;
+            break;
+    }
+
+        if (damage > 0 && pokemon.currentHp > 0) {
+            pokemon.currentHp = Math.max(0, pokemon.currentHp - damage);
+            await showMessage(message);
+            updateHpBars();
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            return await checkFainted(pokemon, isPlayer);
+    }
+
+    return false;
+}
+
+    async function checkFainted(pokemon, isPlayer) {
+            if (pokemon.currentHp <= 0) {
+                const faintedSprite = isPlayer ? player.sprite : opponent.sprite;
+                faintedSprite.classList.add('sprite-faint');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await showMessage(`${isPlayer ? "" : "あいて の "}${pokemon.name} は たおれた${isPlayer ? "..." : "！"}`);
+                
+                if (isPlayer) {
+                    screenOverlay.classList.add('active');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+                endGame(!isPlayer);
+                return true;
+            }
+        return false;
+    }
+
+
+    function getStatModifier(stage) {
+        if (stage >= 0) return (2 + stage) / 2;
+        return 2 / (2 - stage);
+    }
+
+    function getPokemonSpeed(pokemon) {
+        let speed = pokemon.speed * getStatModifier(pokemon.statStages.speed);
+        if (pokemon.status === 'paralyze') speed *= 0.5;
+        if (pokemon.item && pokemon.item.name === 'しゅんそくスカーフ') {
+            speed *= 1.25;
+        }
+        if (pokemon.ability && pokemon.ability.name === 'ききかいひ') {
+            speed *= 1.25;
+        }
+        return speed;
+    }
+
+async function applyGeigekiScopeOnEnter(pokemon) {
+    const up = [];
+    const down = [];
+
+    if (pokemon.statStages.speed < 6) {
+        pokemon.statStages.speed++;
+        up.push('素早さ');
+    }
+
+    if (up.length === 0 && down.length === 0) return;
+
+    let message = `${pokemon.name} の げいげきスコープ！\n`;
+
+    if (up.length && down.length) {
+        message += `${up.join('・')}が上がって、${down.join('・')}が下がった！`;
+    } else if (up.length) {
+        message += `${up.join('・')}が上がった！`;
+    } else {
+        message += `${down.join('・')}が下がった！`;
+    }
+
+    await showMessage(message);
+    updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+}
+    
+    async function checkAndUseItem(pokemon) {
+        if (pokemon.item && pokemon.item.name === "オボンの実" && !pokemon.item.used && pokemon.currentHp > 0 && pokemon.currentHp <= pokemon.maxHp / 3) {
+            pokemon.item.used = true;
+            const healAmount = Math.floor(pokemon.maxHp / 3);
+            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + healAmount);
+            await showMessage(`${pokemon.name} は オボンの実で かいふくした！`);
+            updateHpBars();
+            return true;
+        }
+        return false;
+    }
+
+    function calculateTypeEffectiveness(moveType, defenderTypes) {
+        let totalMultiplier = 1;
+        defenderTypes.forEach(defendingType => {
+            totalMultiplier *= typeChart[moveType]?.[defendingType] ?? 1;
+        });
+        return totalMultiplier;
+    }
+    
+    function calculateDamage(move, attacker, defender) {
+      const attackType = move.dynamicAppliedType ? move.dynamicAppliedType : move.type;
+        let effectivenessMessage = '';
+        const level = 50;
+        const critStage = move.critPriority || 0;
+
+const critRates = [
+    1 / 24, // 通常
+    1 / 8,  // +1
+    1 / 2,  // +2
+    1       // +3以上 確定
+];
+
+let isCrit =
+    Math.random() <
+    critRates[Math.min(critStage, 3)];
+    const atkStageFix = (stage) =>
+    isCrit && stage < 0 ? 0 : stage;
+
+const defStageFix = (stage) =>
+    isCrit && stage > 0 ? 0 : stage;
+    if (
+    defender.ability === "ばけのかわ" &&
+    !defender.disguiseBroken
+) {
+    defender.disguiseBroken = true;
+
+    if (defender.name === "ミミッキュ") {
+        let sprite;
+
+        if (defender === playerPokemon) {
+            sprite = player.sprite;
+            sprite.src =
+                "https://play.pokemonshowdown.com/sprites/ani-back/mimikyu-busted.gif";
+        } else {
+            sprite = opponent.sprite;
+            sprite.src =
+                "https://play.pokemonshowdown.com/sprites/ani/mimikyu-busted.gif";
+        }
+
+    }
+
+    return {
+        damage: 0,
+        effectivenessMessage: `${defender.name} の ばけのかわが はがれた！`
+    };
+}
+
+        if (defender.ability === 'ふゆう' && move.type === 'じめん') return { damage: 0, effectivenessMessage: `${defender.name} の ふゆう で こうかがない！` };
+        if (defender.ability === 'ちくでん' && move.type === 'でんき') return { damage: 0, healing: Math.floor(attacker.maxHp / 4) };
+
+        let attackStat, defenseStat;
+        if (move.category === 'physical') {
+
+    if (move.name === 'ボディプレス') {
+        attackStat =
+            attacker.defense *
+            getStatModifier(atkStageFix(attacker.statStages.defense));
+    } else {
+        attackStat =
+            attacker.attack *
+            getStatModifier(atkStageFix(attacker.statStages.attack));
+    }
+
+    defenseStat =
+        defender.defense *
+        getStatModifier(defStageFix(defender.statStages.defense));
+
+    // ゆき補正
+    if (
+        weather.type === "snow" &&
+        defender.types.includes("こおり")
+    ) {
+        defenseStat *= 1.5;
+    }
+
+    if (defender.item?.name === "たいきゅうチョッキ") {
+        defenseStat *= 1.25;
+    }
+}
+else if (move.category === 'special') {
+
+    attackStat =
+        attacker.spAttack *
+        getStatModifier(atkStageFix(attacker.statStages.spAttack));
+
+    defenseStat =
+        defender.spDefense *
+        getStatModifier(defStageFix(defender.statStages.spDefense));
+
+    if (defender.item?.name === "たいきゅうチョッキ") {
+        defenseStat *= 1.25;
+    }
+}
+
+        let movePower = move.power;
+        if ((attacker.ability === 'もうか' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'ほのお') || (attacker.ability === 'げきりゅう' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'みず') || (attacker.ability === 'しんりょく' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'くさ') || (attacker.ability === 'むしのしらせ' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'むし')) movePower *= 1.5;
+        if (attacker.ability === 'テクニシャン' && move.power <= 60) movePower *= 1.5;
+        if (attacker.ability === 'てつのこぶし' && move.isPunch) movePower *= 1.2;
+        if (attacker.item && attacker.item.name === 'ちからのはちまき' && move.category === 'physical') movePower *= 1.25;
+        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.25;
+        if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
+        if (attacker.item && attacker.item.name === 'マジックハンド' && move.power <= 40) movePower *= 1.5;
+        if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;
+        if (attacker.ability === 'そうだいしょう' && move.category && move.power <= 2000) movePower *= 1.3;
+        if (attacker.ability === 'きずなへんげ' && move.category && move.power <= 2000) movePower *= 1.5;
+        if (attacker.ability === 'フェアリースキン' && move.category && move.power <= 2000) movePower *= 1.2;
+        if (attacker.ability === 'かたいツメ' && move.category && move.power <= 2000) movePower *= 1.3;
+        if (attacker.ability === 'はりきり' && move.category && move.power <= 2000) movePower *= 1.5;
+        if (attacker.ability === 'ちからもち' && move.category && move.power <= 2000) movePower *= 2;
+        if (attacker.ability === 'きれあじ' && move.category && move.power <= 2000) movePower *= 1.5;
+        if (attacker.ability === 'ブレインフォース' && move.category && move.power <= 2000) movePower *= 1.25;
+        if (attacker.ability === 'アナライズ' && move.category === 'special') movePower *= 1.3;
+        if (attacker.ability === 'マルチタイプ' && move.power <= 70) movePower *= 1.5;
+        if (attacker.status === 'burn' && move.category === 'physical' && move.name !== 'ボディプレス') { movePower *= 0.5; }
+        if (weather.type === 'rain') {
+    if (move.type === 'みず') movePower *= 1.5;
+    if (move.type === 'ほのお') movePower *= 0.5;
+};
+if (field.type === 'psyco') {
+
+    // エスパー技強化
+    if (move.type === 'エスパー') {
+        movePower *= 1.6;
+    }
+
+    // 先制技弱体化
+    if (move.priority > 0) {
+        movePower *= 0.0001;
+    }
+}
+
+        let damage = Math.floor(Math.floor(Math.floor(2 * level / 5 + 2) * movePower * attackStat / defenseStat) / 50) + 2;
+
+        if (attacker.types.includes(move.type)) {
+            const stabMultiplier = attacker.ability === 'てきおうりょく' ? 2 : 1.5;
+            damage = Math.floor(damage * stabMultiplier);
+        }
+
+        if (defender.ability === 'マルチスケイル' && defender.currentHp === defender.maxHp && !defender.hasSubstitute) damage *= 0.5;
+        if (defender.ability === 'あついしぼう' && (move.type === 'ほのお' || move.type === 'こおり')) damage *= 0.5;
+        
+       const typeMultiplier = calculateTypeEffectiveness(attackType, defender.types);
+       let actualTypeMultiplier = typeMultiplier;
+
+if (
+    attacker.ability === "きもったま" &&
+    defender.types.includes("ゴースト") &&
+    (
+        attackType === "ノーマル" ||
+        attackType === "かくとう"
+    ) &&
+    typeMultiplier === 0
+){
+    actualTypeMultiplier = 1;
+}
+
+        if(isCrit) {
+             damage = Math.floor(damage * 1.5 );
+             effectivenessMessage = 'きゅうしょにあたった！';
+        }
+        else if (typeMultiplier > 1) effectivenessMessage = "こうかは ばつぐんだ！";
+        else if (typeMultiplier < 1 && typeMultiplier > 0) effectivenessMessage = "こうかは いまひとつの ようだ...";
+        else if (typeMultiplier === 0) effectivenessMessage = "こうかが ない みたいだ...";
+
+        damage = Math.floor(damage * actualTypeMultiplier);
+        if (attacker.ability === 'ブレインフォース' && typeMultiplier > 1) {
+            damage = Math.floor(damage * 1.25);
+        }
+        damage = Math.floor(damage * (Math.random() * (1.0 - 0.85) + 0.85));
+
+        if (defender.auroraVeil > 0) {
+    damage = Math.floor(damage * 0.5);
+}
+        
+        let healing = 0;
+if (move.name === "ギガドレイン")
+    healing = Math.floor(damage / 2);
+
+const finalDamage =
+    Math.max(typeMultiplier > 0 ? 1 : 0, damage);
+
+return {
+    damage: finalDamage,
+    effectivenessMessage,
+    healing
+};
+    }
+    
+    function updateStatusMarkers() {
+        [player, opponent].forEach(p => {
+            const pokemon = p === player ? playerPokemon : opponentPokemon;
+            if (pokemon && pokemon.status) {
+                p.statusEl.style.display = 'inline-block';
+                switch(pokemon.status) {
+                    case 'burn': p.statusEl.textContent = 'BRN'; p.statusEl.style.backgroundColor = '#ef4444'; break;
+                    case 'freeze': p.statusEl.textContent = 'FRZ'; p.statusEl.style.backgroundColor = '#38bdf8'; break;
+                    case 'paralyze': p.statusEl.textContent = 'PAR'; p.statusEl.style.backgroundColor = '#facc15'; break;
+                    case 'poison': p.statusEl.textContent = 'PSN'; p.statusEl.style.backgroundColor = '#a855f7'; break;
+                    case 'toxic': p.statusEl.textContent = 'TOX'; p.statusEl.style.backgroundColor = '#710297'; break;
+                    case 'sleep': p.statusEl.textContent = 'SLP'; p.statusEl.style.backgroundColor = '#71717a'; break;
+                }
+            } else if (p.statusEl) {
+                p.statusEl.style.display = 'none';
+            }
+        });
+    }
+
+    function updateHpBars() {
+        if(playerPokemon) {
+            const playerHpPercent = (playerPokemon.currentHp / playerPokemon.maxHp) * 100;
+            player.hpBar.style.width = `${playerHpPercent}%`;
+            player.currentHpEl.textContent = Math.max(0, Math.round(playerPokemon.currentHp));
+            updateHpBarColor(player.hpBar, playerHpPercent);
+        }
+        if(opponentPokemon){
+            const opponentHpPercent = (opponentPokemon.currentHp / opponentPokemon.maxHp) * 100;
+            opponent.hpBar.style.width = `${opponentHpPercent}%`;
+            updateHpBarColor(opponent.hpBar, opponentHpPercent);
+        }
+        const opponentHpPercent =
+    (opponentPokemon.currentHp / opponentPokemon.maxHp) * 100;
+
+document.getElementById("opponent-current-hp").textContent =
+    ` ${Math.round(opponentHpPercent)}% `;
+
+document.getElementById("opponent-max-hp").textContent = "";
+    updateSubstituteMarkers();
+    }
+    
+    function updateHpBarColor(bar, percent) {
+        bar.classList.remove('low', 'critical');
+        if (percent < 20) bar.classList.add('critical');
+        else if (percent < 50) bar.classList.add('low');
+    }
+     function updateSubstituteMarkers() {
+    const playerSub = document.getElementById('player-substitute');
+    const opponentSub = document.getElementById('opponent-substitute');
+
+    if (playerPokemon.hasSubstitute) {
+        playerSub.style.display = 'inline-block';
+    } else {
+        playerSub.style.display = 'none';
+    }
+
+    if (opponentPokemon.hasSubstitute) {
+        opponentSub.style.display = 'inline-block';
+    } else {
+        opponentSub.style.display = 'none';
+    }
+}
+    
+
+    function endGame(playerWon) {
+        disableMoves();
+        menu.style.display = 'none';
+        
+        if (playerWon) {
+            winScreen.style.display = 'flex';
+            winText.textContent = "しょうぶ に かった！";
+        } else {
+            gameOverScreen.style.display = 'flex';
+            gameOverText.textContent = "めのまえが まっくら になった...";
+        }
+    }
+
+    function showMessage(text, duration = 1500) {
+    return new Promise(resolve => {
+        messageText.style.display = '';
+        messageText.textContent = text;
+        setTimeout(resolve, duration);
+    });
+}
+    
+    function disableMoves() { movesContainer.querySelectorAll('button').forEach(b => b.disabled = true); }
+    function enableMoves() { 
+        if(playerPokemon && playerPokemon.isRampaging) return;
+        movesContainer.querySelectorAll('button').forEach(b => b.disabled = false); 
+    }
+
+    function resetGame() {
+    gameId++;
+
+    messageText.textContent = '';
+    messageText.style.display = '';
+
+    battleScreen.style.display = '';
+    menu.style.display = '';
+
+    gameOverScreen.style.display = '';
+    winScreen.style.display = '';
+
+    screenOverlay.classList.remove('active');
+
+    enableMoves();
+
+    playerPokemon = undefined;
+    opponentPokemon = undefined;
+
+    selectedPlayerKey = undefined;
+    selectedPlayerItemName = undefined;
+    selectedOpponentKey = undefined;
+    selectedOpponentItemName = undefined;
+    playerPokemon = undefined;
+opponentPokemon = undefined;
+isBattleInProgress = false;
+
+    difficulty = undefined;
+    currentTurn = 1;
+
+    weather = { type: 'none', turns: 0 };
+    field = { type: 'none', turns: 0 };
+
+    showPlayerSelection();
+    showMessage('どうする？', 500);
+}
+    async function handleAbilityEffectsOnEntry() {
+    if(playerPokemon.ability === "すなおこし" || opponentPokemon.ability === "すなおこし") {
+        weather.type = 'sandstorm';
+        weather.turns = 5;
+        await showMessage('すなあらしが ふきはじめた！');
+    }
+
+    if(playerPokemon.ability === "ゆきふらし" || opponentPokemon.ability === "ゆきふらし") {
+        weather.type = 'snow';
+        weather.turns = 5;
+        await showMessage('ゆきが ふりはじめた！');
+    }
+
+    if(playerPokemon.ability === "あめふらし" || opponentPokemon.ability === "あめふらし") {
+        weather.type = 'rain';
+        weather.turns = 5;
+        await showMessage('あめが ふりはじめた！');
+    }
+
+    if(playerPokemon.ability === "サイコメイカー" || opponentPokemon.ability === "サイコメイカー") {
+        field.type = 'psyco';
+        field.turns = 5;
+        await showMessage('あしもとが ふしぎなかんじに なった！');
+    }
+
+    updateWeatherIndicator();
+    updateFieldIndicator();
+
+}
+
+    function updateWeatherIndicator() {
+    if (weather.type === 'sandstorm') {
+        weatherIndicator.textContent = 'てんこう: すなあらし';
+        weatherIndicator.style.display = 'block';
+    } else if (weather.type === 'rain') {
+        weatherIndicator.textContent = 'てんこう: あめ';
+        weatherIndicator.style.display = 'block';
+    } else if (weather.type === 'snow') {
+        weatherIndicator.textContent = 'てんこう: ゆき';
+        weatherIndicator.style.display = 'block'; 
+    } else {    
+        weatherIndicator.style.display = 'none';
+    }
+}
+function updateFieldIndicator() {
+  if (field.type === 'psyco') {
+        fieldIndicator.textContent = 'フィールド: サイコフィールド';
+        fieldIndicator.style.display = 'block';
+  } else {    
+        fieldIndicator.style.display = 'none';
+    }
+}
+
+
+    function getPokemonCardImage(pokemonData, isPlayer = true, isShiny = false) {
+    if (pokemonData.images) {
+        return isPlayer ? (isShiny ? pokemonData.images.shinyBack : pokemonData.images.back)
+                        : (isShiny ? pokemonData.images.shinyFront : pokemonData.images.front);
+    }
+    return `${POKE_API_BASE_URL}${pokemonData.id}.gif`; // 通常ポケモン
+}
+
+    restartButton.onclick = resetGame;
+    winRestartButton.onclick = resetGame;
+
+    showPlayerSelection();
+});
+</script>
+
+</body>
+</html>

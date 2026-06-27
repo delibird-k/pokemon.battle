@@ -194,35 +194,28 @@
             </div>
 
            <div id="player-area" class="absolute bottom-32 sm:bottom-36 left-12 w-2/5 max-w-[300px] flex items-center">
-                 <div class="nes-container bg-white/80 p-2 w-full relative -top-2">
-        <div class="flex justify-between items-center mb-1">
-            <div class="flex items-center">
-                <span id="player-name" class="text-sm"></span>
-                <span id="player-status" class="status-badge"></span>
-                <div id="player-substitute" class="sub-marker">みがわり</div>
-            </div>
-            <span id="player-level" class="text-sm">Lv.50</span>
-        </div>
-
-        <div class="hp-bar-container">
-            <div id="player-hp" class="hp-bar"></div>
-        </div>
-
-        <div class="text-right text-sm mt-1 font-bold">
-            <span id="player-current-hp"></span> /
-            <span id="player-max-hp"></span>
-        </div>
-
-        <div id="player-stat-display" class="text-xs mt-1 text-right"></div>
-    </div>
-
-    <!-- ポケモン -->
-    <div class="relative ml-4">
-        <div id="player-tooltip"
-             class="absolute bottom-full mb-2 hidden nes-container bg-white/95 p-2 text-xs z-10 w-48 text-center left-1/2 -translate-x-1/2"></div>
-
-        <img id="player-sprite" src="" alt="Player Pokemon">
-    </div>
+                 <div id="player-area" class="absolute bottom-32 sm:bottom-36 left-12 w-2/5 max-w-[300px] flex flex-col items-center">
+                <div class="relative">
+                    <div id="player-tooltip" class="absolute bottom-full mb-2 hidden nes-container bg-white/95 p-2 text-xs z-10 w-48 text-center left-1/2 -translate-x-1/2"></div>
+                    <img id="player-sprite" src="" alt="Player Pokemon">
+                </div>
+<div class="nes-container bg-white/80 p-2 w-full relative top-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center">
+                           <span id="player-name" class="text-sm"></span>
+                           <span id="player-status" class="status-badge"></span>
+                           <div id="player-substitute" class="sub-marker">みがわり</div>
+                        </div>
+                        <span id="player-level" class="text-sm">Lv.50</span>
+                    </div>
+                    <div class="hp-bar-container">
+                        <div id="player-hp" class="hp-bar"></div>
+                    </div>
+                    <div class="text-right text-sm mt-1 font-bold">
+                        <span id="player-current-hp"></span> / <span id="player-max-hp"></span>
+                    </div>
+                    <div id="player-stat-display" class="text-xs mt-1 text-right"></div>
+                </div>
 
             <div id="menu" class="absolute bottom-0 left-0 right-0 min-h-[120px] max-h-[220px] bg-white nes-container m-2 p-2 grid grid-cols-2 gap-2 text-xs sm:text-base">
                 <div id="message-log" class="col-span-1 p-2 border-2 border-gray-800 rounded flex items-center justify-center">

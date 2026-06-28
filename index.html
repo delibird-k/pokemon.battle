@@ -4588,13 +4588,13 @@ isBattleInProgress = false;
 
     function updateWeatherIndicator() {
     if (weather.type === 'sandstorm') {
-        weatherIndicator.textContent = 'てんこう: すなあらし';
+        weatherIndicator.textContent = '状態: すなあらし';
         weatherIndicator.style.display = 'block';
     } else if (weather.type === 'rain') {
-        weatherIndicator.textContent = 'てんこう: あめ';
+        weatherIndicator.textContent = '状態: あめ';
         weatherIndicator.style.display = 'block';
     } else if (weather.type === 'snow') {
-        weatherIndicator.textContent = 'てんこう: ゆき';
+        weatherIndicator.textContent = '状態: ゆき';
         weatherIndicator.style.display = 'block'; 
     } else {    
         weatherIndicator.style.display = 'none';
@@ -4602,7 +4602,7 @@ isBattleInProgress = false;
 }
 function updateFieldIndicator() {
   if (field.type === 'psyco') {
-        fieldIndicator.textContent = 'フィールド: サイコフィールド';
+        fieldIndicator.textContent = '状態: サイコフィールド';
         fieldIndicator.style.display = 'block';
   } else {    
         fieldIndicator.style.display = 'none';

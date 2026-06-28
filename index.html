@@ -2391,9 +2391,8 @@ if (move.name === 'スケイルショット') {
     if (attacker.ability === 'スキルリンク') {
         hits = 5;
     } else {
-        const rand = Math.random();
-        if (rand < 0.4) hits = 4 ;
-        else hits = 5;
+        const rand = Math.random(); 
+        hits = 5;
     }
 
     await showMessage(`${attacker.name} の スケイルショット！`);

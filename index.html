@@ -117,6 +117,9 @@
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <audio id="bgm" loop>
+        <source src="battle.mp3" type="audio/mpeg">
+    </audio>
 
     <div id="selection-tooltip" class="absolute hidden nes-container bg-white/95 p-2 text-xs z-50 w-auto pointer-events-none"></div>
     <div id="move-tooltip" class="absolute hidden nes-container bg-white/95 p-2 text-xs z-50 w-auto pointer-events-none"></div>
@@ -269,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const turnCounter = document.getElementById('turn-counter');
     const weatherIndicator = document.getElementById('weather-indicator');
     const fieldIndicator = document.getElementById('field-indicator');
+    const bgm = document.getElementById("bgm");
     
     // --- Game Data ---
     let playerPokemon;
@@ -1288,6 +1292,8 @@ function determineOpponentItem(pokemon) {
 }
     
     async function startBattleSequence() {
+        bgm.volume = 0.5;
+        bgm.play().catch(() => {});
         disableMoves();
         await handleAbilityEffectsOnEntry();
          if(playerPokemon.ability === "いかく" && opponentPokemon.ability !== "クリアボディ") {

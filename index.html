@@ -1539,10 +1539,30 @@ function updateMoves() {
 
         const isDisabled = move.currentPp === 0;
 
-        button.className =
-            `border-2 border-gray-800 rounded p-1
-            ${typeColors[move.type] || 'bg-gray-200'}
-            ${isDisabled ? 'opacity-50' : ''}`;
+let displayType = move.type;
+
+// スカイスキン
+if (
+    playerPokemon.ability === "スカイスキン" &&
+    move.type === "ノーマル" &&
+    move.category !== "status"
+) {
+    displayType = "ひこう";
+}
+
+// フェアリースキン
+if (
+    playerPokemon.ability === "フェアリースキン" &&
+    move.type === "ノーマル" &&
+    move.category !== "status"
+) {
+    displayType = "フェアリー";
+}
+
+button.className =
+    `border-2 border-gray-800 rounded p-1
+    ${typeColors[displayType] || 'bg-gray-200'}
+    ${isDisabled ? 'opacity-50' : ''}`;
 
         button.disabled = isDisabled;
 
@@ -1624,7 +1644,26 @@ function updateMoves() {
     }
 
     function getMoveTooltipContent(move) {
-        let effectText = `威力: ${move.power || '--'} | 命中: ${move.accuracy > 100 ? '--' : move.accuracy} | PP: ${move.currentPp}/${move.pp}`;
+
+    let displayType = move.type;
+
+    if (
+        playerPokemon.ability === "スカイスキン" &&
+        move.type === "ノーマル" &&
+        move.category !== "status"
+    ) {
+        displayType = "ひこう";
+    }
+
+    if (
+        playerPokemon.ability === "フェアリースキン" &&
+        move.type === "ノーマル" &&
+        move.category !== "status"
+    ) {
+        displayType = "フェアリー";
+    }
+
+    let effectText = `威力: ${move.power || '--'} | 命中: ${move.accuracy > 100 ? '--' : move.accuracy} | PP: ${move.currentPp}/${move.pp}`;
         let effText = '';
 
         if (move.category === 'status') {
@@ -1650,7 +1689,7 @@ const targetTypes =
         : opponentPokemon.types;
 
 const effectiveness =
-    calculateTypeEffectiveness(move.type, targetTypes);
+    calculateTypeEffectiveness(displayType, targetTypes);
     if (effectiveness > 1)
         effText = '<span style="color: green;">こうかは ばつぐんだ！</span>';
     else if (effectiveness < 1 && effectiveness > 0)
@@ -1661,7 +1700,7 @@ const effectiveness =
         
         return `
             <p class="font-bold text-xs">${move.name}</p>
-            <p class="text-xs">タイプ: ${move.type}</p>
+            <p class="text-xs">タイプ: ${displayType}</p>
             <p class="mt-1 text-xs">${effectText}</p>
             <p class="mt-1 text-xs">${effText}</p>
         `;

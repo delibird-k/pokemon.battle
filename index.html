@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const items = {
         'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
-        'ちからのはちまき': { name: 'ちからのはちまき', description: '物理技の威力が1.25倍。'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.25倍。'},
         'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.25倍。'},
         'マジックハンド': { name: 'マジックハンド', description: '40以下の技の威力が1.5倍。'},
         'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.25倍。'},
@@ -1250,7 +1250,184 @@ opponentPokemon.megaEvolved = false;
 
 function determineOpponentItem(pokemon) {
 
-    // メガ可能ポケモン専用
+    // ===== ポケモンごとの固定・候補 =====
+    const pokemonItems = {
+        "カビゴン": [
+            "オボンの実",
+            "たべのこし",
+            "きのみバスケット",
+            "たいきゅうチョッキ",
+        ],
+        "ガルーラ": [
+            "メガストーン",
+        ],
+        "ポリゴン2": [
+            "たべのこし",
+            "ものしりメガネ",
+            "たいきゅうチョッキ",
+        ],
+        "ゾロアーク": [
+            "きあいのタスキ",
+            "ものしりメガネ",
+        ],
+        "水ウーラオス": [
+            "ちからのハチマキ",
+            "しゅんそくスカーフ",
+            "きあいのタスキ",
+        ],
+        "悪ウーラオス": [
+            "ちからのハチマキ",
+            "しゅんそくスカーフ",
+            "きあいのタスキ",
+        ],
+        "ガラルヤドラン": [
+            "せんせいのツメ",
+            "たいきゅうチョッキ",
+        ],
+        "がちぐま": [
+            "かえんだま",
+            "たいきゅうチョッキ",
+        ],
+        "ハッサム": [
+            "メガストーン",
+            "ちからのハチマキ",
+            "きあいのタスキ",
+        ],
+        "ウルガモス": [
+            "オボンの実",
+            "たべのこし",
+            "たいきゅうチョッキ",
+        ],
+        "グソクムシャ": [
+            "オボンの実",
+            "たべのこし",
+            "ちからのハチマキ",
+            "たいきゅうチョッキ",
+        ],
+        "ゲンガー": [
+            "メガストーン",
+            "きあいのタスキ",
+            "ものしりメガネ",
+        ],
+        "クチート": [
+            "きあいのタスキ",
+            "メガストーン",
+        ],
+        "メタグロス": [
+            "メガストーン",
+            "ちからのハチマキ",
+            "たいきゅうチョッキ",
+        ],
+        "ギルガルド": [
+            "ちからのハチマキ",
+            "たべのこし",
+            "たいきゅうチョッキ",
+        ],
+        "ブリジュラス": [
+            "ものしりメガネ",
+            "しろいハーブ",
+        ],
+        "リザードン": [
+            "メガストーン",
+            "きあいのタスキ",
+        ],
+        "バシャーモ": [
+            "きあいのタスキ",
+            "メガストーン",
+        ],
+        "ギャラドス": [
+            "きあいのタスキ",
+            "メガストーン",
+        ],
+        "ゲッコウガ": [
+            "きあいのタスキ",
+            "ものしりメガネ",
+            "しゅんそくスカーフ",
+        ],
+        "アシレーヌ": [
+            "オボンの実",
+            "たべのこし",
+            "ものしりメガネ",
+            "たいきゅうチョッキ",
+        ],
+        "イダイトウ": [
+            "きあいのタスキ",
+            "しゅんそくスカーフ",
+            "ちからのハチマキ",
+        ],
+        "デンジュモク": [
+            "きあいのタスキ",
+            "ものしりメガネ",
+        ],
+        "タケルライコ": [
+            "せんせいのツメ",
+            "ものしりメガネ",
+            "たいきゅうチョッキ",
+        ],
+        "フシギバナ": [
+            "メガストーン",
+            "オボンの実",
+            "たいきゅうチョッキ",
+        ],
+        "ナットレイ": [
+            "オボンの実",
+            "たべのこし",
+            "ゴツゴツメット",
+            "たいきゅうチョッキ",
+        ],
+        "マスカーニャ": [
+            "きあいのタスキ",
+            "ちからのハチマキ",
+        ],
+        "ブリザポス": [
+            "せんせいのツメ",
+            "ちからのハチマキ",
+            "たいきゅうチョッキ",
+        ],
+        "カプ・テテフ": [
+            "きあいのタスキ",
+            "ものしりメガネ",
+        ],
+        "カイリュー": [
+            "ちからのハチマキ",
+            "たいきゅうチョッキ",
+        ],
+        "ガブリアス": [
+            "きあいのタスキ",
+            "ちからのハチマキ",
+        ],
+        "ボーマンダ": [
+            "メガストーン",
+            "きあいのタスキ",
+            "たいきゅうチョッキ",
+        ],
+        "サザンドラ": [
+            "きあいのタスキ",
+            "ものしりメガネ",
+            "しゅんそくスカーフ",
+        ],
+        "ドドゲザン": [
+            "きあいのタスキ",
+            "せんせいのツメ",
+            "ちからのハチマキ",
+            "たいきゅうチョッキ",
+        ],
+        "ミミッキュ": [
+            "ちからのハチマキ",
+            "きあいのタスキ"
+        ],
+        "トレーニング": [
+            "せんせいのツメ",
+        ],
+    };
+
+    // 個別設定があるなら最優先
+    if (pokemonItems[pokemon.name]) {
+        const list = pokemonItems[pokemon.name];
+        return list[Math.floor(Math.random() * list.length)];
+    }
+
+        // メガ可能ポケモン専用
     if (MEGA_DATA[pokemon.name]) {
         const items = [
             'きあいのタスキ',
@@ -1290,7 +1467,7 @@ function determineOpponentItem(pokemon) {
     if (pokemon.baseAttack > pokemon.baseSpAttack) {
         const items = [
             'きあいのタスキ',
-            'ちからのはちまき',
+            'ちからのハチマキ',
             'しゅんそくスカーフ',
             'せんせいのツメ',
             'たいきゅうチョッキ',
@@ -1318,6 +1495,7 @@ function determineOpponentItem(pokemon) {
             Math.floor(Math.random() * items.length)
         ];
     }
+
 }
     
     async function startBattleSequence() {
@@ -4532,7 +4710,7 @@ else if (move.category === 'special') {
         if ((attacker.ability === 'もうか' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'ほのお') || (attacker.ability === 'げきりゅう' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'みず') || (attacker.ability === 'しんりょく' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'くさ') || (attacker.ability === 'むしのしらせ' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'むし')) movePower *= 1.5;
         if (attacker.ability === 'テクニシャン' && move.power <= 60) movePower *= 1.5;
         if (attacker.ability === 'てつのこぶし' && move.isPunch) movePower *= 1.2;
-        if (attacker.item && attacker.item.name === 'ちからのはちまき' && move.category === 'physical') movePower *= 1.25;
+        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.25;
         if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.25;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
         if (attacker.item && attacker.item.name === 'マジックハンド' && move.power <= 40) movePower *= 1.5;

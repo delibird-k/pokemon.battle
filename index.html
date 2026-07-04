@@ -1815,14 +1815,22 @@ button.className =
 
         button.onclick = () => startBattleRound(move);
 
-        button.onmouseover = () => {
-            moveTooltip.innerHTML = getMoveTooltipContent(move);
-            moveTooltip.style.display = 'block';
-        };
+        button.onmouseover = (e) => {
+    moveTooltip.innerHTML = getMoveTooltipContent(move);
+    moveTooltip.style.display = 'block';
 
-        button.onmouseout = () => {
-            moveTooltip.style.display = 'none';
-        };
+    moveTooltip.style.left = `${e.pageX + 15}px`;
+    moveTooltip.style.top = `${e.pageY - 15}px`;
+};
+
+button.onmousemove = (e) => {
+    moveTooltip.style.left = `${e.pageX + 15}px`;
+    moveTooltip.style.top = `${e.pageY - 15}px`;
+};
+
+button.onmouseout = () => {
+    moveTooltip.style.display = 'none';
+};
 
         movesContainer.appendChild(button);
     });

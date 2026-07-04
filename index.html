@@ -1554,13 +1554,13 @@ function determineOpponentItem(pokemon) {
     async function startBattleSequence() {
         disableMoves();
         await handleAbilityEffectsOnEntry();
-         if(playerPokemon.ability === "いかく" && opponentPokemon.ability !== "クリアボディ") {
+         if(playerPokemon.ability === "いかく" && opponentPokemon.ability !== "クリアボディ" && opponentPokemon.ability !== "きもったま") {
             await showMessage(`じぶんの ${playerPokemon.name} の いかく！`);
             await showMessage(`あいて の ${opponentPokemon.name} の こうげきが さがった！`);
             opponentPokemon.statStages.attack -= 1;
             updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
         }
-         if(opponentPokemon.ability === "いかく" && playerPokemon.ability !== "クリアボディ") {
+         if(opponentPokemon.ability === "いかく" && playerPokemon.ability !== "クリアボディ" && opponentPokemon.ability !== "きもったま") {
             await showMessage(`あいて の ${opponentPokemon.name} の いかく！`);
             await showMessage(`じぶんの ${playerPokemon.name} の こうげきが さがった！`);
             playerPokemon.statStages.attack -= 1;

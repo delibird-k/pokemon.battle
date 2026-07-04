@@ -2279,11 +2279,40 @@ function getOpponentMove() {
       // 自分のHPが赤なら、相手は優先度+1以上の攻撃技を最優先
 if (playerPokemon.currentHp / playerPokemon.maxHp <= 0.15) {
 
-    const priorityAttackMoves = opponentPokemon.moves.filter(m =>
-        (m.priority ?? 0) > 0 &&
-        m.category !== "status" &&
-        m.power && m.power > 0
-    );
+    const targetTypes =
+    playerPokemon.ability === "イリュージョン" &&
+    playerPokemon.disguiseData
+        ? playerPokemon.disguiseData.types
+        : playerPokemon.types;
+
+const priorityAttackMoves = opponentPokemon.moves.filter(m => {
+    if (
+        (m.priority ?? 0) <= 0 ||
+        m.category === "status" ||
+        !m.power
+    ) return false;
+
+    // スカイスキン・フェアリースキン対応
+    let moveType = m.type;
+
+    if (
+        opponentPokemon.ability === "スカイスキン" &&
+        moveType === "ノーマル" &&
+        m.category !== "status"
+    ) {
+        moveType = "ひこう";
+    }
+
+    if (
+        opponentPokemon.ability === "フェアリースキン" &&
+        moveType === "ノーマル" &&
+        m.category !== "status"
+    ) {
+        moveType = "フェアリー";
+    }
+
+    return calculateTypeEffectiveness(moveType, targetTypes) > 0;
+});
 
     if (priorityAttackMoves.length > 0) {
         return priorityAttackMoves[

@@ -4113,7 +4113,7 @@ if (
             case 'さいみんじゅつ': if(defender.status === null) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
             case 'Zさいみんじゅつ': if (defender.status === null) { defender.status = 'sleep'; message = `あいて の ${defender.name} は ねむった！`; } else { message = `しかし うまくきまらなかった！`; } break;
             case 'どくどく': if (!defender.types.includes("どく") && !defender.types.includes("はがね") && defender.status === null) { defender.status = 'toxic'; message = `あいて の ${defender.name} は もうどくを あびた！`; } else { message = `しかし うまくきまらなかった！`; } break;
-            case 'でんじは': if (!defender.types.includes("でんき") && !defender.types.includes("じめん") && defender.status === null) { defender.status = 'paralysis'; message = `あいて の ${defender.name} は まひに なった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'でんじは': if (!defender.types.includes("でんき") && !defender.types.includes("じめん") && defender.status === null) { defender.status = 'paralyze'; message = `あいて の ${defender.name} は まひに なった！`; } else { message = `しかし うまくきまらなかった！`; } break;
             case 'ねむりごな' :
             case 'きのこのほうし': if(!defender.types.includes("くさ") && defender.status === null) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
             case 'オーロラベール':

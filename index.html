@@ -4491,28 +4491,28 @@ async function applyBerryBasketEffect(pokemon, isPlayer) {
 
     switch(effect) {
         case 0:
-            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + Math.floor(pokemon.maxHp / 3));
+            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + Math.floor(pokemon.maxHp / 4));
             await showMessage(`${pokemon.name} の きのみバスケット！ `);
             await showMessage(`おいしいきのみを たべた！`);
             await showMessage(`HPが かいふくした！`);
             break;
 
         case 1:
-            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + Math.floor(pokemon.maxHp / 4));
+            pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + Math.floor(pokemon.maxHp / 5));
             await showMessage(`${pokemon.name} の きのみバスケット！ `);
             await showMessage(`こつぶのきのみを たべた！`);
             await showMessage(`HPが すこしかいふくした！`);
             break;
 
         case 2:
-            pokemon.currentHp = Math.max(1, pokemon.currentHp - Math.floor(pokemon.maxHp * (1/4)));
+            pokemon.currentHp = Math.max(1, pokemon.currentHp - Math.floor(pokemon.maxHp * (1/5)));
             await showMessage(`${pokemon.name} の きのみバスケット！`);
             await showMessage(`にがいきのみだった…`);
             await showMessage(`HPが すこしへってしまった！`);
             break;    
 
         case 3:
-            pokemon.currentHp = Math.max(1, pokemon.currentHp - Math.floor(pokemon.maxHp * (1/3)));
+            pokemon.currentHp = Math.max(1, pokemon.currentHp - Math.floor(pokemon.maxHp * (1/4)));
             await showMessage(`${pokemon.name} の きのみバスケット！`);
             await showMessage(`まずいきのみだった……`);
             await showMessage(`HPが おおきくへってしまった！`);

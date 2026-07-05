@@ -995,27 +995,29 @@ function getShownName(pokemon){
                 selectionTooltip.innerHTML = tooltipContent;
                 selectionTooltip.style.display = 'block';
 
-                const rect = card.getBoundingClientRect();
-                const tooltipWidth = selectionTooltip.offsetWidth;
-                const isLeftSide = rect.left + rect.width / 2 < window.innerWidth / 2;
-                
-                let left, top;
-                top = rect.top;
-
-                if (isLeftSide) {
-                    left = rect.right + 10;
-                } else {
-                    left = rect.left - tooltipWidth - 10;
-                }
-
-                if (left < 0) left = 5;
-                if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 5;
-
-                selectionTooltip.style.left = `${left}px`;
-                selectionTooltip.style.top = `${top}px`;
+                selectionTooltip.style.left = `${e.pageX + 20}px`;
+                selectionTooltip.style.top = `${e.pageY + 20}px`;
             });
+            card.addEventListener('mousemove', (e) => {
 
-            card.addEventListener('mouseout', () => {
+    let left = e.pageX + 20;
+    let top = e.pageY + 20;
+
+    // 右にはみ出す場合は左側へ
+    if (left + selectionTooltip.offsetWidth > window.innerWidth) {
+        left = e.pageX - selectionTooltip.offsetWidth - 20;
+    }
+
+    // 下にはみ出す場合は上側へ
+    if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
+        top = e.pageY - selectionTooltip.offsetHeight - 20;
+    }
+
+    selectionTooltip.style.left = `${left}px`;
+    selectionTooltip.style.top = `${top}px`;
+});
+
+                card.addEventListener('mouseout', () => {
                 selectionTooltip.style.display = 'none';
             });
 
@@ -1101,27 +1103,29 @@ function getShownName(pokemon){
                 selectionTooltip.innerHTML = tooltipContent;
                 selectionTooltip.style.display = 'block';
 
-                const rect = card.getBoundingClientRect();
-                const tooltipWidth = selectionTooltip.offsetWidth;
-                const isLeftSide = rect.left + rect.width / 2 < window.innerWidth / 2;
-                
-                let left, top;
-                top = rect.top;
-
-                if (isLeftSide) {
-                    left = rect.right + 10;
-                } else {
-                    left = rect.left - tooltipWidth - 10;
-                }
-
-                if (left < 0) left = 5;
-                if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 5;
-
-                selectionTooltip.style.left = `${left}px`;
-                selectionTooltip.style.top = `${top}px`;
+                selectionTooltip.style.left = `${e.pageX + 20}px`;
+                selectionTooltip.style.top = `${e.pageY + 20}px`;
             });
+            card.addEventListener('mousemove', (e) => {
 
-            card.addEventListener('mouseout', () => {
+    let left = e.pageX + 20;
+    let top = e.pageY + 20;
+
+    // 右にはみ出す場合は左側へ
+    if (left + selectionTooltip.offsetWidth > window.innerWidth) {
+        left = e.pageX - selectionTooltip.offsetWidth - 20;
+    }
+
+    // 下にはみ出す場合は上側へ
+    if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
+        top = e.pageY - selectionTooltip.offsetHeight - 20;
+    }
+
+    selectionTooltip.style.left = `${left}px`;
+    selectionTooltip.style.top = `${top}px`;
+});
+
+                card.addEventListener('mouseout', () => {
                 selectionTooltip.style.display = 'none';
             });
             

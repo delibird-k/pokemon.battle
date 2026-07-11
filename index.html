@@ -2061,10 +2061,14 @@ opponent.sprite.src =
     
 function updateMoves() {
     movesContainer.innerHTML = "";
+    moveTooltip.style.display = "none";
+moveTooltip.innerHTML = "";
 
     // 最初は技を隠してメニューを表示
+if (!playerPokemon.pendingMega) {
     battleMenu.style.display = "grid";
     movesContainer.style.display = "none";
+}
 
     // 通常技
     playerPokemon.moves.forEach(move => {

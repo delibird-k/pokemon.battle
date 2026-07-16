@@ -4704,12 +4704,14 @@ for (const pokemon of [playerPokemon, opponentPokemon]) {
             await showMessage('すなあらしが ふきあれる！');
             if(!playerPokemon.types.includes('いわ') && !playerPokemon.types.includes('じめん') && !playerPokemon.types.includes('はがね') && playerPokemon.currentHp > 0) {
                  playerPokemon.currentHp -= Math.floor(playerPokemon.maxHp / 16);
+                 playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp); 
                  await showMessage(`${playerPokemon.name}は すなあらしで ダメージを うけた！`);
                  updateHpBars();
                  if (await checkFainted(playerPokemon, true)) return true;
             }
              if(!opponentPokemon.types.includes('いわ') && !opponentPokemon.types.includes('じめん') && !opponentPokemon.types.includes('はがね') && opponentPokemon.currentHp > 0) {
                  opponentPokemon.currentHp -= Math.floor(opponentPokemon.maxHp / 16);
+                 opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp);
                  await showMessage(`あいての ${opponentPokemon.name}は すなあらしで ダメージを うけた！`);
                  updateHpBars();
                  if (await checkFainted(opponentPokemon, false)) return true;

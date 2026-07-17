@@ -276,6 +276,16 @@ class="border-2 border-gray-800 rounded p-1 bg-sky-300 hover:bg-sky-400">
     "be-desert.jpeg",
     "be-earthycave.jpeg"
 ];
+    function changeBattleBackground() {
+    const battleScreen = document.getElementById("battle-screen");
+
+    const randomBg =
+        battleBackgrounds[
+            Math.floor(Math.random() * battleBackgrounds.length)
+        ];
+
+    battleScreen.style.backgroundImage = `url("${randomBg}")`;
+}
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const selectionScreen = document.getElementById('selection-screen');
@@ -761,19 +771,6 @@ const AEGISLASH_FORM = {
         spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/aegislash-blade.gif"
     }
 };
-
-function changeBattleBackground() {
-    const battleScreen = document.getElementById("battle-screen");
-
-    const bg =
-        battleBackgrounds[
-            Math.floor(Math.random() * battleBackgrounds.length)
-        ];
-
-    battleScreen.style.backgroundImage = `url("${bg}")`;
-    battleScreen.style.backgroundSize = "cover";
-    battleScreen.style.backgroundPosition = "center";
-}
 
 // ===== 定数 =====
 const Z_MOVE_NAMES = {

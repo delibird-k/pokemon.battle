@@ -811,10 +811,10 @@ function initZData(pokemon) {
 
 // ===== 使用可能判定 =====
 function canUseZMove(pokemon) {
-  if (pokemon.usedZMove) return false;
-  if (pokemon.item?.name !== "Zクリスタル") return false;
-  if (!pokemon.zMoveBase) return false;
-  return true;
+    return (
+        !pokemon.usedZMove &&
+        pokemon.item?.name === "Zクリスタル"
+    );
 }
 
 function canMegaEvolve(pokemon) {
@@ -827,154 +827,38 @@ function canMegaEvolve(pokemon) {
 }
     
 
-// ===== Zワザ生成 =====
-function createZMove(pokemon) {
-  if (pokemon.name === "ミミッキュ") {
+function createZMove(move) {
+
+    if (
+        move.category !== "physical" &&
+        move.category !== "special"
+    ) return null;
+
     return {
-        name: "ぽかぼかフレンドタイム",
-        type: "フェアリー",
-        power: 190,
+        name: Z_MOVE_NAMES[move.type],
+        type: move.type,
+        power: getZPower(move.power),
         accuracy: 999,
-        category: "physical",
-        pp: 1,
-        currentPp: 1,
-        isZMove: true
+        category: move.category,
+        pp:1,
+        currentPp:1,
+        isZMove:true
     };
 }
-if (pokemon.name === "アシレーヌ") {
-    return {
-        name: "わだつみのシンフォニア",
-        type: "みず",
-        power: 195,
-        accuracy: 999,
-        category: "special",
-        pp: 1,
-        currentPp: 1,
-        isZMove: true
-    };
-}
-if (pokemon.name === "ゲッコウガ") {
-    return {
-        name: "忍びの秘奥義",
-        type: "みず",
-        power: 160,
-        accuracy: 999,
-        category: "special",
-        pp: 1,
-        currentPp: 1,
-        critPriority:2,
-        secondary: { chance: 100, effect: 'stat', stat: 'spAttack', stage: 2, self: true },
-        isZMove: true
-    };
-}
-if (pokemon.name === "水ウーラオス") {
-    return {
-        name: "げきりゅうれんげきけん",
-        type: "みず",
-        power: 60,
-        accuracy: 999,
-        category: "physical",
-        pp: 1,
-        currentPp: 1,
-        critPriority:3,
-        priority:1,
-        secondary: { chance: 100, effect: 'stat', stat: 'speed', stage: 1, self: true },
-        isZMove: true
-    };
-}
-if (pokemon.name === "悪ウーラオス") {
-    return {
-        name: "あんこくいちげきけん",
-        type: "あく",
-        power: 200,
-        accuracy: 999,
-        category: "physical",
-        pp: 1,
-        currentPp: 1,
-        priority:1,
-        critPriority:3,
-        secondary: { chance: 100, effect: 'stat', stat: 'attack', stage: 1, self: true },
-        isZMove: true
-    };
-}
-if (pokemon.name === "カビゴン") {
-    return {
-        name: "本気を出す攻撃",
-        type: "ノーマル",
-        power: 210,
-        accuracy: 999,
-        category: "physical",
-        pp: 1,
-        currentPp: 1,
-        isZMove: true
-    };
-}
-if (pokemon.name === "ポリゴン2") {
-    return {
-        name: "ﾘｻｰﾁ･ｻﾞ･ﾃﾄﾗ",
-        type: "ノーマル",
-        power: 170,
-        accuracy: 999,
-        category: "special",
-        pp: 1,
-        currentPp: 1,
-        isDynamicType: true,
-        secondary: [{effect: "stat",stat: "defense",stage: 2,self: true,chance: 100},{effect: "stat",stat: "spDefense",stage: 2,self: true,chance: 100}],
-        isZMove: true
-    };
-}
-if (pokemon.name === "デンジュモク") {
-    return {
-        name: "Zさいみんじゅつ",
-        type: "Z",
-        power: 0,
-        accuracy: 999,
-        category: "special",
-        pp: 1,
-        currentPp: 1,
-        secondary: [{ chance: 100, effect: 'stat', stat: 'speed', stage: 1, self: true },{ chance: 100, effect: 'status', status: 'sleep' }],
-        isZMove: true
-    };
-}
-  const firstMove = pokemon.moves[0];
-
-  if (!firstMove) return null;
-
-  if (firstMove.category !== "physical" && firstMove.category !== "special") {
-    return null;
-  }
-
-  const zType = firstMove.type.toLowerCase();
-  const zName = Z_MOVE_NAMES[zType];
-
-  if (!zName) return null;
-
-  const zPower = getZPower(firstMove.power);
-
-  return {
-    name: zName,
-    type: firstMove.type, // ← 元のままでもOK
-    power: zPower,
-    accuracy: 999, // ← 命中処理回避（必中）
-    category: firstMove.category, // ⭐超重要
-    pp: 1,
-    currentPp: 1,
-    isZMove: true
-  };
-}
 
 
-function useZMove(pokemon) {
-  if (pokemon.usedZMove) return null;
+function useZMove(pokemon){
 
-  if (pokemon.item?.name !== "Zクリスタル") return null;
+    if(
+        pokemon.usedZMove ||
+        !pokemon.selectedZMove
+    ) return null;
 
-  const zMove = createZMove(pokemon);
-  if (!zMove) return null;
+    pokemon.usedZMove=true;
 
-  pokemon.usedZMove = true;
-
-  return zMove;
+    return createZMove(
+        pokemon.selectedZMove
+    );
 }
     // The rest of the script is restored here...
     function createPokemonInstance(pokemonData) {
@@ -991,7 +875,8 @@ function useZMove(pokemon) {
 };
         instance.item = null;
         instance.isFlinched = false;
-        
+        instance.usedZMove = false;
+        instance.selectedZMove = null;
         instance.hasSubstitute = false;
         instance.substituteHp = 0;
         instance.isShiny = Math.random() < 0.00025;
@@ -2103,7 +1988,6 @@ button.className =
     ${isDisabled ? 'opacity-50' : ''}`;
 
         button.disabled = isDisabled;
-
         button.onclick = () => startBattleRound(move);
 
         button.onmouseover = (e) => {
@@ -2126,39 +2010,6 @@ button.onmouseout = () => {
         movesContainer.appendChild(button);
     });
 
-    // Z技
-    if (canUseZMove(playerPokemon)) {
-    const zMove = createZMove(playerPokemon);
-
-    const zBtn = document.createElement('button');
-    zBtn.textContent = `${zMove.name}`;
-    zBtn.className =
-        "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
-
-    zBtn.onclick = () => {
-        startBattleRound(useZMove(playerPokemon));
-    };
-
-    zBtn.onmouseover = () => {
-        moveTooltip.innerHTML =
-            getMoveTooltipContent(zMove);
-        moveTooltip.style.display = "block";
-    };
-
-    zBtn.onmousemove = (e) => {
-        moveTooltip.style.left =
-            `${e.pageX + 15}px`;
-        moveTooltip.style.top =
-            `${e.pageY - 15}px`;
-    };
-
-    zBtn.onmouseout = () => {
-        moveTooltip.style.display = "none";
-    };
-
-    movesContainer.appendChild(zBtn);
-}
-
     // メガ進化
     if (canMegaEvolve(playerPokemon)) {
         const megaBtn = document.createElement('button');
@@ -2174,7 +2025,67 @@ button.onmouseout = () => {
 
         movesContainer.appendChild(megaBtn);
     }
+    // ===== Zワザ =====
+if (canUseZMove(playerPokemon)) {
+
+    const zBtn = document.createElement("button");
+
+    zBtn.textContent = "Ｚワザ";
+
+    zBtn.className =
+        "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
+
+    zBtn.onclick = () => {
+
+        battleMenu.style.display = "none";
+        movesContainer.innerHTML = "";
+        movesContainer.style.display = "grid";
+
+        playerPokemon.moves.forEach(move => {
+
+            if (
+                move.category !== "physical" &&
+                move.category !== "special"
+            ) return;
+
+            const btn = document.createElement("button");
+
+            btn.className =
+    "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
+            btn.textContent = Z_MOVE_NAMES[move.type];
+
+            const zMove = createZMove(move);
+
+btn.onmouseover = (e) => {
+    moveTooltip.innerHTML = getMoveTooltipContent(zMove);
+    moveTooltip.style.display = "block";
+
+    moveTooltip.style.left = `${e.pageX + 15}px`;
+    moveTooltip.style.top = `${e.pageY - 15}px`;
+};
+
+btn.onmousemove = (e) => {
+    moveTooltip.style.left = `${e.pageX + 15}px`;
+    moveTooltip.style.top = `${e.pageY - 15}px`;
+};
+
+btn.onmouseout = () => {
+    moveTooltip.style.display = "none";
+};
+
+            btn.onclick = () => {
+                playerPokemon.selectedZMove = move;
+                startBattleRound(useZMove(playerPokemon));
+            };
+
+            movesContainer.appendChild(btn);
+        });
+    };
+
+    movesContainer.appendChild(zBtn);
 }
+}
+
     
     function getSpriteUrl(pokemon, back = false) {
         if (typeof pokemon.id === 'string') {

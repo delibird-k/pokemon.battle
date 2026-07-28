@@ -338,15 +338,15 @@ surrenderButton.onclick = () => {
     
     const items = {
         'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
-        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.25倍。'},
-        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.25倍。'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.5倍。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.5倍。'},
         'マジックハンド': { name: 'マジックハンド', description: '40以下の技の威力が1.5倍。'},
-        'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.25倍。'},
+        'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.5倍。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
-        'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '防御と特防が1.25倍。'},
-        'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/3回復。'},
+        'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '防御と特防が1.5倍。'},
+        'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復。'},
         'きのみバスケット': { name: 'きのみバスケット', description: '毎ターンHPを回復かも'},
-        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/16回復。'},
+        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/8回復。'},
         'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
         'おうじゃのしるし': { name: 'おうじゃのしるし', description: '30%で怯ませる。'},
         'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る。'},
@@ -4934,7 +4934,7 @@ async function applyBerryBasketEffect(pokemon, isPlayer) {
         let speed = pokemon.speed * getStatModifier(pokemon.statStages.speed);
         if (pokemon.status === 'paralyze') speed *= 0.5;
         if (pokemon.item && pokemon.item.name === 'しゅんそくスカーフ') {
-            speed *= 1.25;
+            speed *= 1.5;
         }
         if (pokemon.ability && pokemon.ability.name === 'ききかいひ') {
             speed *= 1.25;
@@ -5066,7 +5066,7 @@ const defStageFix = (stage) =>
         getStatModifier(defStageFix(defender.statStages.defense));
 
     if (defender.item?.name === "たいきゅうチョッキ") {
-        defenseStat *= 1.25;
+        defenseStat *= 1.5;
     }
 }
 else if (move.category === 'special') {
@@ -5088,7 +5088,7 @@ else if (move.category === 'special') {
     }
 
     if (defender.item?.name === "たいきゅうチョッキ") {
-        defenseStat *= 1.25;
+        defenseStat *= 1.5;
     }
 }
 
@@ -5097,8 +5097,8 @@ else if (move.category === 'special') {
         if ((attacker.ability === 'もうか' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'ほのお') || (attacker.ability === 'げきりゅう' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'みず') || (attacker.ability === 'しんりょく' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'くさ') || (attacker.ability === 'むしのしらせ' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'むし')) movePower *= 1.5;
         if (attacker.ability === 'テクニシャン' && move.power <= 60) movePower *= 1.5;
         if (attacker.ability === 'てつのこぶし' && move.isPunch) movePower *= 1.2;
-        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.25;
-        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.25;
+        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.5;
+        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
         if (attacker.item && attacker.item.name === 'マジックハンド' && move.power <= 40) movePower *= 1.5;
         if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;

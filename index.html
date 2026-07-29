@@ -337,24 +337,24 @@ surrenderButton.onclick = () => {
     };
     
     const items = {
-        'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える'},
-        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.5倍'},
-        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.5倍'},
-        'マジックハンド': { name: 'マジックハンド', description: '40以下の技の威力が2.5倍'},
-        'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.5倍'},
+        'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.5倍。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.5倍。'},
+        'マジックハンド': { name: 'マジックハンド', description: '40以下の技の威力が1.5倍。'},
+        'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.5倍。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
-        'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '防御と特防が1.5倍'},
-        'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復'},
+        'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '防御と特防が1.5倍。'},
+        'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復。'},
         'きのみバスケット': { name: 'きのみバスケット', description: '毎ターンHPを回復かも'},
-        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/8回復'},
+        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/8回復。'},
         'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
-        'おうじゃのしるし': { name: 'おうじゃのしるし', description: '30%で怯ませる'},
-        'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る'},
-        'きあいのハチマキ': { name: 'きあいのハチマキ', description: '30%でHP1耐える'},
-        'かえんだま': { name: 'かえんだま', description: 'やけどする。あっつ'},
-        'Zクリスタル': { name: 'Zクリスタル', description: 'Z技が使える'},
-        'メガストーン': { name: 'メガストーン', description: 'メガシンカできる'},
-        'なにも持たせない': { name: 'なにも持たせない', description: 'とくに効果なし'},
+        'おうじゃのしるし': { name: 'おうじゃのしるし', description: '30%で怯ませる。'},
+        'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る。'},
+        'きあいのハチマキ': { name: 'きあいのハチマキ', description: '30%でHP1耐える。'},
+        'かえんだま': { name: 'かえんだま', description: 'やけどする。あっつ。'},
+        'Zクリスタル': { name: 'Zクリスタル', description: 'Z技が使える。'},
+        'メガストーン': { name: 'メガストーン', description: 'メガシンカできる。'},
+        'なにも持たせない': { name: 'なにも持たせない', description: 'とくに効果なし。'},
     };
     
      const difficulties = {
@@ -798,14 +798,15 @@ function initZData(pokemon) {
     return;
   }
 
-  if (firstMove.category !== "physical" && firstMove.category !== "special") {
+  if (firstMove.category !== "physical" && firstMove.category !== "special" && firstMove.category !== "status") {
     pokemon.zMoveBase = null;
     return;
   }
 
   pokemon.zMoveBase = {
     type: firstMove.type,
-    power: firstMove.power
+    power: firstMove.power,
+    category: firstMove.category
   };
 }
 
@@ -829,6 +830,19 @@ function canMegaEvolve(pokemon) {
 
 function createZMove(move) {
 
+    if (move.category === "status") {
+        return {
+            name: move.name,
+            type: move.type,
+            power: 0,
+            accuracy: 999,
+            category: "status",
+            pp: 1,
+            currentPp: 1,
+            isZMove: true
+        };
+    }
+
     if (
         move.category !== "physical" &&
         move.category !== "special"
@@ -845,7 +859,6 @@ function createZMove(move) {
         isZMove:true
     };
 }
-
 
 function useZMove(pokemon){
 
@@ -2045,16 +2058,19 @@ if (canUseZMove(playerPokemon)) {
 
             if (
                 move.category !== "physical" &&
-                move.category !== "special"
+                move.category !== "special" &&
+                move.category !== "status"
             ) return;
 
             const btn = document.createElement("button");
 
             btn.className =
     "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
-            btn.textContent = Z_MOVE_NAMES[move.type];
+            btn.textContent = move.category === "status" ? `Z${move.name}` : Z_MOVE_NAMES[move.type];
 
             const zMove = createZMove(move);
+
+            if (!zMove) return;
 
 btn.onmouseover = (e) => {
     moveTooltip.innerHTML = getMoveTooltipContent(zMove);
@@ -2126,6 +2142,7 @@ btn.onmouseout = () => {
         if (move.category === 'status') {
     effectText =
         generateStatusMoveDescription(move.name) +
+        (move.isZMove ? '<br>(Zわざ効果: 自分の 能力が すべて 1段階ずつ あがる)' : '') +
         `<br>PP: ${move.currentPp}/${move.pp}`;
 } else {
 
@@ -4561,11 +4578,22 @@ if (
             case 'てっぺき': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 2); message = `${attacker.name} の ぼうぎょが ぐーんと あがった！`; break;
             case 'コットンガード': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 3); message = `${attacker.name} の ぼうぎょが ぐぐーんと あがった！`; break;
         }
+
+        if (move.isZMove && move.category === 'status') {
+            const zBoostStats = ['attack', 'defense', 'spAttack', 'spDefense', 'speed'];
+            zBoostStats.forEach(stat => {
+                attacker.statStages[stat] = Math.min(6, attacker.statStages[stat] + 1);
+            });
+        }
+
         updateStatusMarkers();
         updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
 updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
         if (message) {
     await showMessage(message);
+}
+        if (move.isZMove && move.category === 'status') {
+    await showMessage(`${attacker.name} の のうりょくが ぜんたいてきに あがった！`);
 }
     }
 
@@ -5100,7 +5128,7 @@ else if (move.category === 'special') {
         if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
-        if (attacker.item && attacker.item.name === 'マジックハンド' && move.power <= 40) movePower *= 2.5;
+        if (attacker.item && attacker.item.name === 'マジックハンド' && move.power <= 40) movePower *= 1.5;
         if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'そうだいしょう' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'きずなへんげ' && move.category && move.power <= 2000) movePower *= 1.5;

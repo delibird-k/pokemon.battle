@@ -346,7 +346,7 @@ surrenderButton.onclick = () => {
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '防御と特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復。'},
         'きのみバスケット': { name: 'きのみバスケット', description: '毎ターンHPを回復かも'},
-        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/8回復。'},
+        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを3/32回復。'},
         'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
         'おうじゃのしるし': { name: 'おうじゃのしるし', description: '30%で怯ませる。'},
         'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る。'},
@@ -1287,6 +1287,8 @@ function determineOpponentItem(pokemon) {
             "オボンの実",
             "たべのこし",
             "きのみバスケット",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "ガルーラ": [
@@ -1295,12 +1297,16 @@ function determineOpponentItem(pokemon) {
         "ポリゴン2": [
             "たべのこし",
             "ものしりメガネ",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "ゾロアーク": [
             "きあいのタスキ",
             "ものしりメガネ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ルカリオ": [
@@ -1308,19 +1314,26 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "メガストーン",
+            "メガストーン",
             "きあいのタスキ",
             "ものしりメガネ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "水ウーラオス": [
             "ちからのハチマキ",
             "しゅんそくスカーフ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのタスキ",
         ],
         "悪ウーラオス": [
             "ちからのハチマキ",
             "しゅんそくスカーフ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのタスキ",
         ],
         "ガラルヤドラン": [
@@ -1328,6 +1341,7 @@ function determineOpponentItem(pokemon) {
             "せんせいのツメ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ランドロス": [
@@ -1335,23 +1349,30 @@ function determineOpponentItem(pokemon) {
             "きあいのタスキ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ガチグマ": [
             "かえんだま",
             "かえんだま",
             "かえんだま",
+            "かえんだま",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ハッサム": [
             "メガストーン",
             "メガストーン",
             "メガストーン",
+            "メガストーン",
+            "メガストーン",
             "ちからのハチマキ",
             "きあいのタスキ",
             "せんせいのツメ",
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ウルガモス": [
@@ -1359,6 +1380,7 @@ function determineOpponentItem(pokemon) {
             "たべのこし",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "グソクムシャ": [
@@ -1366,37 +1388,53 @@ function determineOpponentItem(pokemon) {
             "たべのこし",
             "ちからのハチマキ",
             "たいきゅうチョッキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
         "フェローチェ": [
             "きあいのタスキ",
             "きあいのハチマキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "ちからのハチマキ",
         ],
         "バンギラス": [
             "メガストーン",
             "メガストーン",
             "メガストーン",
+            "メガストーン",
+            "メガストーン",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ゲンガー": [
             "メガストーン",
             "メガストーン",
             "メガストーン",
+            "メガストーン",
+            "メガストーン",
             "きあいのタスキ",
             "ものしりメガネ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ハバタクカミ": [
             "きあいのタスキ",
             "ものしりメガネ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "カミツルギ": [
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "ちからのハチマキ",
             "きあいのハチマキ",
         ],
@@ -1408,7 +1446,11 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "メガストーン",
+            "メガストーン",
+            "メガストーン",
             "ちからのハチマキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
             "せんせいのツメ",
             "きあいのハチマキ",
@@ -1416,16 +1458,22 @@ function determineOpponentItem(pokemon) {
         "ギルガルド": [
             "ちからのハチマキ",
             "たべのこし",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "メルメタル": [
             "ちからのハチマキ",
             "たべのこし",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "ブリジュラス": [
             "ものしりメガネ",
             "しろいハーブ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
@@ -1435,6 +1483,9 @@ function determineOpponentItem(pokemon) {
         "エンテイ": [
             "ちからのハチマキ",
             "たいきゅうチョッキ",
+            "たいきゅうチョッキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "しゅんそくスカーフ",
             "たべのこし",
             "せんせいのツメ",
@@ -1443,11 +1494,15 @@ function determineOpponentItem(pokemon) {
         "バシャーモ": [
             "きあいのタスキ",
             "メガストーン",
+            "メガストーン",
+            'Zクリスタル',
+            'Zクリスタル',
         ],
         "ヒードラン": [
             "ものしりメガネ",
             "たいきゅうチョッキ",
             "オボンの実",
+            'Zクリスタル',
             "たべのこし",
             "せんせいのツメ",
             "きあいのハチマキ",
@@ -1458,9 +1513,9 @@ function determineOpponentItem(pokemon) {
             "オボンの実",
             "たべのこし",
             "せんせいのツメ",
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
-        
         "スターミー": [
             "メガストーン",
         ],
@@ -1470,6 +1525,8 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "スイクン": [
@@ -1478,11 +1535,14 @@ function determineOpponentItem(pokemon) {
             "ものしりメガネ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ゲッコウガ": [
             "きあいのタスキ",
             "ものしりメガネ",
+            'Zクリスタル',
+            'Zクリスタル',
             "しゅんそくスカーフ",
         ],
         "アシレーヌ": [
@@ -1490,65 +1550,85 @@ function determineOpponentItem(pokemon) {
             "たべのこし",
             "ものしりメガネ",
             "たいきゅうチョッキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
         "イダイトウ": [
             "きあいのタスキ",
             "しゅんそくスカーフ",
+            'Zクリスタル',
+            'Zクリスタル',
             "ちからのハチマキ",
         ],
         "デンジュモク": [
             "きあいのタスキ",
             "ものしりメガネ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "タケルライコ": [
             "せんせいのツメ",
             "ものしりメガネ",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
             "きあいのハチマキ",
         ],
         "フシギバナ": [
             "メガストーン",
             "メガストーン",
+            "メガストーン",
             "オボンの実",
+            'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "ナットレイ": [
             "オボンの実",
             "たべのこし",
             "ゴツゴツメット",
+            'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "マスカーニャ": [
             "きあいのタスキ",
             "ちからのハチマキ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ブリザポス": [
             "せんせいのツメ",
             "ちからのハチマキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
             "きあいのハチマキ",
         ],
         "デオキシス": [
             "きあいのタスキ",
             "きあいのハチマキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "ちからのハチマキ",
         ],
         "クレセリア": [
             "きのみバスケット",
             "たいきゅうチョッキ",
             "オボンの実",
+            'Zクリスタル',
             "たべのこし",
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
         "カプ・テテフ": [
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "ものしりメガネ",
             "せんせいのツメ",
             "きあいのハチマキ",
@@ -1557,19 +1637,27 @@ function determineOpponentItem(pokemon) {
             "ちからのハチマキ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ガブリアス": [
             "きあいのタスキ",
             "ちからのハチマキ",
             "せんせいのツメ",
+            'Zクリスタル',
+            'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ボーマンダ": [
             "メガストーン",
             "メガストーン",
             "メガストーン",
+            "メガストーン",
+            "メガストーン",
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
@@ -1578,6 +1666,8 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "たいきゅうチョッキ",
             "たべのこし",
+            'Zクリスタル',
+            'Zクリスタル',
             "オボンの実",
         ], 
         "ラティオス": [
@@ -1585,17 +1675,23 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "ものしりメガネ",
         ],
         "ドラパルト": [
             "ちからのハチマキ",
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
         "トドロクツキ": [
             "ちからのハチマキ",
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
@@ -1603,6 +1699,8 @@ function determineOpponentItem(pokemon) {
             "きあいのタスキ",
             "ものしりメガネ",
             "しゅんそくスカーフ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
@@ -1610,12 +1708,16 @@ function determineOpponentItem(pokemon) {
             "きあいのタスキ",
             "せんせいのツメ",
             "ちからのハチマキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "たいきゅうチョッキ",
             "きあいのハチマキ",
         ],
         "ミミッキュ": [
             "ちからのハチマキ",
             "きあいのタスキ",
+            'Zクリスタル',
+            'Zクリスタル',
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
@@ -2143,7 +2245,7 @@ btn.onmouseout = () => {
         if (move.category === 'status') {
     effectText =
         generateStatusMoveDescription(move.name) +
-        (move.isZMove ? '<br>(Zわざ効果: 自分の 能力が すべて 1段階ずつ あがる)' : '') +
+        (move.isZMove ? '<br>ぼうぎょ とくぼう すばやさ が ランダムで 2段階 あがる' : '') +
         `<br>PP: ${move.currentPp}/${move.pp}`;
 } else {
 
@@ -2870,13 +2972,57 @@ break;
 }
         
         validMoves.sort((a,b) => b.score - a.score);
-        
-        if (difficulty === 'ノーマル' || validMoves[0].score > 150) {
-            return validMoves[0].move;
-        }
-        
-        const topMoves = validMoves.filter(m => m.score >= validMoves[0].score * 0.8);
-        return topMoves[Math.floor(Math.random() * topMoves.length)].move;
+
+let chosenMove;
+
+if (difficulty === 'ノーマル' || validMoves[0].score > 150) {
+    chosenMove = validMoves[0].move;
+} else {
+    const topMoves = validMoves.filter(
+        m => m.score >= validMoves[0].score * 0.8
+    );
+
+    chosenMove =
+        topMoves[Math.floor(Math.random() * topMoves.length)].move;
+}
+
+// ========================
+// Zワザを使うか判定
+// ========================
+if (
+    canUseZMove(opponentPokemon) &&
+    !opponentPokemon.usedZMove
+) {
+
+    const hpRate =
+        opponentPokemon.currentHp /
+        opponentPokemon.maxHp;
+
+    // HP半分以上 → 補助技ならZ化
+    if (
+    hpRate > 0.5 &&
+    chosenMove.category === "status" &&
+    Math.random() < 0.7
+) {
+        opponentPokemon.selectedZMove = chosenMove;
+        return useZMove(opponentPokemon);
+    }
+
+    // HP半分以下 → 攻撃技ならZ化
+    if (
+    hpRate <= 0.5 &&
+    (
+        chosenMove.category === "physical" ||
+        chosenMove.category === "special"
+    ) &&
+    Math.random() < 0.7
+) {
+        opponentPokemon.selectedZMove = chosenMove;
+        return useZMove(opponentPokemon);
+    }
+}
+
+return chosenMove;
     }
 
     function calculateSelfConfusionDamage(attacker) {
@@ -4581,20 +4727,32 @@ if (
         }
 
         if (move.isZMove && move.category === 'status') {
-            const zBoostStats = ['attack', 'defense', 'spAttack', 'spDefense', 'speed'];
-            zBoostStats.forEach(stat => {
-                attacker.statStages[stat] = Math.min(6, attacker.statStages[stat] + 1);
-            });
-        }
+
+    const zBoostStats = ['defense', 'spDefense', 'speed'];
+
+    // ランダムで1つ選ぶ
+    const stat =
+        zBoostStats[Math.floor(Math.random() * zBoostStats.length)];
+
+    attacker.statStages[stat] =
+        Math.min(6, attacker.statStages[stat] + 2);
+
+    const statNames = {
+        defense: "ぼうぎょ",
+        spDefense: "とくぼう",
+        speed: "すばやさ"
+    };
+
+    await showMessage(
+        `${attacker.name} の ${statNames[stat]} が あがった！`
+    );
+}
 
         updateStatusMarkers();
         updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
 updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
         if (message) {
     await showMessage(message);
-}
-        if (move.isZMove && move.category === 'status') {
-    await showMessage(`${attacker.name} の のうりょくが ぜんたいてきに あがった！`);
 }
     }
 
@@ -4833,7 +4991,7 @@ if (opponentPokemon.magmastormTurns > 0 && opponentPokemon.currentHp > 0) {
                 pokemon.currentHp > 0 &&
                 pokemon.currentHp < pokemon.maxHp
             ) {
-                const heal = Math.floor(pokemon.maxHp / 8);
+                const heal = Math.floor(pokemon.maxHp * 3/ 32);
                 pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + heal);
                 await showMessage(`${pokemon.name} は たべのこしで かいふくした！`);
                 updateHpBars();

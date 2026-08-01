@@ -159,7 +159,6 @@
      class="hidden nes-container relative aspect-[4/3] w-full p-2">
     <div id="turn-counter" class="absolute top-4 left-4 text-sm bg-black/50 text-white p-1 rounded">ターン: 1</div>
     <div id="rating-display" class="absolute top-12 left-4 text-sm bg-black/50 text-white p-1 rounded">レート:1000</div>
-    <div id="record-display" class="absolute top-20 left-4 text-sm bg-black/50 text-white p-1 rounded">0勝 0敗</div>
             <div id="weather-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
             <div id="field-indicator" class="absolute top-12 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
             <div id="screen-overlay">
@@ -912,14 +911,25 @@ function useZMove(pokemon){
         return instance;
     }
 
+    function getRank() {
+
+    if (rating >= 2100) return "🏆 チャンピオン級";
+    if (rating >= 1900) return "👑 マスボ級";
+    if (rating >= 1700) return "💎 ハイボ級";
+    if (rating >= 1500) return "🥇 スパボ級";
+    if (rating >= 1300) return "🥈 モンボ級";
+    if (rating >= 1100) return "🥉 ビギナー級";
+
+    return "🔰 ルーキー";
+}
+
     function updateRating() {
-    ratingDisplay.textContent =
-        `レート:${rating}`;
 
-    localStorage.setItem("rating", rating);
-
-    document.getElementById("record-display").textContent =
-        `${winCount}勝 ${loseCount}敗`;
+    ratingDisplay.innerHTML = `
+        <div>レート：${rating}</div>
+        <div>ランク：${getRank()}</div>
+        <div>${winCount}勝　${loseCount}敗</div>
+    `;
 
     localStorage.setItem("rating", rating);
     localStorage.setItem("wins", winCount);
@@ -5461,8 +5471,7 @@ document.getElementById("opponent-max-hp").textContent = "";
     if(playerWon){
         winScreen.style.display="flex";
         winText.textContent="しょうぶ に かった！";
-        const gain = Math.floor(Math.random() * 31) + 10; // 10～40
-        rating += gain;
+        rating += 10; 
         winCount++;
         updateRating();
     }else{
@@ -5471,11 +5480,10 @@ document.getElementById("opponent-max-hp").textContent = "";
 
         gameOverScreen.style.display="flex";
         gameOverText.textContent="めのまえが まっくら になった...";
-        const loss = Math.floor(Math.random() * 31) + 10; // 10～40
-
-        rating = Math.max(1000, rating - loss);
-loseCount++;
-updateRatingDisplay();
+        rating -= 30;
+        if (rating < 0) rating = 0;
+        loseCount++;
+        updateRating();
     }
 }
 

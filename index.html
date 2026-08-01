@@ -158,6 +158,8 @@
 <div id="battle-screen"
      class="hidden nes-container relative aspect-[4/3] w-full p-2">
     <div id="turn-counter" class="absolute top-4 left-4 text-sm bg-black/50 text-white p-1 rounded">ターン: 1</div>
+    <div id="rating-display" class="absolute top-12 left-4 text-sm bg-black/50 text-white p-1 rounded">レート:1000</div>
+    <div id="record-display" class="absolute top-20 left-4 text-sm bg-black/50 text-white p-1 rounded">0勝 0敗</div>
             <div id="weather-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
             <div id="field-indicator" class="absolute top-12 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
             <div id="screen-overlay">
@@ -302,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fightButton = document.getElementById("fight-button");
     const surrenderButton = document.getElementById("surrender-button");
     const bgm = document.getElementById("bgm");
+    const ratingDisplay = document.getElementById("rating-display");
     fightButton.onclick = () => {
     battleMenu.style.display = "none";
     movesContainer.style.display = "grid";
@@ -324,6 +327,9 @@ surrenderButton.onclick = () => {
     let selectedOpponentKey;
     let selectedOpponentItemName;
     let difficulty;
+    let rating = Number(localStorage.getItem("rating")) || 1000;
+    let winCount = Number(localStorage.getItem("wins")) || 0;
+    let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let gameId = 0;
     let currentTurn = 1;
     let weather = { type: 'none', turns: 0 };
@@ -906,6 +912,19 @@ function useZMove(pokemon){
         return instance;
     }
 
+    function updateRating() {
+    ratingDisplay.textContent =
+        `レート:${rating}`;
+
+    localStorage.setItem("rating", rating);
+
+    document.getElementById("record-display").textContent =
+        `${winCount}勝 ${loseCount}敗`;
+
+    localStorage.setItem("rating", rating);
+    localStorage.setItem("wins", winCount);
+    localStorage.setItem("losses", loseCount);
+}
     function calculateStats(basePokemon) {
         const level = 50;
         const pokemon = { ...basePokemon };
@@ -1244,6 +1263,8 @@ opponentPokemon.megaEvolved = false;
         initBattleUI();
         updateSubstituteMarkers();
         startBattleSequence();   
+        updateRating();
+        updateRatingDisplay();
     }
 
     function applyIllusion(pokemon) {
@@ -5440,12 +5461,19 @@ document.getElementById("opponent-max-hp").textContent = "";
     if(playerWon){
         winScreen.style.display="flex";
         winText.textContent="しょうぶ に かった！";
+        rating += 10; 
+        winCount++;
+        updateRating();
     }else{
 
         screenOverlay.classList.add("active");
 
         gameOverScreen.style.display="flex";
         gameOverText.textContent="めのまえが まっくら になった...";
+        rating -= 30;
+        if (rating < 0) rating = 0;
+        loseCount++;
+        updateRating();
     }
 }
 

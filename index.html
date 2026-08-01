@@ -5461,7 +5461,7 @@ document.getElementById("opponent-max-hp").textContent = "";
     if(playerWon){
         winScreen.style.display="flex";
         winText.textContent="しょうぶ に かった！";
-        rating += 10; 
+        rating += 30; 
         winCount++;
         updateRating();
     }else{
@@ -5470,7 +5470,7 @@ document.getElementById("opponent-max-hp").textContent = "";
 
         gameOverScreen.style.display="flex";
         gameOverText.textContent="めのまえが まっくら になった...";
-        rating -= 30;
+        rating -= 40;
         if (rating < 0) rating = 0;
         loseCount++;
         updateRating();

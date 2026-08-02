@@ -166,6 +166,27 @@
                     <p id="game-over-text" class="text-lg mb-4 text-center"></p>
                     <button id="restart-button" class="font-bold py-2 px-4 rounded shadow-md border-2 border-white hover:bg-white/20">はじめから もどる</button>
                 </div>
+                <div id="reset-confirm-screen"
+     class="w-full h-full hidden items-center justify-center flex-col z-30 text-white">
+
+    <p class="text-lg mb-4">
+        レートと戦績を<br>
+        リセットしますか？
+    </p>
+
+    <div class="flex gap-4">
+        <button id="reset-yes-button"
+            class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded">
+            はい
+        </button>
+
+        <button id="reset-no-button"
+            class="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            いいえ
+        </button>
+    </div>
+
+</div>
             </div>
             <div id="opponent-area" class="absolute top-5 right-12 w-2/5 max-w-[300px] flex flex-col items-center">
                 <div class="nes-container bg-white/80 p-2 w-full mt-[-2px]">
@@ -249,6 +270,11 @@ class="border-2 border-gray-800 rounded p-1 bg-sky-300 hover:bg-sky-400">
 こうさん
 </button>
 
+<button id="setting-button"
+class="border-2 border-gray-800 rounded p-1 bg-gray-300 hover:bg-gray-400 col-span-2">
+せってい
+</button>
+
 </div>
 
         <!-- 戦うを押したら表示 -->
@@ -290,10 +316,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameOverScreen = document.getElementById('game-over-screen');
     const gameOverText = document.getElementById('game-over-text');
     const restartButton = document.getElementById('restart-button');
+    const settingButton = document.getElementById("setting-button");
     const winScreen = document.getElementById('win-screen');
     const winText = document.getElementById('win-text');
     const winRestartButton = document.getElementById('win-restart-button');
     const screenOverlay = document.getElementById('screen-overlay');
+    const resetConfirmScreen =
+document.getElementById("reset-confirm-screen");
+
+const resetYesButton =
+document.getElementById("reset-yes-button");
+
+const resetNoButton =
+document.getElementById("reset-no-button");
+
+settingButton.onclick = () => {
+
+    screenOverlay.classList.add("active");
+
+    resetConfirmScreen.style.display = "flex";
+
+};
+resetYesButton.onclick = () => {
+
+    rating = 1000;
+    winCount = 0;
+    loseCount = 0;
+    winStreak = 0;
+    loseStreak = 0;
+
+    localStorage.setItem("rating", rating);
+    localStorage.setItem("wins", winCount);
+    localStorage.setItem("losses", loseCount);
+    localStorage.setItem("winStreak", winStreak);
+    localStorage.setItem("loseStreak", loseStreak);
+
+    updateRating();
+
+    resetConfirmScreen.style.display = "none";
+    screenOverlay.classList.remove("active");
+
+    showMessage("リセットしました！");
+};
+resetNoButton.onclick = () => {
+
+    resetConfirmScreen.style.display = "none";
+
+    screenOverlay.classList.remove("active");
+
+};
     const moveTooltip = document.getElementById('move-tooltip');
     const selectionTooltip = document.getElementById('selection-tooltip');
     const turnCounter = document.getElementById('turn-counter');
@@ -316,8 +387,7 @@ surrenderButton.onclick = () => {
     endGame(false);
 
 };
-
-    
+ 
     // --- Game Data ---
     let playerPokemon;
     let opponentPokemon;
@@ -329,6 +399,8 @@ surrenderButton.onclick = () => {
     let rating = Number(localStorage.getItem("rating")) || 1000;
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
+    let winStreak = Number(localStorage.getItem("winStreak")) || 0;
+    let loseStreak = Number(localStorage.getItem("loseStreak")) || 0;
     let gameId = 0;
     let currentTurn = 1;
     let weather = { type: 'none', turns: 0 };
@@ -912,7 +984,7 @@ function useZMove(pokemon){
     }
 
     function getRank() {
-
+    if (rating >= 2416) return "😎 最終1位";
     if (rating >= 2100) return "🏆 チャンピオン級";
     if (rating >= 1900) return "👑 マスボ級";
     if (rating >= 1700) return "💎 ハイボ級";
@@ -923,17 +995,20 @@ function useZMove(pokemon){
     return "🔰 ルーキー";
 }
 
-    function updateRating() {
+function updateRating() {
 
     ratingDisplay.innerHTML = `
         <div>レート：${rating}</div>
         <div>ランク：${getRank()}</div>
         <div>${winCount}勝　${loseCount}敗</div>
+        <div>🔥${winStreak}連勝　💀${loseStreak}連敗</div>
     `;
 
     localStorage.setItem("rating", rating);
     localStorage.setItem("wins", winCount);
     localStorage.setItem("losses", loseCount);
+    localStorage.setItem("winStreak", winStreak);
+    localStorage.setItem("loseStreak", loseStreak);
 }
     function calculateStats(basePokemon) {
         const level = 50;
@@ -5461,32 +5536,58 @@ document.getElementById("opponent-max-hp").textContent = "";
         opponentSub.style.display = 'none';
     }
 }
-    function endGame(playerWon) {
+function endGame(playerWon) {
     disableMoves();
 
     menu.style.display = "none";
     battleMenu.style.display = "none";
     movesContainer.style.display = "none";
 
-    if(playerWon){
-        winScreen.style.display="flex";
-        winText.textContent="しょうぶ に かった！";
+    if (playerWon) {
+
+        winScreen.style.display = "flex";
+
         const gain = Math.floor(Math.random() * 31) + 10;
-        rating += gain;
+
+        // 連勝管理
+        winStreak++;
+        loseStreak = 0;
+
+        const streakBonus = winStreak * winStreak;
+
+        rating += gain + streakBonus;
+
         winCount++;
-        updateRating();
-    }else{
+
+        winText.textContent =
+            `しょうぶ に かった！`;
+
+    } else {
 
         screenOverlay.classList.add("active");
 
-        gameOverScreen.style.display="flex";
-        gameOverText.textContent="めのまえが まっくら になった...";
-        const loss = Math.floor(Math.random() * 31) + 10;
-rating = Math.max(1000, rating - loss);
-loseCount++;
+        gameOverScreen.style.display = "flex";
 
-        updateRating();
+        const loss = Math.floor(Math.random() * 31) + 10;
+
+        // 連敗管理
+        loseStreak++;
+        winStreak = 0;
+
+        const streakPenalty = loseStreak * loseStreak;
+
+        rating = Math.max(
+            1000,
+            rating - loss - streakPenalty
+        );
+
+        loseCount++;
+
+        gameOverText.textContent =
+            `めのまえが まっくら になった...`;
     }
+
+    updateRating();
 }
 
     function showMessage(text, duration = 1500) {

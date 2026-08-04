@@ -986,13 +986,12 @@ function useZMove(pokemon){
     function getRank() {
     if (rating >= 2416) return "😎 最終1位";
     if (rating >= 2100) return "🏆 チャンピオン級";
-    if (rating >= 1900) return "👑 マスボ級";
-    if (rating >= 1700) return "🟡 ハイボ級";
-    if (rating >= 1500) return "🔵 スパボ級";
-    if (rating >= 1300) return "🔴 モンボ級";
-    if (rating >= 1100) return "⚪ ビギナー級";
+    if (rating >= 1500) return "👑 マスボ級";
+    if (rating >= 1300) return "🟡 ハイボ級";
+    if (rating >= 1100) return "🔵 スパボ級";
+    if (rating >= 500) return "🔴 モンボ級";
 
-    return "🔰 ルーキー";
+    return "⚪ ビギナー級";
 }
 
 function updateRating() {
@@ -5615,7 +5614,7 @@ function endGame(playerWon) {
         const streakPenalty = loseStreak * loseStreak;
 
         rating = Math.max(
-            1000,
+            1,
             rating - loss - streakPenalty
         );
 

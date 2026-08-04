@@ -987,11 +987,23 @@ function useZMove(pokemon){
     if (rating >= 2416) return "😎 最終1位";
     if (rating >= 2100) return "🏆 チャンピオン級";
     if (rating >= 1500) return "👑 マスボ級";
-    if (rating >= 1300) return "🟡 ハイボ級";
-    if (rating >= 1100) return "🔵 スパボ級";
-    if (rating >= 500) return "🔴 モンボ級";
+    if (rating >= 1240) return "🟡 ハイボ級1";
+    if (rating >= 1020) return "🟡 ハイボ級2";
+    if (rating >= 870) return "🟡 ハイボ級3";
+    if (rating >= 720) return "🟡 ハイボ級4";
+    if (rating >= 610) return "🔵 スパボ級1";
+    if (rating >= 500) return "🔵 スパボ級2";
+    if (rating >= 430) return "🔵 スパボ級3";
+    if (rating >= 360) return "🔵 スパボ級4";
+    if (rating >= 300) return "🔴 モンボ級1";
+    if (rating >= 250) return "🔴 モンボ級2";
+    if (rating >= 200) return "🔴 モンボ級3";
+    if (rating >= 150) return "🔴 モンボ級4";
+    if (rating >= 100) return "⚪ ビギナー1";
+    if (rating >= 50) return "⚪ ビギナー2";
+    if (rating >= 20) return "⚪ ビギナー3";
 
-    return "⚪ ビギナー級";
+    return "⚪ ビギナー4";
 }
 
 function updateRating() {
@@ -5584,13 +5596,15 @@ function endGame(playerWon) {
 
         winScreen.style.display = "flex";
 
-        const gain = Math.floor(Math.random() * 21) + 10;
+        // 10～20
+        const gain = Math.floor(Math.random() * 11) + 10;
 
         // 連勝管理
         winStreak++;
         loseStreak = 0;
 
-        const streakBonus = winStreak * winStreak;
+        // 連勝ボーナス
+        const streakBonus = winStreak * 2;
 
         rating += gain + streakBonus;
 
@@ -5605,13 +5619,15 @@ function endGame(playerWon) {
 
         gameOverScreen.style.display = "flex";
 
-        const loss = Math.floor(Math.random() * 31) + 10;
+        // 10～20
+        const loss = Math.floor(Math.random() * 11) + 10;
 
         // 連敗管理
         loseStreak++;
         winStreak = 0;
 
-        const streakPenalty = loseStreak * loseStreak;
+        // 連敗ボーナス
+        const streakPenalty = loseStreak * 2;
 
         rating = Math.max(
             1,

@@ -422,7 +422,7 @@ surrenderButton.onclick = () => {
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復。'},
         'きのみバスケット': { name: 'きのみバスケット', description: '毎ターンHPを回復かも'},
-        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを3/32回復。'},
+        'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/16回復。'},
         'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
         'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る。'},
         'きあいのハチマキ': { name: 'きあいのハチマキ', description: '30%でHP1耐える。'},
@@ -5096,7 +5096,7 @@ if (opponentPokemon.magmastormTurns > 0 && opponentPokemon.currentHp > 0) {
                 pokemon.currentHp > 0 &&
                 pokemon.currentHp < pokemon.maxHp
             ) {
-                const heal = Math.floor(pokemon.maxHp * 3/ 32);
+                const heal = Math.floor(pokemon.maxHp * 1/ 16);
                 pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + heal);
                 await showMessage(`${pokemon.name} は たべのこしで かいふくした！`);
                 updateHpBars();

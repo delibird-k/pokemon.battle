@@ -417,7 +417,6 @@ surrenderButton.onclick = () => {
         'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
         'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.5倍。'},
         'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.5倍。'},
-        'マジックハンド': { name: 'マジックハンド', description: '40以下の技の威力が1.5倍。'},
         'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.5倍。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
@@ -425,7 +424,6 @@ surrenderButton.onclick = () => {
         'きのみバスケット': { name: 'きのみバスケット', description: '毎ターンHPを回復かも'},
         'たべのこし': { name: 'たべのこし', description: '毎ターンHPを3/32回復。'},
         'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
-        'おうじゃのしるし': { name: 'おうじゃのしるし', description: '30%で怯ませる。'},
         'しろいハーブ': { name: 'しろいハーブ', description: '下がった能力が元に戻る。'},
         'きあいのハチマキ': { name: 'きあいのハチマキ', description: '30%でHP1耐える。'},
         'かえんだま': { name: 'かえんだま', description: 'やけどする。あっつ。'},
@@ -5417,7 +5415,6 @@ if (defender.ability === "わざわいのうつわ") {
         if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
-        if (attacker.item && attacker.item.name === 'マジックハンド' && move.power <= 40) movePower *= 1.5;
         if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'そうだいしょう' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'きずなへんげ' && move.category && move.power <= 2000) movePower *= 1.5;

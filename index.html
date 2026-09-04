@@ -2804,119 +2804,187 @@ if (playerClaw && !opponentClaw) {
     }
     
 // ============================================================
-// 第二版AI
-// 1vs1・交代なし・先読み型AI
+// ULTRA AI
+// 1vs1・交代なし・多段階評価AI
 // ============================================================
 
-function getAIMoveType(move, attacker) {
 
-    let type = Array.isArray(move.type)
-        ? move.type[0]
-        : move.type;
+// ============================================================
+// AI：技のタイプ取得
+// ============================================================
+
+function getAIMoveTypes(move, attacker) {
+    if (!move) return [];
+
+    let types = Array.isArray(move.type)
+        ? [...move.type]
+        : [move.type];
 
     // スカイスキン
     if (
-        attacker.ability === "スカイスキン" &&
-        type === "ノーマル" &&
+        attacker?.ability === "スカイスキン" &&
+        types.includes("ノーマル") &&
         move.category !== "status"
     ) {
-        type = "ひこう";
+        types = types.map(t =>
+            t === "ノーマル" ? "ひこう" : t
+        );
     }
 
     // フェアリースキン
     if (
-        attacker.ability === "フェアリースキン" &&
-        type === "ノーマル" &&
+        attacker?.ability === "フェアリースキン" &&
+        types.includes("ノーマル") &&
         move.category !== "status"
     ) {
-        type = "フェアリー";
+        types = types.map(t =>
+            t === "ノーマル" ? "フェアリー" : t
+        );
     }
 
-    return type;
+    return [...new Set(types)];
 }
 
 
-// ------------------------------------------------------------
-// AI用タイプ相性
-// ------------------------------------------------------------
-
-function getAITypeEffectiveness(move, defender) {
-
-    const moveType = getAIMoveType(move, opponentPokemon);
-
-    // ふゆう
-    if (
-        moveType === "じめん" &&
-        defender.ability === "ふゆう"
-    ) {
-        return 0;
-    }
-
-    // ちくでん
-    if (
-        moveType === "でんき" &&
-        defender.ability === "ちくでん"
-    ) {
-        return 0;
-    }
-
-    // コンデンサー
-    if (
-        moveType === "でんき" &&
-        defender.ability === "コンデンサー"
-    ) {
-        return 0;
-    }
-
-    let multiplier = 1;
-
-    // 配列タイプにも対応
-    const defenderTypes = Array.isArray(defender.types)
-        ? defender.types
-        : [defender.types];
-
-    for (const defenderType of defenderTypes) {
-
-        multiplier *=
-            typeChart[moveType]?.[defenderType] ?? 1;
-    }
-
-    // きもったま
-    if (
-        multiplier === 0 &&
-        opponentPokemon.ability === "きもったま" &&
-        defenderTypes.includes("ゴースト") &&
-        (
-            moveType === "ノーマル" ||
-            moveType === "かくとう"
-        )
-    ) {
-        multiplier = 1;
-    }
-
-    return multiplier;
+function getAIMoveType(move, attacker) {
+    return getAIMoveTypes(move, attacker)[0] ?? move?.type;
 }
 
 
-// ------------------------------------------------------------
-// AI用ステータス補正
-// ------------------------------------------------------------
+// ============================================================
+// AI：タイプ相性
+// 実戦側の多タイプ技の挙動に合わせて
+// 「技側のタイプのうち最も有効なもの」を採用
+// ============================================================
 
-function getAIStat(pokemon, statName) {
+function getAITypeEffectiveness(move, attackerOrDefender, maybeDefender) {
 
-    const base = pokemon[statName] || 1;
+    let attacker;
+    let defender;
+
+    // 旧形式
+    if (maybeDefender === undefined) {
+        attacker = opponentPokemon;
+        defender = attackerOrDefender;
+    } else {
+        attacker = attackerOrDefender;
+        defender = maybeDefender;
+    }
+
+    if (!move || !defender) return 1;
+
+    const moveTypes =
+        getAIMoveTypes(move, attacker);
+
+    const defenderTypes =
+        Array.isArray(defender.types)
+            ? defender.types
+            : [defender.types];
+
+    let best = 0;
+
+    for (const moveType of moveTypes) {
+
+        // ふゆう
+        if (
+            moveType === "じめん" &&
+            defender.ability === "ふゆう"
+        ) {
+            continue;
+        }
+
+        // ちくでん
+        if (
+            moveType === "でんき" &&
+            defender.ability === "ちくでん"
+        ) {
+            continue;
+        }
+
+        // コンデンサー
+        if (
+            moveType === "でんき" &&
+            defender.ability === "コンデンサー"
+        ) {
+            continue;
+        }
+
+        let multiplier = 1;
+
+        for (const defenderType of defenderTypes) {
+            multiplier *=
+                typeChart[moveType]?.[defenderType] ?? 1;
+        }
+
+        // きもったま
+        if (
+            multiplier === 0 &&
+            attacker?.ability === "きもったま" &&
+            defenderTypes.includes("ゴースト") &&
+            (
+                moveType === "ノーマル" ||
+                moveType === "かくとう"
+            )
+        ) {
+            multiplier = 1;
+        }
+
+        best = Math.max(best, multiplier);
+    }
+
+    return best;
+}
+
+
+// ============================================================
+// AI：実質ステータス
+// ============================================================
+
+function getAIEffectiveStat(pokemon, statName) {
+
+    if (!pokemon) return 1;
+
+    const stat =
+        Number(pokemon[statName] ?? 1);
 
     const stage =
-        pokemon.statStages?.[statName.replace("base", "")] ?? 0;
+        Number(
+            pokemon.statStages?.[statName] ?? 0
+        );
 
-    return base * getStatModifier(stage);
+    return Math.max(
+        1,
+        stat * getStatModifier(stage)
+    );
 }
 
 
-// ------------------------------------------------------------
-// AI用予測ダメージ
-// 実戦のcalculateDamage()を直接呼ばない
-// ------------------------------------------------------------
+// ============================================================
+// AI：命中率
+// ============================================================
+
+function getAIAccuracy(move) {
+
+    if (!move) return 0;
+
+    if (
+        move.accuracy === undefined ||
+        move.accuracy === null ||
+        move.accuracy >= 101
+    ) {
+        return 1;
+    }
+
+    return Math.max(
+        0,
+        Math.min(1, move.accuracy / 100)
+    );
+}
+
+
+// ============================================================
+// AI：技の期待ダメージ
+// ============================================================
 
 function getAIDamage(move, attacker, defender) {
 
@@ -2928,38 +2996,37 @@ function getAIDamage(move, attacker, defender) {
         return 0;
     }
 
-    const moveType =
-        getAIMoveType(move, attacker);
-
-    // 無効
-    if (
-        moveType === "じめん" &&
-        defender.ability === "ふゆう"
-    ) {
+    if (!attacker || !defender) {
         return 0;
     }
 
-    if (
-        moveType === "でんき" &&
-        (
-            defender.ability === "ちくでん" ||
-            defender.ability === "コンデンサー"
-        )
-    ) {
+    const moveTypes =
+        getAIMoveTypes(move, attacker);
+
+    if (moveTypes.length === 0) {
         return 0;
     }
 
-    let power = move.power;
+    const effectiveness =
+        getAITypeEffectiveness(
+            move,
+            attacker,
+            defender
+        );
+
+    if (effectiveness <= 0) {
+        return 0;
+    }
+
+    let power =
+        Number(move.power);
 
     // すいりゅうれんだ
     if (move.name === "すいりゅうれんだ") {
         power = 75;
     }
 
-    // --------------------------------------------------------
     // コンデンサー
-    // --------------------------------------------------------
-
     if (
         attacker.ability === "コンデンサー" &&
         move.power <= 100
@@ -2970,28 +3037,21 @@ function getAIDamage(move, attacker, defender) {
     if (
         attacker.ability === "コンデンサー" &&
         (
-            moveType === "でんき" ||
-            moveType === "はがね"
+            moveTypes.includes("でんき") ||
+            moveTypes.includes("はがね")
         )
     ) {
         power *= 2;
     }
 
-    // --------------------------------------------------------
     // ブレインフォース
-    // --------------------------------------------------------
-
     if (
-        attacker.ability === "ブレインフォース" &&
-        move.category
+        attacker.ability === "ブレインフォース"
     ) {
         power *= 1.25;
     }
 
-    // --------------------------------------------------------
     // アナライズ
-    // --------------------------------------------------------
-
     if (
         attacker.ability === "アナライズ" &&
         move.category === "special"
@@ -2999,10 +3059,7 @@ function getAIDamage(move, attacker, defender) {
         power *= 1.3;
     }
 
-    // --------------------------------------------------------
     // マルチタイプ
-    // --------------------------------------------------------
-
     if (
         attacker.ability === "マルチタイプ" &&
         move.power <= 70
@@ -3010,27 +3067,30 @@ function getAIDamage(move, attacker, defender) {
         power *= 1.5;
     }
 
-    // --------------------------------------------------------
     // スカイスキン
-    // --------------------------------------------------------
-
     if (
         attacker.ability === "スカイスキン" &&
-        move.type === "ノーマル" &&
-        move.category !== "status"
+        moveTypes.includes("ひこう") &&
+        move.type === "ノーマル"
     ) {
         power *= 1.2;
     }
 
-    // --------------------------------------------------------
-    // こんじょう・やけど
-    // --------------------------------------------------------
-
+    // フェアリースキン
     if (
+        attacker.ability === "フェアリースキン" &&
+        moveTypes.includes("フェアリー") &&
+        move.type === "ノーマル"
+    ) {
+        power *= 1.2;
+    }
+
+    // こんじょう
+    if (
+        attacker.ability === "こんじょう" &&
         attacker.status &&
         attacker.status !== "none" &&
-        move.category === "physical" &&
-        attacker.ability === "こんじょう"
+        move.category === "physical"
     ) {
         power *= 1.5;
     }
@@ -3042,10 +3102,7 @@ function getAIDamage(move, attacker, defender) {
         power *= 0.5;
     }
 
-    // --------------------------------------------------------
     // 天候
-    // --------------------------------------------------------
-
     if (
         typeof weather !== "undefined" &&
         weather
@@ -3053,123 +3110,139 @@ function getAIDamage(move, attacker, defender) {
 
         if (weather.type === "rain") {
 
-            if (moveType === "みず") {
+            if (moveTypes.includes("みず")) {
                 power *= 1.5;
             }
 
-            if (moveType === "ほのお") {
+            if (moveTypes.includes("ほのお")) {
+                power *= 0.5;
+            }
+        }
+
+        if (weather.type === "sun") {
+
+            if (moveTypes.includes("ほのお")) {
+                power *= 1.5;
+            }
+
+            if (moveTypes.includes("みず")) {
                 power *= 0.5;
             }
         }
     }
 
-    // --------------------------------------------------------
     // フィールド
-    // --------------------------------------------------------
-
     if (
         typeof field !== "undefined" &&
-        field &&
-        field.type === "psyco"
+        field
     ) {
 
-        if (moveType === "エスパー") {
+        if (
+            field.type === "psyco" &&
+            moveTypes.includes("エスパー")
+        ) {
             power *= 1.6;
         }
 
-        if ((move.priority ?? 0) > 0) {
+        if (
+            field.type === "psyco" &&
+            (move.priority ?? 0) > 0
+        ) {
             power *= 0.0001;
         }
     }
 
-    // --------------------------------------------------------
-    // 攻撃・防御ステータス
-    // --------------------------------------------------------
-
     let attackStat;
     let defenseStat;
 
-    if (move.category === "special") {
-
-        attackStat =
-            attacker.spAttack *
-            getStatModifier(
-                attacker.statStages.spAttack
-            );
-
-        defenseStat =
-            defender.spDefense *
-            getStatModifier(
-                defender.statStages.spDefense
-            );
-
-    } else {
-
-        attackStat =
-            attacker.attack *
-            getStatModifier(
-                attacker.statStages.attack
-            );
-
-        defenseStat =
-            defender.defense *
-            getStatModifier(
-                defender.statStages.defense
-            );
-    }
-
-    // ボディプレス
     if (move.name === "ボディプレス") {
 
         attackStat =
-            attacker.defense *
-            getStatModifier(
-                attacker.statStages.defense
+            getAIEffectiveStat(
+                attacker,
+                "defense"
+            );
+
+    }
+    else if (move.category === "special") {
+
+        attackStat =
+            getAIEffectiveStat(
+                attacker,
+                "spAttack"
+            );
+
+    }
+    else {
+
+        attackStat =
+            getAIEffectiveStat(
+                attacker,
+                "attack"
             );
     }
 
-    attackStat = Math.max(1, attackStat);
-    defenseStat = Math.max(1, defenseStat);
+    if (move.name === "ボディプレス") {
 
-    // --------------------------------------------------------
+        defenseStat =
+            getAIEffectiveStat(
+                defender,
+                "defense"
+            );
+
+    }
+    else if (move.category === "special") {
+
+        defenseStat =
+            getAIEffectiveStat(
+                defender,
+                "spDefense"
+            );
+
+    }
+    else {
+
+        defenseStat =
+            getAIEffectiveStat(
+                defender,
+                "defense"
+            );
+    }
+
     // 基本ダメージ
-    // --------------------------------------------------------
-
     let damage =
         Math.floor(
             Math.floor(
                 Math.floor(
-                    (2 * 50 / 5 + 2) *
-                    power *
-                    attackStat /
-                    defenseStat
+                    (
+                        (2 * 50 / 5 + 2) *
+                        power *
+                        attackStat /
+                        defenseStat
+                    )
                 ) / 50
             ) + 2
         );
 
-    // --------------------------------------------------------
     // STAB
-    // --------------------------------------------------------
-
     const attackerTypes =
         Array.isArray(attacker.types)
             ? attacker.types
             : [attacker.types];
 
-    if (attackerTypes.includes(moveType)) {
+    if (
+        moveTypes.some(
+            type => attackerTypes.includes(type)
+        )
+    ) {
 
-        const stab =
+        damage *=
             attacker.ability === "てきおうりょく"
                 ? 2
                 : 1.5;
-
-        damage *= stab;
     }
 
-    // --------------------------------------------------------
     // マルチスケイル
-    // --------------------------------------------------------
-
     if (
         defender.ability === "マルチスケイル" &&
         defender.currentHp === defender.maxHp &&
@@ -3178,37 +3251,20 @@ function getAIDamage(move, attacker, defender) {
         damage *= 0.5;
     }
 
-    // --------------------------------------------------------
     // あついしぼう
-    // --------------------------------------------------------
-
     if (
         defender.ability === "あついしぼう" &&
         (
-            moveType === "ほのお" ||
-            moveType === "こおり"
+            moveTypes.includes("ほのお") ||
+            moveTypes.includes("こおり")
         )
     ) {
         damage *= 0.5;
     }
 
-    // --------------------------------------------------------
-    // タイプ相性
-    // --------------------------------------------------------
-
-    const effectiveness =
-        getAITypeEffectiveness(move, defender);
-
-    if (effectiveness === 0) {
-        return 0;
-    }
-
     damage *= effectiveness;
 
-    // --------------------------------------------------------
     // ブレインフォース
-    // --------------------------------------------------------
-
     if (
         attacker.ability === "ブレインフォース" &&
         effectiveness > 1
@@ -3216,10 +3272,7 @@ function getAIDamage(move, attacker, defender) {
         damage *= 1.25;
     }
 
-    // --------------------------------------------------------
     // オーロラベール
-    // --------------------------------------------------------
-
     if (
         defender.auroraVeil &&
         defender.auroraVeil > 0
@@ -3227,48 +3280,76 @@ function getAIDamage(move, attacker, defender) {
         damage *= 0.5;
     }
 
-    // 乱数は平均値 0.925 を使用
+    // 平均乱数
     damage *= 0.925;
 
-    return Math.max(1, Math.floor(damage));
+    return Math.max(
+        1,
+        Math.floor(damage)
+    );
 }
 
 
-// ------------------------------------------------------------
-// AI用：1発で倒せるか
-// ------------------------------------------------------------
+// ============================================================
+// AI：命中率込み期待ダメージ
+// ============================================================
 
-function isAIKO(move, attacker, defender) {
-
-    if (
-        !move ||
-        move.category === "status"
-    ) {
-        return false;
-    }
+function getAIExpectedDamage(
+    move,
+    attacker,
+    defender
+) {
 
     const damage =
-        getAIDamage(move, attacker, defender);
+        getAIDamage(
+            move,
+            attacker,
+            defender
+        );
 
-    return damage >= defender.currentHp;
+    const accuracy =
+        getAIAccuracy(move);
+
+    return damage * accuracy;
 }
 
 
-// ------------------------------------------------------------
-// AI用：何発で倒せるか
-// ------------------------------------------------------------
+// ============================================================
+// AI：KO判定
+// ============================================================
 
-function getAIHitsToKO(move, attacker, defender) {
+function isAIKO(
+    move,
+    attacker,
+    defender
+) {
 
-    if (
-        !move ||
-        move.category === "status"
-    ) {
-        return 999;
-    }
+    return (
+        getAIDamage(
+            move,
+            attacker,
+            defender
+        ) >= defender.currentHp
+    );
+}
+
+
+// ============================================================
+// AI：何発で倒せるか
+// ============================================================
+
+function getAIHitsToKO(
+    move,
+    attacker,
+    defender
+) {
 
     const damage =
-        getAIDamage(move, attacker, defender);
+        getAIDamage(
+            move,
+            attacker,
+            defender
+        );
 
     if (damage <= 0) {
         return 999;
@@ -3280,133 +3361,160 @@ function getAIHitsToKO(move, attacker, defender) {
 }
 
 
-// ------------------------------------------------------------
-// AI用：相手の最強攻撃を予測
-// ------------------------------------------------------------
+// ============================================================
+// AI：先制判定
+// ============================================================
 
-function getBestPlayerAttackForAI() {
+function doesAIMoveGoFirst(
+    move,
+    attacker,
+    defender
+) {
 
-    const usableMoves =
-        playerPokemon.moves.filter(
-            move => (move.currentPp ?? 0) > 0
+    const priority =
+        move?.priority ?? 0;
+
+    const defenderBest =
+        getAIBestAttack(
+            defender,
+            attacker
         );
 
-    let bestMove = null;
-    let bestDamage = 0;
+    if (!defenderBest) {
+        return priority > 0;
+    }
+
+    const defenderPriority =
+        defenderBest.move?.priority ?? 0;
+
+    if (priority !== defenderPriority) {
+        return priority > defenderPriority;
+    }
+
+    return (
+        getAIEffectiveStat(
+            attacker,
+            "speed"
+        ) >=
+        getAIEffectiveStat(
+            defender,
+            "speed"
+        )
+    );
+}
+
+
+// ============================================================
+// AI：最強攻撃
+// ============================================================
+
+function getAIBestAttack(
+    attacker,
+    defender
+) {
+
+    if (!attacker?.moves) {
+        return null;
+    }
+
+    const usableMoves =
+        attacker.moves.filter(
+            move =>
+                (move.currentPp ?? 0) > 0 &&
+                move.category !== "status" &&
+                move.power
+        );
+
+    let best = null;
 
     for (const move of usableMoves) {
-
-        if (
-            move.category === "status" ||
-            !move.power
-        ) {
-            continue;
-        }
 
         const damage =
             getAIDamage(
                 move,
-                playerPokemon,
-                opponentPokemon
+                attacker,
+                defender
             );
 
-        if (damage > bestDamage) {
-            bestDamage = damage;
-            bestMove = move;
-        }
-    }
-
-    return {
-        move: bestMove,
-        damage: bestDamage
-    };
-}
-
-
-// ------------------------------------------------------------
-// AI用：自分の最強攻撃
-// ------------------------------------------------------------
-
-function getBestAIAttack() {
-
-    const usableMoves =
-        opponentPokemon.moves.filter(
-            move => (move.currentPp ?? 0) > 0
-        );
-
-    let bestMove = null;
-    let bestDamage = 0;
-
-    for (const move of usableMoves) {
+        const expected =
+            getAIExpectedDamage(
+                move,
+                attacker,
+                defender
+            );
 
         if (
-            move.category === "status" ||
-            !move.power
+            !best ||
+            expected > best.expected
         ) {
-            continue;
-        }
-
-        const damage =
-            getAIDamage(
+            best = {
                 move,
-                opponentPokemon,
-                playerPokemon
-            );
-
-        if (damage > bestDamage) {
-            bestDamage = damage;
-            bestMove = move;
+                damage,
+                expected
+            };
         }
     }
 
-    return {
-        move: bestMove,
-        damage: bestDamage
-    };
+    return best;
 }
 
 
-// ------------------------------------------------------------
-// AI用：状態異常の評価
-// ------------------------------------------------------------
+// ============================================================
+// AI：状態異常評価
+// ============================================================
 
-function getAIStatusScore(move, attacker, defender) {
+function getAIStatusScore(
+    move,
+    attacker,
+    defender
+) {
 
-    if (defender.status) {
-        return -1000;
+    if (!move || !move.name) {
+        return 0;
     }
 
     if (
-        !move ||
-        !move.name
+        defender.status &&
+        defender.status !== "none"
     ) {
-        return 0;
+        return -500;
     }
 
     // どくどく
     if (move.name === "どくどく") {
 
         if (
-            defender.types.includes("どく") ||
-            defender.types.includes("はがね")
+            defender.types?.includes("どく") ||
+            defender.types?.includes("はがね")
         ) {
             return -1000;
         }
 
-        return 125;
+        return 180;
     }
 
     // でんじは
     if (move.name === "でんじは") {
 
         if (
-            defender.types.includes("でんき") ||
-            defender.types.includes("じめん")
+            defender.types?.includes("でんき") ||
+            defender.types?.includes("じめん")
         ) {
             return -1000;
         }
 
-        return 115;
+        // 相手が高速なら価値大
+        const speed =
+            getAIEffectiveStat(
+                defender,
+                "speed"
+            );
+
+        if (speed >= 100) {
+            return 230;
+        }
+
+        return 150;
     }
 
     // 眠り
@@ -3415,26 +3523,34 @@ function getAIStatusScore(move, attacker, defender) {
         move.name === "きのこのほうし"
     ) {
 
-        if (defender.types.includes("くさ")) {
+        if (
+            defender.types?.includes("くさ")
+        ) {
             return -1000;
         }
 
-        return 140;
+        return 260;
     }
 
     return 0;
 }
 
 
-// ------------------------------------------------------------
-// AI用：変化技評価
-// ------------------------------------------------------------
+// ============================================================
+// AI：変化技
+// ============================================================
 
-function getAIStatusMoveScore(move) {
+function getAIStatusMoveScore(
+    move,
+    attacker,
+    defender
+) {
+
+    if (!move) return -1000;
 
     const hpRate =
-        opponentPokemon.currentHp /
-        opponentPokemon.maxHp;
+        attacker.currentHp /
+        attacker.maxHp;
 
     let score = 0;
 
@@ -3442,22 +3558,22 @@ function getAIStatusMoveScore(move) {
     if (move.name === "めいそう") {
 
         if (
-            opponentPokemon.statStages.spAttack >= 4 ||
-            hpRate < 0.45
+            attacker.statStages.spAttack >= 5 ||
+            hpRate < 0.35
         ) {
             return -1000;
         }
 
-        score += 90;
+        score += 100;
 
         if (
-            playerPokemon.moves.some(
+            defender.moves?.some(
                 m =>
                     m.category === "special" &&
                     m.power
             )
         ) {
-            score += 45;
+            score += 100;
         }
     }
 
@@ -3465,8 +3581,79 @@ function getAIStatusMoveScore(move) {
     if (move.name === "てっぺき") {
 
         if (
-            opponentPokemon.statStages.defense >= 4 ||
-            hpRate < 0.45
+            attacker.statStages.defense >= 5 ||
+            hpRate < 0.35
+        ) {
+            return -1000;
+        }
+
+        score += 100;
+
+        if (
+            defender.moves?.some(
+                m =>
+                    m.category === "physical" &&
+                    m.power
+            )
+        ) {
+            score += 100;
+        }
+    }
+
+    // つるぎのまい
+    if (move.name === "つるぎのまい") {
+
+        if (
+            attacker.statStages.attack >= 5 ||
+            hpRate < 0.35
+        ) {
+            return -1000;
+        }
+
+        score += 130;
+
+        if (
+            getAIBestAttack(
+                attacker,
+                defender
+            )
+        ) {
+            score += 100;
+        }
+    }
+
+    // わるだくみ
+    if (move.name === "わるだくみ") {
+
+        if (
+            attacker.statStages.spAttack >= 5 ||
+            hpRate < 0.35
+        ) {
+            return -1000;
+        }
+
+        score += 140;
+    }
+
+    // やどりぎ
+    if (move.name === "やどりぎのたね") {
+
+        if (
+            defender.seeded ||
+            defender.types?.includes("くさ")
+        ) {
+            return -1000;
+        }
+
+        score += 180;
+    }
+
+    // みがわり
+    if (move.name === "みがわり") {
+
+        if (
+            attacker.hasSubstitute ||
+            hpRate <= 0.30
         ) {
             return -1000;
         }
@@ -3474,58 +3661,39 @@ function getAIStatusMoveScore(move) {
         score += 90;
 
         if (
-            playerPokemon.moves.some(
-                m =>
-                    m.category === "physical" &&
-                    m.power
-            )
+            defender.status &&
+            defender.status !== "none"
         ) {
-            score += 45;
-        }
-    }
-
-    // やどりぎ
-    if (move.name === "やどりぎのたね") {
-
-        if (
-            playerPokemon.seeded
-        ) {
-            return -1000;
-        }
-
-        if (
-            playerPokemon.types.includes("くさ")
-        ) {
-            return -1000;
-        }
-
-        score += 130;
-    }
-
-    // みがわり
-    if (move.name === "みがわり") {
-
-        if (
-            opponentPokemon.hasSubstitute ||
-            hpRate <= 0.30
-        ) {
-            return -1000;
-        }
-
-        score += 70;
-
-        if (playerPokemon.status) {
-            score += 40;
+            score += 100;
         }
     }
 
     // まもる
     if (move.name === "まもる") {
 
-        if (hpRate < 0.25) {
-            score += 100;
-        } else {
-            score += 25;
+        const enemyBest =
+            getAIBestAttack(
+                defender,
+                attacker
+            );
+
+        if (!enemyBest) {
+            return 20;
+        }
+
+        if (
+            enemyBest.damage >=
+            attacker.currentHp
+        ) {
+            score += 450;
+        }
+        else if (
+            hpRate <= 0.30
+        ) {
+            score += 180;
+        }
+        else {
+            score += 20;
         }
     }
 
@@ -3533,11 +3701,283 @@ function getAIStatusMoveScore(move) {
 }
 
 
-// ------------------------------------------------------------
-// AI用：技1つの評価
-// ------------------------------------------------------------
+// ============================================================
+// AI：反動技
+// ============================================================
 
-function evaluateAIMove(move) {
+function getAIRecoilPenalty(
+    move,
+    attacker
+) {
+
+    const recoilMoves = [
+        "フレアドライブ",
+        "ワイルドボルト",
+        "ブレイブバード",
+        "もろはのずつき",
+        "すてみタックル",
+        "ボルテッカー",
+        "ウェーブタックル"
+    ];
+
+    if (
+        !recoilMoves.includes(move.name)
+    ) {
+        return 0;
+    }
+
+    const hpRate =
+        attacker.currentHp /
+        attacker.maxHp;
+
+    if (hpRate <= 0.20) {
+        return 500;
+    }
+
+    if (hpRate <= 0.35) {
+        return 220;
+    }
+
+    return 40;
+}
+
+
+// ============================================================
+// AI：攻撃技評価
+// ============================================================
+
+function evaluateAIAttack(
+    move,
+    attacker,
+    defender
+) {
+
+    const damage =
+        getAIDamage(
+            move,
+            attacker,
+            defender
+        );
+
+    const expectedDamage =
+        getAIExpectedDamage(
+            move,
+            attacker,
+            defender
+        );
+
+    if (damage <= 0) {
+        return -100000;
+    }
+
+    const hp =
+        defender.currentHp;
+
+    const myHpRate =
+        attacker.currentHp /
+        attacker.maxHp;
+
+    const enemyHpRate =
+        defender.currentHp /
+        defender.maxHp;
+
+    let score = 0;
+
+    // 基本火力
+    score += expectedDamage * 2.2;
+
+    // 削ったHPそのもの
+    score +=
+        (damage / defender.maxHp) *
+        1800;
+
+    // 命中率
+    score +=
+        (getAIAccuracy(move) - 1) *
+        500;
+
+    // ========================================================
+    // KO
+    // ========================================================
+
+    if (damage >= hp) {
+
+        score += 15000;
+
+        // 命中不安定KOは少しだけ下げる
+        score +=
+            getAIAccuracy(move) * 2500;
+    }
+
+    // 2発圏内
+    const hits =
+        getAIHitsToKO(
+            move,
+            attacker,
+            defender
+        );
+
+    if (hits === 2) {
+        score += 1200;
+    }
+
+    if (hits === 3) {
+        score += 350;
+    }
+
+    // ========================================================
+    // 相手の次の攻撃を考える
+    // ========================================================
+
+    const enemyBest =
+        getAIBestAttack(
+            defender,
+            attacker
+        );
+
+    if (enemyBest) {
+
+        const enemyDamage =
+            enemyBest.damage;
+
+        // 自分が次ターン倒される
+        if (
+            enemyDamage >=
+            attacker.currentHp
+        ) {
+
+            // 今の攻撃で相手を倒せるなら問題なし
+            if (damage >= hp) {
+                score += 10000;
+            }
+            else {
+                score -= 5000;
+            }
+        }
+
+        // 相手の攻撃を耐えられる
+        else {
+
+            const remainingHp =
+                attacker.currentHp -
+                enemyDamage;
+
+            score +=
+                (remainingHp /
+                attacker.maxHp) *
+                700;
+        }
+    }
+
+    // ========================================================
+    // 先制技
+    // ========================================================
+
+    if ((move.priority ?? 0) > 0) {
+
+        if (
+            damage >= hp
+        ) {
+            score += 4000;
+        }
+
+        if (
+            enemyBest &&
+            enemyBest.damage >=
+            attacker.currentHp
+        ) {
+            score += 5000;
+        }
+
+        if (enemyHpRate <= 0.35) {
+            score += 500;
+        }
+    }
+
+    // ========================================================
+    // STAB
+    // ========================================================
+
+    const attackerTypes =
+        Array.isArray(attacker.types)
+            ? attacker.types
+            : [attacker.types];
+
+    const moveTypes =
+        getAIMoveTypes(
+            move,
+            attacker
+        );
+
+    if (
+        moveTypes.some(
+            t => attackerTypes.includes(t)
+        )
+    ) {
+        score += 100;
+    }
+
+    // ========================================================
+    // タイプ相性
+    // 「効果抜群だから偉い」だけにはしない
+    // KO・生存・期待ダメージを優先
+    // ========================================================
+
+    const effectiveness =
+        getAITypeEffectiveness(
+            move,
+            attacker,
+            defender
+        );
+
+    if (effectiveness === 4) {
+        score += 180;
+    }
+    else if (effectiveness === 2) {
+        score += 90;
+    }
+    else if (effectiveness === 0.5) {
+        score -= 50;
+    }
+    else if (effectiveness === 0.25) {
+        score -= 120;
+    }
+
+    // ========================================================
+    // 反動
+    // ========================================================
+
+    score -=
+        getAIRecoilPenalty(
+            move,
+            attacker
+        );
+
+    // ========================================================
+    // HP差
+    // ========================================================
+
+    score +=
+        (1 - enemyHpRate) *
+        250;
+
+    score +=
+        myHpRate *
+        120;
+
+    return score;
+}
+
+
+// ============================================================
+// AI：変化技込み総合評価
+// ============================================================
+
+function evaluateAIMove(
+    move,
+    attacker = opponentPokemon,
+    defender = playerPokemon
+) {
 
     if (!move) {
         return -Infinity;
@@ -3550,397 +3990,427 @@ function evaluateAIMove(move) {
         return -Infinity;
     }
 
-    // --------------------------------------------------------
-    // 攻撃技
-    // --------------------------------------------------------
-
     if (
         move.category !== "status" &&
         move.power
     ) {
 
-        const damage =
-            getAIDamage(
-                move,
-                opponentPokemon,
-                playerPokemon
-            );
-
-        const hpRate =
-            playerPokemon.currentHp /
-            playerPokemon.maxHp;
-
-        const myHpRate =
-            opponentPokemon.currentHp /
-            opponentPokemon.maxHp;
-
-        // 無効技はほぼ選ばない
-        if (damage <= 0) {
-            return -10000;
-        }
-
-        let score = damage;
-
-        // --------------------------------------------
-        // 確定KO
-        // --------------------------------------------
-
-        if (
-            damage >= playerPokemon.currentHp
-        ) {
-            score += 10000;
-        }
-
-        // --------------------------------------------
-        // 2発圏内
-        // --------------------------------------------
-
-        const hits =
-            getAIHitsToKO(
-                move,
-                opponentPokemon,
-                playerPokemon
-            );
-
-        if (hits === 2) {
-            score += 850;
-        }
-
-        if (hits === 3) {
-            score += 250;
-        }
-
-        // --------------------------------------------
-        // HPが少ない相手
-        // --------------------------------------------
-
-        if (hpRate <= 0.30) {
-            score += 300;
-        }
-
-        // --------------------------------------------
-        // 先制技
-        // --------------------------------------------
-
-        if ((move.priority ?? 0) > 0) {
-
-            if (
-                damage >= playerPokemon.currentHp
-            ) {
-                score += 5000;
-            }
-
-            if (
-                hpRate <= 0.35
-            ) {
-                score += 450;
-            }
-        }
-
-        // --------------------------------------------
-        // 自分が瀕死の場合
-        // --------------------------------------------
-
-        if (myHpRate <= 0.30) {
-
-            // この攻撃で倒せるなら非常に重要
-            if (
-                damage >= playerPokemon.currentHp
-            ) {
-                score += 8000;
-            }
-            else if (
-                (move.priority ?? 0) > 0
-            ) {
-                score += 1000;
-            }
-        }
-
-        // --------------------------------------------
-        // 反撃されることを考える
-        // --------------------------------------------
-
-        const playerBest =
-            getBestPlayerAttackForAI();
-
-        if (playerBest.move) {
-
-            const playerDamage =
-                playerBest.damage;
-
-            // この技を使った後、
-            // 相手の反撃で倒されるなら減点
-            if (
-                playerDamage >=
-                opponentPokemon.currentHp
-            ) {
-
-                if (
-                    damage <
-                    playerPokemon.currentHp
-                ) {
-                    score -= 5000;
-                }
-            }
-            else {
-
-                // 耐えられるなら少し評価
-                score += 150;
-            }
-        }
-
-        // --------------------------------------------
-        // STAB
-        // --------------------------------------------
-
-        const moveType =
-            getAIMoveType(
-                move,
-                opponentPokemon
-            );
-
-        if (
-            opponentPokemon.types.includes(moveType)
-        ) {
-            score += 80;
-        }
-
-        // --------------------------------------------
-        // タイプ相性
-        // --------------------------------------------
-
-        const effectiveness =
-            getAITypeEffectiveness(
-                move,
-                playerPokemon
-            );
-
-        if (effectiveness >= 4) {
-            score += 500;
-        }
-        else if (effectiveness >= 2) {
-            score += 250;
-        }
-        else if (effectiveness < 1) {
-            score -= 100;
-        }
-
-        // --------------------------------------------
-        // 反動技
-        // --------------------------------------------
-
-        const recoilMoves = [
-            "フレアドライブ",
-            "ワイルドボルト",
-            "ブレイブバード",
-            "もろはのずつき",
-            "すてみタックル",
-            "ボルテッカー",
-            "ウェーブタックル"
-        ];
-
-        if (
-            recoilMoves.includes(move.name)
-        ) {
-
-            if (
-                opponentPokemon.currentHp <=
-                Math.floor(
-                    opponentPokemon.maxHp / 3
-                )
-            ) {
-                score -= 500;
-            }
-        }
-
-        return score;
+        return evaluateAIAttack(
+            move,
+            attacker,
+            defender
+        );
     }
-
-
-    // --------------------------------------------------------
-    // 変化技
-    // --------------------------------------------------------
 
     let score =
-        getAIStatusMoveScore(move);
-
-    const statusScore =
-        getAIStatusScore(
+        getAIStatusMoveScore(
             move,
-            opponentPokemon,
-            playerPokemon
+            attacker,
+            defender
         );
 
-    score += statusScore;
-
-    // 状態異常技は成功するなら高評価
-    if (statusScore > 0) {
-        score += 100;
-    }
+    score +=
+        getAIStatusScore(
+            move,
+            attacker,
+            defender
+        );
 
     return score;
 }
 
 
-// ------------------------------------------------------------
-// AI：相手の反撃を考慮した先読み
-// ------------------------------------------------------------
+// ============================================================
+// AI：仮想的に相手のHPを削った場合の評価
+// ============================================================
 
 function getAIFutureScore(move) {
 
-    const currentScore =
-        evaluateAIMove(move);
+    const attacker =
+        opponentPokemon;
 
-    if (
-        currentScore <= -9000
-    ) {
-        return currentScore;
+    const defender =
+        playerPokemon;
+
+    let score =
+        evaluateAIMove(
+            move,
+            attacker,
+            defender
+        );
+
+    if (!Number.isFinite(score)) {
+        return -Infinity;
     }
 
+    // --------------------------------------------------------
     // 攻撃後の仮想HP
-    let predictedPlayerHp =
-        playerPokemon.currentHp;
+    // --------------------------------------------------------
+
+    let predictedEnemyHp =
+        defender.currentHp;
 
     if (
         move.category !== "status" &&
         move.power
     ) {
 
-        const damage =
-            getAIDamage(
-                move,
-                opponentPokemon,
-                playerPokemon
-            );
-
-        predictedPlayerHp =
+        predictedEnemyHp =
             Math.max(
                 0,
-                predictedPlayerHp - damage
+                predictedEnemyHp -
+                getAIDamage(
+                    move,
+                    attacker,
+                    defender
+                )
             );
     }
 
-    // そのまま倒せる
-    if (predictedPlayerHp <= 0) {
-        return currentScore + 20000;
+    // 即KO
+    if (predictedEnemyHp <= 0) {
+        return score + 30000;
     }
 
     // --------------------------------------------------------
-    // 相手が次に使う最強技を予測
+    // 相手の次の最善手
     // --------------------------------------------------------
 
-    const playerBest =
-        getBestPlayerAttackForAI();
+    const enemyBest =
+        getAIBestAttack(
+            defender,
+            attacker
+        );
 
-    let futureScore =
-        currentScore;
+    if (enemyBest) {
 
-    if (playerBest.move) {
+        const enemyDamage =
+            enemyBest.damage;
 
-        const predictedDamage =
-            playerBest.damage;
-
-        const predictedMyHp =
+        let predictedMyHp =
             Math.max(
                 0,
-                opponentPokemon.currentHp -
-                predictedDamage
+                attacker.currentHp -
+                enemyDamage
             );
 
-        // 次のターンで倒される
+        // 次ターン確定で死ぬ
         if (
             predictedMyHp <= 0
         ) {
 
-            // こちらが相手を削れているなら
-            // 少しだけ評価する
-            futureScore -= 3500;
+            // 今の技で相手を倒せないなら大きく減点
+            score -= 7000;
 
-            // ただし先制技なら話が変わる
+            // ただしこちらが先制して倒せる可能性
             if (
-                move.priority > 0 &&
-                predictedPlayerHp <=
-                playerPokemon.maxHp * 0.4
+                (move.priority ?? 0) > 0 &&
+                predictedEnemyHp <=
+                defender.currentHp * 0.35
             ) {
-                futureScore += 1000;
+                score += 3500;
             }
         }
         else {
 
-            // 生き残れる
-            futureScore +=
-                Math.min(
-                    600,
-                    predictedMyHp * 0.5
-                );
+            score +=
+                (predictedMyHp /
+                attacker.maxHp) *
+                900;
         }
     }
 
     // --------------------------------------------------------
-    // HP差
+    // 相手の残HP
     // --------------------------------------------------------
 
-    const playerRate =
-        predictedPlayerHp /
-        playerPokemon.maxHp;
+    score +=
+        (
+            1 -
+            predictedEnemyHp /
+            defender.maxHp
+        ) * 1200;
 
-    const myRate =
-        opponentPokemon.currentHp /
-        opponentPokemon.maxHp;
+    // --------------------------------------------------------
+    // 自分の残HP
+    // --------------------------------------------------------
 
-    futureScore +=
-        (1 - playerRate) * 800;
+    score +=
+        (
+            attacker.currentHp /
+            attacker.maxHp
+        ) * 500;
 
-    futureScore +=
-        myRate * 300;
-
-    return futureScore;
+    return score;
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
+// AI：読み合い用スコア
+// 相手が最善手を選ぶことを想定
+// ============================================================
+
+function getAIMinimaxScore(move) {
+
+    const currentScore =
+        getAIFutureScore(move);
+
+    if (
+        !Number.isFinite(currentScore)
+    ) {
+        return -Infinity;
+    }
+
+    const predictedEnemyHp =
+        (
+            move.category !== "status" &&
+            move.power
+        )
+            ? Math.max(
+                0,
+                playerPokemon.currentHp -
+                getAIDamage(
+                    move,
+                    opponentPokemon,
+                    playerPokemon
+                )
+            )
+            : playerPokemon.currentHp;
+
+    // KOなら最優先
+    if (predictedEnemyHp <= 0) {
+        return currentScore + 50000;
+    }
+
+    // 相手が次に使える最善技
+    const enemyBestMoves =
+        playerPokemon.moves.filter(
+            m =>
+                (m.currentPp ?? 0) > 0
+        );
+
+    let worstCase = 0;
+
+    for (const enemyMove of enemyBestMoves) {
+
+        let responseScore = 0;
+
+        if (
+            enemyMove.category !== "status" &&
+            enemyMove.power
+        ) {
+
+            const damage =
+                getAIDamage(
+                    enemyMove,
+                    playerPokemon,
+                    opponentPokemon
+                );
+
+            const expected =
+                getAIExpectedDamage(
+                    enemyMove,
+                    playerPokemon,
+                    opponentPokemon
+                );
+
+            // 自分を倒せる反撃
+            if (
+                damage >=
+                opponentPokemon.currentHp
+            ) {
+                responseScore -= 12000;
+            }
+
+            responseScore -=
+                expected * 1.5;
+        }
+        else {
+
+            responseScore +=
+                getAIStatusScore(
+                    enemyMove,
+                    playerPokemon,
+                    opponentPokemon
+                ) * -0.5;
+        }
+
+        worstCase =
+            Math.min(
+                worstCase,
+                responseScore
+            );
+    }
+
+    return (
+        currentScore +
+        worstCase
+    );
+}
+
+
+// ============================================================
+// AI：性格補正
+// ============================================================
+
+function getAIPersonalityBonus(
+    move,
+    attacker,
+    defender
+) {
+
+    const personality =
+        attacker.ai;
+
+    if (!personality) {
+        return 0;
+    }
+
+    let bonus = 0;
+
+    const damage =
+        getAIDamage(
+            move,
+            attacker,
+            defender
+        );
+
+    const hpRate =
+        attacker.currentHp /
+        attacker.maxHp;
+
+    const enemyHpRate =
+        defender.currentHp /
+        defender.maxHp;
+
+    if (
+        personality === "aggressive"
+    ) {
+
+        if (move.power) {
+            bonus += 100;
+        }
+
+        if (damage >= defender.currentHp) {
+            bonus += 500;
+        }
+    }
+
+    if (
+        personality === "defensive"
+    ) {
+
+        if (
+            move.category === "status"
+        ) {
+            bonus += 120;
+        }
+
+        if (hpRate < 0.40) {
+            bonus +=
+                move.name === "まもる"
+                    ? 250
+                    : 0;
+        }
+    }
+
+    if (
+        personality === "smart"
+    ) {
+
+        if (
+            getAIAccuracy(move) >= 0.9
+        ) {
+            bonus += 50;
+        }
+
+        if (
+            damage >= defender.currentHp
+        ) {
+            bonus += 250;
+        }
+    }
+
+    if (
+        personality === "setup"
+    ) {
+
+        if (
+            move.category === "status"
+        ) {
+            bonus += 150;
+        }
+    }
+
+    if (
+        personality === "finisher"
+    ) {
+
+        if (
+            enemyHpRate <= 0.35 &&
+            move.power
+        ) {
+            bonus += 250;
+        }
+    }
+
+    return bonus;
+}
+
+
+// ============================================================
 // AI：最終選択
-// ------------------------------------------------------------
+// ============================================================
 
 function chooseBestAIMoveSecondVersion(
     usableMoves
 ) {
 
-    const scoredMoves =
-        usableMoves.map(move => ({
-            move,
-            score:
-                getAIFutureScore(move)
-        }));
-
-    scoredMoves.sort(
-        (a, b) => b.score - a.score
-    );
-
-    if (
-        scoredMoves.length === 0
-    ) {
-        return usableMoves[
-            Math.floor(
-                Math.random() *
-                usableMoves.length
-            )
-        ];
+    if (!usableMoves || usableMoves.length === 0) {
+        return null;
     }
 
-    // --------------------------------------------------------
+    const scoredMoves =
+        usableMoves.map(
+            move => {
+
+                let score =
+                    getAIMinimaxScore(move);
+
+                score +=
+                    getAIPersonalityBonus(
+                        move,
+                        opponentPokemon,
+                        playerPokemon
+                    );
+
+                return {
+                    move,
+                    score
+                };
+            }
+        );
+
+    scoredMoves.sort(
+        (a, b) =>
+            b.score - a.score
+    );
+
+    // ========================================================
     // HARD
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         difficulty === "hard"
     ) {
+
+        // 基本は完全最善手
         return scoredMoves[0].move;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // NORMAL
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         difficulty === "normal" ||
@@ -3950,11 +4420,12 @@ function chooseBestAIMoveSecondVersion(
         const bestScore =
             scoredMoves[0].score;
 
+        // かなり近い手だけ候補
         const candidates =
             scoredMoves.filter(
                 item =>
                     item.score >=
-                    bestScore * 0.90
+                    bestScore * 0.82
             );
 
         return candidates[
@@ -3965,27 +4436,31 @@ function chooseBestAIMoveSecondVersion(
         ].move;
     }
 
+    // 念のため
     return scoredMoves[0].move;
 }
 
 
-// ------------------------------------------------------------
-// 第二版 getOpponentMove
-// ------------------------------------------------------------
+// ============================================================
+// AI：実際に使う技
+// ============================================================
 
 function getOpponentMove() {
 
-    // --------------------------------------------------------
+    // ========================================================
     // げきりん等で行動固定中
-    // --------------------------------------------------------
+    // ========================================================
 
-    if (opponentPokemon.isRampaging) {
+    if (
+        opponentPokemon.isRampaging
+    ) {
 
         opponentPokemon.rampageTurns--;
 
         const rampageMove =
             opponentPokemon.moves.find(
-                move => move.name === "げきりん"
+                move =>
+                    move.name === "げきりん"
             );
 
         if (rampageMove) {
@@ -3994,9 +4469,9 @@ function getOpponentMove() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // PPが残っている技
-    // --------------------------------------------------------
+    // ========================================================
 
     const usableMoves =
         opponentPokemon.moves.filter(
@@ -4005,9 +4480,9 @@ function getOpponentMove() {
         );
 
 
-    // --------------------------------------------------------
-    // PP切れ → わるあがき
-    // --------------------------------------------------------
+    // ========================================================
+    // 全PP切れ
+    // ========================================================
 
     if (
         usableMoves.length === 0
@@ -4024,9 +4499,9 @@ function getOpponentMove() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // EASY
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         difficulty === "easy"
@@ -4041,17 +4516,16 @@ function getOpponentMove() {
     }
 
 
-    // --------------------------------------------------------
-    // HP15%以下なら先制技を優先
-    // 既存AIの挙動も維持
-    // --------------------------------------------------------
+    // ========================================================
+    // 瀕死状態で確定KOできる先制技
+    // ========================================================
 
     if (
         playerPokemon.currentHp /
         playerPokemon.maxHp <= 0.15
     ) {
 
-        const priorityMoves =
+        const priorityKO =
             usableMoves.filter(
                 move => {
 
@@ -4063,25 +4537,22 @@ function getOpponentMove() {
                         return false;
                     }
 
-                    const damage =
+                    return (
                         getAIDamage(
                             move,
                             opponentPokemon,
                             playerPokemon
-                        );
-
-                    return (
-                        damage >=
+                        ) >=
                         playerPokemon.currentHp
                     );
                 }
             );
 
         if (
-            priorityMoves.length > 0
+            priorityKO.length > 0
         ) {
 
-            priorityMoves.sort(
+            priorityKO.sort(
                 (a, b) =>
                     getAIDamage(
                         b,
@@ -4095,14 +4566,14 @@ function getOpponentMove() {
                     )
             );
 
-            return priorityMoves[0];
+            return priorityKO[0];
         }
     }
 
 
-    // --------------------------------------------------------
-    // 第二版AIで選択
-    // --------------------------------------------------------
+    // ========================================================
+    // ULTRA AI
+    // ========================================================
 
     return chooseBestAIMoveSecondVersion(
         usableMoves

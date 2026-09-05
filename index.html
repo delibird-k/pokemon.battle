@@ -381,6 +381,7 @@ const battleMenu = document.getElementById("battle-menu");
 const fightButton = document.getElementById("fight-button");
 const pokemonButton = document.getElementById("pokemon-button");
 const surrenderButton = document.getElementById("surrender-button");
+const ratingDisplay = document.getElementById("rating-display");
 
 fightButton.onclick = () => {
     battleMenu.style.display = "none";
@@ -422,7 +423,7 @@ let selectedPlayerItemName;
 let selectedOpponentKey;
 let selectedOpponentItemName;
     let difficulty;
-    let rating = Number(localStorage.getItem("rating")) || 1000;
+    let rating = Number(localStorage.getItem("rating")) || 1;
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;

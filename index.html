@@ -258,11 +258,16 @@
     <div class="col-span-1">
 
         <!-- 最初だけ表示 -->
-        <div id="battle-menu" class="grid grid-cols-2 gap-2">
+<div id="battle-menu" class="grid grid-cols-2 gap-2">
 
 <button id="fight-button"
 class="border-2 border-gray-800 rounded p-1 bg-orange-300 hover:bg-orange-400">
 たたかう
+</button>
+
+<button id="pokemon-button"
+class="border-2 border-gray-800 rounded p-1 bg-green-300 hover:bg-green-400">
+ポケモン
 </button>
 
 <button id="surrender-button"
@@ -300,11 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
     const itemSelectionScreen = document.getElementById('item-selection-screen');
     const itemSelectionGrid = document.getElementById('item-selection-grid');
+    const itemSelectionTitle = document.getElementById('item-selection-title');
     const opponentSelectionScreen = document.getElementById('opponent-selection-screen');
     const opponentPokemonSelectionGrid = document.getElementById('opponent-pokemon-selection-grid');
     const randomOpponentButton = document.getElementById('random-opponent-button');
     const opponentItemSelectionScreen = document.getElementById('opponent-item-selection-screen');
     const opponentItemSelectionGrid = document.getElementById('opponent-item-selection-grid');
+    const opponentItemSelectionTitle = document.getElementById('opponent-item-selection-title');
     const difficultySelectionScreen = document.getElementById('difficulty-selection-screen');
     const difficultySelectionGrid = document.getElementById('difficulty-selection-grid');
     const battleScreen = document.getElementById('battle-screen');
@@ -370,14 +377,18 @@ resetNoButton.onclick = () => {
     const turnCounter = document.getElementById('turn-counter');
     const weatherIndicator = document.getElementById('weather-indicator');
     const fieldIndicator = document.getElementById('field-indicator');
-    const battleMenu = document.getElementById("battle-menu");
-    const fightButton = document.getElementById("fight-button");
-    const surrenderButton = document.getElementById("surrender-button");
-    const bgm = document.getElementById("bgm");
-    const ratingDisplay = document.getElementById("rating-display");
-    fightButton.onclick = () => {
+const battleMenu = document.getElementById("battle-menu");
+const fightButton = document.getElementById("fight-button");
+const pokemonButton = document.getElementById("pokemon-button");
+const surrenderButton = document.getElementById("surrender-button");
+
+fightButton.onclick = () => {
     battleMenu.style.display = "none";
     movesContainer.style.display = "grid";
+};
+
+pokemonButton.onclick = () => {
+    showSwitchSelection();
 };
 
 surrenderButton.onclick = () => {
@@ -389,12 +400,27 @@ surrenderButton.onclick = () => {
 };
  
     // --- Game Data ---
-    let playerPokemon;
-    let opponentPokemon;
-    let selectedPlayerKey;
-    let selectedPlayerItemName;
-    let selectedOpponentKey;
-    let selectedOpponentItemName;
+let playerPokemon;
+let opponentPokemon;
+
+let playerTeam = [];
+let opponentTeam = [];
+
+let playerActiveIndex = 0;
+let opponentActiveIndex = 0;
+
+let selectedPlayerKeys = [];
+let selectedPlayerItemNames = [];
+
+let selectedOpponentKeys = [];
+let selectedOpponentItemNames = [];
+let currentPlayerItemIndex = 0;
+let currentOpponentItemIndex = 0;
+
+let selectedPlayerKey;
+let selectedPlayerItemName;
+let selectedOpponentKey;
+let selectedOpponentItemName;
     let difficulty;
     let rating = Number(localStorage.getItem("rating")) || 1;
     let winCount = Number(localStorage.getItem("wins")) || 0;
@@ -406,6 +432,7 @@ surrenderButton.onclick = () => {
     let weather = { type: 'none', turns: 0 };
     let field = { type: 'none', turns: 0 };
     let isBattleInProgress = false;
+    let forcedSwitchPending = false;
 
     const POKE_API_BASE_URL = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/";
     const backgroundImages = [ 'morii.webp' ];
@@ -1165,16 +1192,55 @@ function getShownName(pokemon){
         }
     }
     
-    function handlePlayerPokemonSelect(key) {
-        selectedPlayerKey = key;
-        showItemSelection();
+
+function handlePlayerPokemonSelect(key) {
+
+    // 同じポケモンは2回選べない
+    if (selectedPlayerKeys.includes(key)) {
+        return;
     }
+
+    selectedPlayerKeys.push(key);
+
+    // 3体選ぶまで選択を続ける
+    if (selectedPlayerKeys.length < 3) {
+
+        showMessage(
+            `あと ${3 - selectedPlayerKeys.length}体 えらんでください`
+        );
+
+        // 選択済みカードを見た目で分かるようにする
+        const selectedCard =
+            document.querySelector(
+                `[data-pokemon-key="${key}"]`
+            );
+
+        if (selectedCard) {
+            selectedCard.classList.add(
+                'ring-4',
+                'ring-blue-500'
+            );
+        }
+
+        return;
+    }
+
+    // 3体選び終わった
+    showItemSelection();
+}
     
     function showItemSelection() {
         selectionScreen.style.display = 'none';
         itemSelectionScreen.style.display = 'block';
         
         itemSelectionGrid.innerHTML = '';
+
+        // 今、持ち物を選んでいるポケモンの名前を表示
+        const currentPokemonKey = selectedPlayerKeys[currentPlayerItemIndex];
+        const currentPokemon = pokemonBaseData[currentPokemonKey];
+        itemSelectionTitle.textContent =
+            `${currentPokemon ? currentPokemon.name : "ポケモン"}の もちものを えらんでくれ！`;
+
         for (const key in items) {
             const item = items[key];
             const card = document.createElement('button');
@@ -1185,10 +1251,21 @@ function getShownName(pokemon){
         }
     }
     
-    function handlePlayerItemSelect(itemName) {
-        selectedPlayerItemName = itemName;
-        showOpponentSelection();
+function handlePlayerItemSelect(itemName) {
+
+    selectedPlayerItemNames.push(itemName);
+
+    currentPlayerItemIndex++;
+
+    // まだ3匹分の持ち物を選んでいない
+    if (currentPlayerItemIndex < 3) {
+        showItemSelection();
+        return;
     }
+
+    // 3匹分選び終わった
+    showOpponentSelection();
+}
     
     function showOpponentSelection() {
         itemSelectionScreen.style.display = 'none';
@@ -1200,7 +1277,7 @@ function getShownName(pokemon){
             const card = document.createElement('div');
             card.className = "nes-container bg-white p-2 text-center cursor-pointer pokemon-card";
             card.dataset.pokemonKey = key;
-            card.onclick = () => showOpponentItemSelection(key);
+            card.onclick = () => handleOpponentPokemonSelect(key);
             let imgSrc = getSpriteUrl({id: p.id});
             const imgSizeClass = p.id === 'eternatus-eternamax' ? 'h-24' : 'h-20';
             card.innerHTML = `<img src="${imgSrc}" alt="${p.name}" class="mx-auto ${imgSizeClass}"><p class="mt-2 text-xs sm:text-sm">${p.name}</p>`;
@@ -1273,34 +1350,126 @@ function getShownName(pokemon){
         }
         randomOpponentButton.onclick = selectRandomOpponentAndItem;
     }
-    
-    function selectRandomOpponentAndItem() {
-        const opponentKeys = Object.keys(pokemonBaseData);
-        selectedOpponentKey = opponentKeys[Math.floor(Math.random() * opponentKeys.length)];
-        selectedOpponentItemName = 'random';
-        showDifficultySelection();
-    }
-    
-    function showOpponentItemSelection(opponentKey) {
-        selectedOpponentKey = opponentKey;
-        opponentSelectionScreen.style.display = 'none';
-        opponentItemSelectionScreen.style.display = 'block';
+    function handleOpponentPokemonSelect(key) {
 
-        opponentItemSelectionGrid.innerHTML = '';
-        for (const key in items) {
-            const item = items[key];
-            const card = document.createElement('button');
-            card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
-            card.onclick = () => handleOpponentItemSelect(item.name);
-            card.innerHTML = `<p class="text-sm font-bold">${item.name}</p><p class="mt-2 text-xs">${item.description}</p>`;
-            opponentItemSelectionGrid.appendChild(card);
+    // 同じポケモンは2回選べない
+    if (selectedOpponentKeys.includes(key)) {
+        return;
+    }
+
+    selectedOpponentKeys.push(key);
+
+    // まだ3匹選んでいない
+    if (selectedOpponentKeys.length < 3) {
+
+        showMessage(
+            `あと ${3 - selectedOpponentKeys.length}体 えらんでください`
+        );
+
+        const selectedCard =
+            document.querySelector(
+                `[data-pokemon-key="${key}"]`
+            );
+
+        if (selectedCard) {
+            selectedCard.classList.add(
+                'ring-4',
+                'ring-red-500'
+            );
+        }
+
+        return;
+    }
+
+    // 3匹選び終わった
+    currentOpponentItemIndex = 0;
+    showOpponentItemSelection();
+}
+function selectRandomOpponentAndItem() {
+
+    const opponentKeys =
+        Object.keys(pokemonBaseData);
+
+    selectedOpponentKeys = [];
+
+    while (selectedOpponentKeys.length < 3) {
+
+        const key =
+            opponentKeys[
+                Math.floor(
+                    Math.random() *
+                    opponentKeys.length
+                )
+            ];
+
+        if (!selectedOpponentKeys.includes(key)) {
+            selectedOpponentKeys.push(key);
         }
     }
+
+    selectedOpponentItemNames = [
+        'random',
+        'random',
+        'random'
+    ];
+
+    showDifficultySelection();
+}
     
-    function handleOpponentItemSelect(itemName) {
-        selectedOpponentItemName = itemName;
-        showDifficultySelection();
+    function showOpponentItemSelection() {
+
+    opponentSelectionScreen.style.display = 'none';
+    opponentItemSelectionScreen.style.display = 'block';
+
+    opponentItemSelectionGrid.innerHTML = '';
+
+    // 今、持ち物を選んでいるポケモンの名前を表示
+    const currentOpponentPokemonKey = selectedOpponentKeys[currentOpponentItemIndex];
+    const currentOpponentPokemon = pokemonBaseData[currentOpponentPokemonKey];
+    opponentItemSelectionTitle.textContent =
+        `${currentOpponentPokemon ? currentOpponentPokemon.name : "ポケモン"}の もちものを えらんでくれ！`;
+
+    for (const key in items) {
+
+        const item = items[key];
+
+        const card = document.createElement('button');
+
+        card.className =
+            "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
+
+        card.onclick = () =>
+            handleOpponentItemSelect(item.name);
+
+        card.innerHTML = `
+            <p class="text-sm font-bold">
+                ${item.name}
+            </p>
+
+            <p class="mt-2 text-xs">
+                ${item.description}
+            </p>
+        `;
+
+        opponentItemSelectionGrid.appendChild(card);
     }
+}
+    
+function handleOpponentItemSelect(itemName) {
+
+    selectedOpponentItemNames.push(itemName);
+
+    currentOpponentItemIndex++;
+
+    // まだ3匹分の持ち物を選んでいない
+    if (currentOpponentItemIndex < 3) {
+        showOpponentItemSelection();
+        return;
+    }
+
+    // 3匹分選び終わった
+    showDifficultySelection();
+}
     
     function showDifficultySelection() {
         opponentSelectionScreen.style.display = 'none';
@@ -1323,43 +1492,109 @@ function getShownName(pokemon){
     document.getElementById('opponent-stat-display').textContent = '';
 }
     
-    function startGame(difficultyLevel) {
-        difficulty = difficultyLevel;
+function startGame(difficultyLevel) {
+    difficulty = difficultyLevel;
 
-        playerPokemon = createPokemonInstance(pokemonBaseData[selectedPlayerKey]);
-        playerPokemon.item = { name: selectedPlayerItemName, used: false };
-        playerPokemon.usedZMove = false;
+    // ========================================================
+    // 3匹のチームを作成
+    // ========================================================
 
-        opponentPokemon = createPokemonInstance(pokemonBaseData[selectedOpponentKey]);
-                applyIllusion(playerPokemon);
-applyIllusion(opponentPokemon);
-        const opponentItem = selectedOpponentItemName === 'random' 
-            ? determineOpponentItem(pokemonBaseData[selectedOpponentKey]) 
-            : selectedOpponentItemName;
-        opponentPokemon.item = { name: opponentItem, used: false };
-        initZData(playerPokemon);
-initZData(opponentPokemon);
+    playerTeam = selectedPlayerKeys.map((key, index) => {
 
-playerPokemon.usedZMove = false;
-opponentPokemon.usedZMove = false;
+        const pokemon = createPokemonInstance(
+            pokemonBaseData[key]
+        );
 
-playerPokemon.pendingMega = false;
-playerPokemon.megaEvolved = false;
+        pokemon.item = {
+            name: selectedPlayerItemNames[index],
+            used: false
+        };
 
-opponentPokemon.pendingMega = false;
-opponentPokemon.megaEvolved = false;
-        difficultySelectionScreen.style.display = 'none';
-        battleScreen.style.display = 'block';
-        const bg = backgroundImages[Math.floor(Math.random() * backgroundImages.length)];
-        battleScreen.style.backgroundImage = `url('${bg}')`;
-        
-        resetStatDisplays();
-        initBattleUI();
-        updateSubstituteMarkers();
-        startBattleSequence();   
-        updateRating();
-        updateRatingDisplay();
-    }
+        pokemon.usedZMove = false;
+        pokemon.pendingMega = false;
+        pokemon.megaEvolved = false;
+
+        applyIllusion(pokemon);
+        initZData(pokemon);
+
+        return pokemon;
+    });
+
+    opponentTeam = selectedOpponentKeys.map((key, index) => {
+
+        const pokemon = createPokemonInstance(
+            pokemonBaseData[key]
+        );
+
+        const itemName =
+            selectedOpponentItemNames[index] === 'random'
+                ? determineOpponentItem(
+                    pokemonBaseData[key]
+                )
+                : selectedOpponentItemNames[index];
+
+        pokemon.item = {
+            name: itemName,
+            used: false
+        };
+
+        pokemon.usedZMove = false;
+        pokemon.pendingMega = false;
+        pokemon.megaEvolved = false;
+
+        applyIllusion(pokemon);
+        initZData(pokemon);
+
+        return pokemon;
+    });
+
+
+    // ========================================================
+    // 最初に場に出すポケモン
+    // ========================================================
+
+    playerActiveIndex = 0;
+    opponentActiveIndex = 0;
+
+    playerPokemon = playerTeam[playerActiveIndex];
+    opponentPokemon = opponentTeam[opponentActiveIndex];
+
+
+    // ========================================================
+    // バトル画面
+    // ========================================================
+
+    difficultySelectionScreen.style.display = 'none';
+    battleScreen.style.display = 'block';
+
+    const bg =
+        backgroundImages[
+            Math.floor(
+                Math.random() *
+                backgroundImages.length
+            )
+        ];
+
+    battleScreen.style.backgroundImage =
+        `url('${bg}')`;
+
+
+    // ========================================================
+    // UI初期化
+    // ========================================================
+
+    resetStatDisplays();
+
+    initBattleUI();
+
+    updateSubstituteMarkers();
+
+    startBattleSequence();
+
+    updateRating();
+
+    updateRatingDisplay();
+}
 
     function applyIllusion(pokemon) {
 
@@ -1936,191 +2171,12 @@ function determineOpponentItem(pokemon) {
     async function startBattleSequence() {
         disableMoves();
         await handleAbilityEffectsOnEntry();
-         if(playerPokemon.ability === "いかく" && opponentPokemon.ability !== "クリアボディ" && opponentPokemon.ability !== "きもったま" && opponentPokemon.ability !== "せいしんりょく") {
-            await showMessage(`じぶんの ${playerPokemon.name} の いかく！`);
-            await showMessage(`あいて の ${opponentPokemon.name} の こうげきが さがった！`);
-            opponentPokemon.statStages.attack -= 1;
-            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-        }
-         if(opponentPokemon.ability === "いかく" && playerPokemon.ability !== "クリアボディ" && playerPokemon.ability !== "きもったま" && playerPokemon.ability !== "せいしんりょく") {
-            await showMessage(`あいて の ${opponentPokemon.name} の いかく！`);
-            await showMessage(`じぶんの ${playerPokemon.name} の こうげきが さがった！`);
-            playerPokemon.statStages.attack -= 1;
-            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-        }
-        if (playerPokemon.ability === "ダウンロード") {
-          await showMessage(`じぶんの ${playerPokemon.name} の ダウンロード！`);
-    if (opponentPokemon.defense < opponentPokemon.spDefense) {
-        playerPokemon.statStages.attack++;
-        await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
-        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-    } else {
-        playerPokemon.statStages.spAttack++;
-        await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
-        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-    }
-}
-        if (opponentPokemon.ability === "ダウンロード") {
-          await showMessage(`あいての ${opponentPokemon.name} の ダウンロード！`);
-    if (playerPokemon.defense < playerPokemon.spDefense) {
-        opponentPokemon.statStages.attack++;
-        await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
-        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-    } else {
-        opponentPokemon.statStages.spAttack++;
-        await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
-        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-    }
-}
-if (playerPokemon.ability === "ビーストブースト") {
-    await showMessage(`じぶんの ${playerPokemon.name} の ビーストブースト！`);
-
-    const stats = {
-        attack: playerPokemon.attack,
-        defense: playerPokemon.defense,
-        spAttack: playerPokemon.spAttack,
-        spDefense: playerPokemon.spDefense,
-        speed: playerPokemon.speed
-    };
-
-    const highestStat = Object.keys(stats).reduce((a, b) =>
-        stats[a] >= stats[b] ? a : b
-    );
-
-    playerPokemon.statStages[highestStat]++;
-
-    const statNames = {
-        attack: "こうげき",
-        defense: "ぼうぎょ",
-        spAttack: "とくこう",
-        spDefense: "とくぼう",
-        speed: "すばやさ"
-    };
-
-    await showMessage(`${playerPokemon.name} の ${statNames[highestStat]}が あがった！`);
-    updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-}
-if (opponentPokemon.ability === "ビーストブースト") {
-    await showMessage(`あいての ${opponentPokemon.name} の ビーストブースト！`);
-
-    const stats = {
-        attack: opponentPokemon.attack,
-        defense: opponentPokemon.defense,
-        spAttack: opponentPokemon.spAttack,
-        spDefense: opponentPokemon.spDefense,
-        speed: opponentPokemon.speed
-    };
-
-    const highestStat = Object.keys(stats).reduce((a, b) =>
-        stats[a] >= stats[b] ? a : b
-    );
-
-    opponentPokemon.statStages[highestStat]++;
-
-    const statNames = {
-        attack: "こうげき",
-        defense: "ぼうぎょ",
-        spAttack: "とくこう",
-        spDefense: "とくぼう",
-        speed: "すばやさ"
-    };
-
-    await showMessage(`${opponentPokemon.name} の ${statNames[highestStat]}が あがった！`);
-    updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-}
-if (playerPokemon.ability === "しろのいななき") {
-          await showMessage(`じぶんの ${playerPokemon.name} の しろのいななき！`);
-    if (playerPokemon.spAttack < playerPokemon.attack) {
-        playerPokemon.statStages.attack++;
-        await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
-        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-    } else {
-        playerPokemon.statStages.spAttack++;
-        await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
-        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-    }
-}
- if (opponentPokemon.ability === "しろのいななき") {
-          await showMessage(`あいての ${opponentPokemon.name} の しろのいななき！`);
-    if (opponentPokemon.spAttack < opponentPokemon.attack) {
-        opponentPokemon.statStages.attack++;
-        await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
-        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-    } else {
-        opponentPokemon.statStages.spAttack++;
-        await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
-        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-    }
-}
-if (playerPokemon.ability === "かたいつぼ") {
-    await showMessage(`じぶんの ${playerPokemon.name} の かたいつぼ！`);
-
-    playerPokemon.statStages.defense++;
-    playerPokemon.statStages.spDefense++;
-
-    await showMessage(
-        `${playerPokemon.name} の ぼうぎょと とくぼうが あがった！`
-    );
-
-    updateStatDisplay(
-        playerPokemon,
-        document.getElementById('player-stat-display')
-    );
-}
-
-if (opponentPokemon.ability === "かたいつぼ") {
-    await showMessage(`あいての ${opponentPokemon.name} の かたいつぼ！`);
-
-    opponentPokemon.statStages.defense++;
-    opponentPokemon.statStages.spDefense++;
-
-    await showMessage(
-        `${opponentPokemon.name} の ぼうぎょと とくぼうが あがった！`
-    );
-
-    updateStatDisplay(
-        opponentPokemon,
-        document.getElementById('opponent-stat-display')
-    );
-}
-if (playerPokemon.ability === "たましいのうろこ") {
-    await showMessage(`じぶんの ${playerPokemon.name} の たましいのうろこ！`);
-
-    playerPokemon.statStages.defense++;
-    playerPokemon.statStages.spDefense++;
-
-    await showMessage(
-        `${playerPokemon.name} の ぼうぎょと とくぼうが あがった！`
-    );
-
-    updateStatDisplay(
-        playerPokemon,
-        document.getElementById('player-stat-display')
-    );
-}
-
-if (opponentPokemon.ability === "たましいのうろこ") {
-    await showMessage(`あいての ${opponentPokemon.name} の たましいのうろこ！`);
-
-    opponentPokemon.statStages.defense++;
-    opponentPokemon.statStages.spDefense++;
-
-    await showMessage(
-        `${opponentPokemon.name} の ぼうぎょと とくぼうが あがった！`
-    );
-
-    updateStatDisplay(
-        opponentPokemon,
-        document.getElementById('opponent-stat-display')
-    );
-}
         await showMessage(
     `${getShownName(playerPokemon)} は どうする？`,
     500
 );
         enableMoves();
     }
-
     async function megaEvolve(pokemon,isPlayer){
 
     if(!canMegaEvolve(pokemon)) return;
@@ -2639,6 +2695,240 @@ function getTooltipContent(pokemon) {
     `;
 }
 
+function showSwitchSelection() {
+
+    battleMenu.style.display = "none";
+    movesContainer.style.display = "grid";
+
+    // 交代画面は3枠表示にする
+    movesContainer.classList.remove("grid-cols-2");
+    movesContainer.classList.add("grid-cols-3");
+
+    movesContainer.innerHTML = "";
+
+    playerTeam.forEach((pokemon, index) => {
+
+        // 今、場に出ているポケモンは表示せず、残り2枠を交代先にする
+        if (index === playerActiveIndex) {
+            return;
+        }
+
+        const button = document.createElement("button");
+
+        button.className =
+            "border-2 border-gray-800 rounded p-2 bg-green-200 hover:bg-green-300";
+
+        // 現在場にいるポケモン
+        if (index === playerActiveIndex) {
+            button.disabled = true;
+        }
+
+        // 瀕死のポケモン
+        if (pokemon.currentHp <= 0) {
+            button.disabled = true;
+        }
+
+        const hpRate =
+            pokemon.maxHp > 0
+                ? Math.floor(
+                    pokemon.currentHp /
+                    pokemon.maxHp *
+                    100
+                )
+                : 0;
+
+        button.innerHTML = `
+            <div class="font-bold">
+                ${pokemon.name}
+            </div>
+
+            <div class="text-xs mt-1">
+                HP ${pokemon.currentHp} / ${pokemon.maxHp}
+            </div>
+
+            <div class="text-xs">
+                ${hpRate}%
+            </div>
+        `;
+
+        button.onclick = () => {
+            executePlayerSwitch(index);
+        };
+
+        movesContainer.appendChild(button);
+    });
+
+    // 交代をやめてバトルメニューに戻るボタン
+    const backButton = document.createElement("button");
+    backButton.className =
+        "border-2 border-gray-800 rounded p-2 bg-gray-300 hover:bg-gray-400";
+    backButton.textContent = "もどる";
+
+    backButton.onclick = () => {
+        movesContainer.style.display = "none";
+        movesContainer.innerHTML = "";
+        movesContainer.classList.remove("grid-cols-3");
+        movesContainer.classList.add("grid-cols-2");
+        battleMenu.style.display = "grid";
+        messageText.textContent = "どうする？";
+
+        // 交代画面で消した技ボタンを、バトルメニューへ戻った後に復元する
+        updateMoves();
+    };
+
+    movesContainer.appendChild(backButton);
+}
+
+async function executePlayerSwitch(newIndex) {
+
+    if (
+        newIndex === playerActiveIndex ||
+        !playerTeam[newIndex] ||
+        playerTeam[newIndex].currentHp <= 0
+    ) {
+        return;
+    }
+
+    if (isBattleInProgress) {
+        return;
+    }
+
+    isBattleInProgress = true;
+
+    disableMoves();
+
+    movesContainer.style.display = "none";
+
+    const oldPokemon = playerPokemon;
+
+    await showMessage(
+        `${oldPokemon.name} を ひっこめた！`
+    );
+
+    playerActiveIndex = newIndex;
+
+    playerPokemon =
+        playerTeam[playerActiveIndex];
+
+    // 交代したポケモンの能力変化をリセット
+    playerPokemon.statStages = {
+        attack: 0,
+        defense: 0,
+        spAttack: 0,
+        spDefense: 0,
+        speed: 0
+    };
+
+    playerPokemon.isFlinched = false;
+
+    const playerShown =
+        playerPokemon.disguiseData ||
+        playerPokemon;
+
+    player.nameEl.textContent =
+        playerShown.name;
+
+    player.maxHpEl.textContent =
+        playerPokemon.maxHp;
+
+    player.sprite.src =
+        getSpriteUrl(
+            playerShown,
+            true
+        );
+
+    player.sprite.className =
+        `mx-auto ${
+            playerPokemon.id === 'necrozma-ultra' ||
+            playerPokemon.id === 'eternatus-eternamax'
+                ? 'h-28 sm:h-36 md:h-44'
+                : 'h-24 sm:h-32 md:h-40'
+        } object-contain transition-all duration-1000`;
+
+    player.sprite.classList.remove('sprite-faint');
+
+    await showMessage(
+        `${playerPokemon.name}！ いけ！`
+    );
+
+    // 場に出たときの処理
+    await handleAbilityEffectsOnEntry();
+
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+
+    // ========================================================
+    // 交代したターンは相手が攻撃
+    // ========================================================
+
+    const opponentMove = getOpponentMove();
+
+    if (
+        opponentMove &&
+        opponentPokemon.currentHp > 0
+    ) {
+
+        opponentPokemon.selectedMove =
+            opponentMove;
+
+        if (
+            opponentMove.name !== "わるあがき"
+        ) {
+            opponentMove.currentPp--;
+        }
+
+        await new Promise(
+            resolve => setTimeout(resolve, 700)
+        );
+
+        const gameOver =
+            await handleAttack(
+                opponentPokemon,
+                playerPokemon,
+                opponentMove,
+                false
+            );
+
+        if (gameOver) {
+            isBattleInProgress = false;
+            if (forcedSwitchPending) return;
+            return;
+        }
+    }
+
+    // ターン終了処理
+    const gameOver =
+        await handleEndOfTurnEffects();
+
+    if (gameOver) {
+        isBattleInProgress = false;
+        return;
+    }
+
+    currentTurn++;
+
+    turnCounter.textContent =
+        `ターン: ${currentTurn}`;
+
+    await showMessage(
+        `${getShownName(playerPokemon)} は どうする？`,
+        500
+    );
+
+    isBattleInProgress = false;
+
+    updateHpBars();
+    updateStatusMarkers();
+
+    battleMenu.style.display = "grid";
+    movesContainer.style.display = "none";
+
+    // 交代画面で残っているポケモンボタンを技ボタンに戻す
+    // 次のターンに「たたかう」を押したとき、交代画面が再表示されるのを防ぐ
+    updateMoves();
+    enableMoves();
+}
     async function startBattleRound(playerMove) {
       battleMenu.style.display = "none";
 movesContainer.style.display = "none";
@@ -4702,7 +4992,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -4730,6 +5020,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 attacker.statStages.speed = Math.min(
     6,
@@ -4788,7 +5079,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -4816,6 +5107,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 attacker.statStages.speed = Math.min(
     6,
@@ -4887,7 +5179,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -4915,6 +5207,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 
     return false;
@@ -4970,7 +5263,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -4998,6 +5291,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
     return false;
 }
@@ -5036,7 +5330,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -5064,10 +5358,12 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 attacker.statStages.attack = Math.min(
     6,
@@ -5121,7 +5417,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -5149,6 +5445,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 
     return false;
@@ -5184,7 +5481,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -5216,6 +5513,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 
     return false;
@@ -5252,7 +5550,7 @@ if (attacker.currentHp <= 0) {
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon)) return true;
-    break;
+    return false;
 }
 
     defender.lastDamageTaken = damage;
@@ -5280,6 +5578,7 @@ if (defender.currentHp <= 0) {
 if (defender.currentHp <= 0) {
     const isPlayerDefender = defender === playerPokemon;
     if (await checkFainted(defender, isPlayerDefender)) return true;
+    return false;
 }
 
     return false;
@@ -5714,32 +6013,12 @@ if (
         await new Promise(resolve => setTimeout(resolve, 1200));
         
         if (defender.currentHp <= 0) {
-
-    const faintedSprite =
-        isPlayerAttacking
-            ? opponent.sprite
-            : player.sprite;
-
-    faintedSprite.classList.add('sprite-faint');
-
-    await new Promise(resolve =>
-        setTimeout(resolve, 1000)
-    );
-
-    await showMessage(
-        `${isPlayerAttacking ? "あいて の " : ""}${defender.name} は たおれた${isPlayerAttacking ? "！" : "..."}`
-    );
-
-    if (!isPlayerAttacking) {
-        screenOverlay.classList.add('active');
-        await new Promise(resolve =>
-            setTimeout(resolve, 1500)
-        );
-    }
-
-    endGame(isPlayerAttacking);
-    return true;
-}
+            // 瀕死処理の結果をそのまま返す。
+            // 相手が倒れた場合は checkFainted が2体目を出して
+            // falseを返すので、ここでバトルを止めない。
+            const isPlayerDefender = defender === playerPokemon;
+            return await checkFainted(defender, isPlayerDefender);
+        }
         
         const berryHealed = await checkAndUseItem(defender);
         if(berryHealed) await new Promise(resolve => setTimeout(resolve, 1000));
@@ -5812,10 +6091,10 @@ if (
 
     updateHpBars();
 
-    // ⭐ ここでまず defender の瀕死チェック
+    // 瀕死処理は handleAttack 側で一度だけ行う。
+    // ここで checkFainted を呼ぶと、攻撃処理の途中で交代が発生して
+    // その後の処理と二重進行してしまう。
     if (defender.currentHp <= 0) {
-        const isPlayerDefender = defender === playerPokemon;
-        await checkFainted(defender, isPlayerDefender);
         return { hit: true, fainted: true };
     }
 
@@ -6793,23 +7072,461 @@ async function applyBerryBasketEffect(pokemon, isPlayer) {
     return false;
 }
 
-    async function checkFainted(pokemon, isPlayer) {
-            if (pokemon.currentHp <= 0) {
-                const faintedSprite = isPlayer ? player.sprite : opponent.sprite;
-                faintedSprite.classList.add('sprite-faint');
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                await showMessage(`${isPlayer ? "" : "あいて の "}${pokemon.name} は たおれた${isPlayer ? "..." : "！"}`);
-                
-                if (isPlayer) {
-                    screenOverlay.classList.add('active');
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                }
-                endGame(!isPlayer);
-                return true;
-            }
+async function checkFainted(pokemon, isPlayer) {
+
+    // 同じポケモンの瀕死処理を二重に実行しない
+    if (pokemon._faintProcessed) {
         return false;
     }
 
+    if (pokemon.currentHp > 0) {
+        return false;
+    }
+
+    // 同じ瀕死ポケモンを複数回処理しない
+    // （多段技や追加効果などから checkFainted が重複して呼ばれるのを防ぐ）
+    if (pokemon.faintProcessed) {
+        return false;
+    }
+    pokemon.faintProcessed = true;
+
+    // 瀕死処理開始時点でロックする
+    pokemon._faintProcessed = true;
+
+    const faintedSprite =
+        isPlayer ? player.sprite : opponent.sprite;
+
+    faintedSprite.classList.add('sprite-faint');
+
+    await new Promise(resolve =>
+        setTimeout(resolve, 1000)
+    );
+
+    await showMessage(
+        `${isPlayer ? "" : "あいて の "}${pokemon.name} は たおれた${isPlayer ? "..." : "！"}`
+    );
+
+    // ========================================================
+    // プレイヤー側
+    // ========================================================
+    if (isPlayer) {
+
+        const nextIndex = playerTeam.findIndex(
+            (pokemon, index) =>
+                index !== playerActiveIndex &&
+                pokemon.currentHp > 0
+        );
+
+        // 3匹すべて倒れた
+        if (nextIndex === -1) {
+
+            screenOverlay.classList.add('active');
+
+            await new Promise(resolve =>
+                setTimeout(resolve, 1500)
+            );
+
+            endGame(false);
+            return true;
+        }
+
+        // 次のポケモンを選択させる
+        forcedSwitchPending = true;
+        await showForcedSwitchSelection();
+
+        return false;
+    }
+
+    // ========================================================
+    // 相手側
+    // ========================================================
+
+    // まだ生きている交代先があるか確認
+    const remainingOpponentIndexes = opponentTeam
+        .map((pokemon, index) => ({ pokemon, index }))
+        .filter(({ pokemon, index }) =>
+            index !== opponentActiveIndex &&
+            pokemon.currentHp > 0
+        );
+
+    // 相手の3匹すべて倒れたときだけ勝利
+    if (remainingOpponentIndexes.length === 0) {
+
+        screenOverlay.classList.add('active');
+
+        await new Promise(resolve =>
+            setTimeout(resolve, 1500)
+        );
+
+        endGame(true);
+        return true;
+    }
+
+    // AIが交代先を選ぶ
+    let nextIndex = chooseBestOpponentSwitch();
+
+    // AIの選択結果が取れなかった場合でも、残っているポケモンを出す
+    if (nextIndex === -1) {
+        nextIndex = remainingOpponentIndexes[0].index;
+    }
+
+    // 相手は自動で次のポケモンを出す
+    // この関数を await している攻撃処理へ戻り、次のターンへ進む。
+    opponentActiveIndex = nextIndex;
+    opponentPokemon = opponentTeam[opponentActiveIndex];
+
+    // 相手も交代時に能力変化をリセット
+    opponentPokemon.statStages = {
+        attack: 0,
+        defense: 0,
+        spAttack: 0,
+        spDefense: 0,
+        speed: 0
+    };
+
+    await showMessage(
+        `あいて は ${opponentPokemon.name} を くりだした！`
+    );
+
+    opponent.sprite.classList.remove('sprite-faint');
+
+    const opponentShown =
+        opponentPokemon.disguiseData || opponentPokemon;
+
+    opponent.nameEl.textContent =
+        opponentShown.name;
+
+    document.getElementById(
+        'opponent-max-hp'
+    ).textContent =
+        opponentPokemon.maxHp;
+
+    opponent.sprite.src =
+        getSpriteUrl(opponentShown);
+
+    opponent.sprite.className =
+        `mx-auto ${
+            opponentPokemon.id === 'necrozma-ultra' ||
+            opponentPokemon.id === 'eternatus-eternamax'
+                ? 'h-28 sm:h-36 md:h-44'
+                : 'h-24 sm:h-32 md:h-40'
+        } object-contain transition-all duration-1000`;
+
+    await handleAbilityEffectsOnEntry();
+
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+
+    return false;
+}
+async function showForcedSwitchSelection() {
+
+    battleMenu.style.display = 'none';
+    movesContainer.style.display = 'none';
+
+    const switchContainer =
+        document.getElementById('switch-selection-container');
+
+    if (switchContainer) {
+        switchContainer.remove();
+    }
+
+    const container =
+        document.createElement('div');
+
+    container.id =
+        'switch-selection-container';
+
+    container.className =
+        'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60';
+
+    const box =
+        document.createElement('div');
+
+    box.className =
+        'nes-container is-rounded bg-white p-6 w-11/12 max-w-2xl';
+
+    const title =
+        document.createElement('p');
+
+    title.className =
+        'font-bold text-center mb-4';
+
+    title.textContent =
+        '次のポケモンを選んでください';
+
+    box.appendChild(title);
+
+    const grid =
+        document.createElement('div');
+
+    grid.className =
+        'grid grid-cols-1 sm:grid-cols-3 gap-4';
+
+    playerTeam.forEach(
+        (pokemon, index) => {
+
+            if (
+                index === playerActiveIndex ||
+                pokemon.currentHp <= 0
+            ) {
+                return;
+            }
+
+            const button =
+                document.createElement('button');
+
+            button.className =
+                'nes-container bg-white p-4 cursor-pointer';
+
+            button.innerHTML = `
+                <p class="font-bold">
+                    ${pokemon.name}
+                </p>
+                <p class="text-sm mt-2">
+                    HP ${pokemon.currentHp} / ${pokemon.maxHp}
+                </p>
+            `;
+
+            button.onclick =
+                async () => {
+
+                    button.disabled = true;
+
+                    await executeForcedSwitch(index);
+
+                    container.remove();
+                };
+
+            grid.appendChild(button);
+        }
+    );
+
+    box.appendChild(grid);
+    container.appendChild(box);
+
+    document.body.appendChild(container);
+}
+async function executeForcedSwitch(newIndex) {
+
+    playerActiveIndex = newIndex;
+
+    playerPokemon =
+        playerTeam[playerActiveIndex];
+
+    // 強制交代でも能力変化をリセット
+    playerPokemon.statStages = {
+        attack: 0,
+        defense: 0,
+        spAttack: 0,
+        spDefense: 0,
+        speed: 0
+    };
+
+    const playerShown =
+    playerPokemon.disguiseData ||
+    playerPokemon;
+
+player.nameEl.textContent =
+    playerShown.name;
+
+player.maxHpEl.textContent =
+    playerPokemon.maxHp;
+
+player.sprite.src =
+    getSpriteUrl(
+        playerShown,
+        true
+    );
+
+player.sprite.className =
+    `mx-auto ${
+        playerPokemon.id === 'necrozma-ultra' ||
+        playerPokemon.id === 'eternatus-eternamax'
+            ? 'h-28 sm:h-36 md:h-44'
+            : 'h-24 sm:h-32 md:h-40'
+    } object-contain transition-all duration-1000`;
+
+player.sprite.classList.remove(
+    'sprite-faint'
+);
+
+    await showMessage(
+        `${playerPokemon.name} を くりだした！`
+    );
+
+    await handleAbilityEffectsOnEntry();
+
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+    updateMoves();
+
+    forcedSwitchPending = false;
+
+    battleMenu.style.display = 'grid';
+    movesContainer.style.display = 'none';
+    enableMoves();
+}
+function chooseBestOpponentSwitch() {
+
+    const candidates = opponentTeam
+        .map((pokemon, index) => ({
+            pokemon,
+            index
+        }))
+        .filter(({ pokemon, index }) =>
+            index !== opponentActiveIndex &&
+            pokemon.currentHp > 0
+        );
+
+    if (candidates.length === 0) {
+        return -1;
+    }
+
+    let bestIndex =
+        candidates[0].index;
+
+    let bestScore =
+        -Infinity;
+
+    for (const candidate of candidates) {
+
+        const pokemon =
+            candidate.pokemon;
+
+        let score = 0;
+
+        // ====================================================
+        // HP
+        // ====================================================
+
+        const hpRate =
+            pokemon.currentHp /
+            pokemon.maxHp;
+
+        score += hpRate * 3000;
+
+        // ====================================================
+        // 相手（プレイヤー）への攻撃性能
+        // ====================================================
+
+        for (const move of pokemon.moves) {
+
+            if (
+                (move.currentPp ?? 0) <= 0 ||
+                move.category === "status" ||
+                !move.power
+            ) {
+                continue;
+            }
+
+            const damage =
+                getAIDamage(
+                    move,
+                    pokemon,
+                    playerPokemon
+                );
+
+            const expected =
+                damage *
+                ((move.accuracy ?? 100) / 100);
+
+            score += expected;
+
+            // 効果抜群
+            const effectiveness =
+                calculateTypeEffectiveness(
+                    move.type,
+                    playerPokemon.types
+                );
+
+            if (effectiveness > 1) {
+                score +=
+                    1200 *
+                    effectiveness;
+            }
+
+            // 確定KO
+            if (
+                damage >=
+                playerPokemon.currentHp
+            ) {
+                score += 8000;
+            }
+        }
+
+        // ====================================================
+        // プレイヤーから受けるダメージ
+        // ====================================================
+
+        const playerBest =
+            getAIBestAttack(
+                playerPokemon,
+                pokemon
+            );
+
+        if (playerBest) {
+
+            const incoming =
+                playerBest.damage;
+
+            score -=
+                incoming * 1.5;
+
+            // 出した瞬間に倒されるなら大幅減点
+            if (
+                incoming >=
+                pokemon.currentHp
+            ) {
+                score -= 7000;
+            }
+        }
+
+        // ====================================================
+        // タイプ相性
+        // ====================================================
+
+        for (const playerMove of playerPokemon.moves) {
+
+            if (
+                playerMove.category === "status" ||
+                !playerMove.power
+            ) {
+                continue;
+            }
+
+            const effectiveness =
+                calculateTypeEffectiveness(
+                    playerMove.type,
+                    pokemon.types
+                );
+
+            if (effectiveness > 1) {
+                score -=
+                    1000 *
+                    effectiveness;
+            }
+
+            if (effectiveness < 1) {
+                score +=
+                    500;
+            }
+        }
+
+        if (score > bestScore) {
+
+            bestScore =
+                score;
+
+            bestIndex =
+                candidate.index;
+        }
+    }
+
+    return bestIndex;
+}
 
     function getStatModifier(stage) {
         if (stage >= 0) return (2 + stage) / 2;
@@ -7234,6 +7951,8 @@ function endGame(playerWon) {
 
     if (playerWon) {
 
+        // 勝利時は黒いオーバーレイを解除して勝利画面を表示
+        screenOverlay.classList.remove("active");
         winScreen.style.display = "flex";
 
         // 10～20
@@ -7316,6 +8035,19 @@ function endGame(playerWon) {
     playerPokemon = undefined;
     opponentPokemon = undefined;
 
+    // 前のゲームのポケモン・選択内容を完全にリセット
+    playerTeam = [];
+    opponentTeam = [];
+    playerActiveIndex = 0;
+    opponentActiveIndex = 0;
+    selectedPlayerKeys = [];
+    selectedPlayerItemNames = [];
+    selectedOpponentKeys = [];
+    selectedOpponentItemNames = [];
+    currentPlayerItemIndex = 0;
+    currentOpponentItemIndex = 0;
+    forcedSwitchPending = false;
+
     selectedPlayerKey = undefined;
     selectedPlayerItemName = undefined;
     selectedOpponentKey = undefined;
@@ -7356,6 +8088,142 @@ isBattleInProgress = false;
         field.type = 'psyco';
         field.turns = 5;
         await showMessage('あしもとが ふしぎなかんじに なった！');
+    }
+
+    // いかく：場に出たとき相手のこうげきを1段階下げる
+    if (
+        playerPokemon.ability === "いかく" &&
+        opponentPokemon.ability !== "クリアボディ" &&
+        opponentPokemon.ability !== "きもったま" &&
+        opponentPokemon.ability !== "せいしんりょく"
+    ) {
+        await showMessage(`じぶんの ${playerPokemon.name} の いかく！`);
+        opponentPokemon.statStages.attack -= 1;
+        await showMessage(`あいて の ${opponentPokemon.name} の こうげきが さがった！`);
+        updateStatDisplay(
+            opponentPokemon,
+            document.getElementById('opponent-stat-display')
+        );
+    }
+
+    if (
+        opponentPokemon.ability === "いかく" &&
+        playerPokemon.ability !== "クリアボディ" &&
+        playerPokemon.ability !== "きもったま" &&
+        playerPokemon.ability !== "せいしんりょく"
+    ) {
+        await showMessage(`あいて の ${opponentPokemon.name} の いかく！`);
+        playerPokemon.statStages.attack -= 1;
+        await showMessage(`じぶんの ${playerPokemon.name} の こうげきが さがった！`);
+        updateStatDisplay(
+            playerPokemon,
+            document.getElementById('player-stat-display')
+        );
+    }
+
+    // 場に出たときに発動する能力上昇系の特性
+    if (playerPokemon.ability === "ダウンロード") {
+        await showMessage(`じぶんの ${playerPokemon.name} の ダウンロード！`);
+        if (opponentPokemon.defense < opponentPokemon.spDefense) {
+            playerPokemon.statStages.attack++;
+            await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
+            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+        } else {
+            playerPokemon.statStages.spAttack++;
+            await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
+            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+        }
+    }
+
+    if (opponentPokemon.ability === "ダウンロード") {
+        await showMessage(`あいての ${opponentPokemon.name} の ダウンロード！`);
+        if (playerPokemon.defense < playerPokemon.spDefense) {
+            opponentPokemon.statStages.attack++;
+            await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
+            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+        } else {
+            opponentPokemon.statStages.spAttack++;
+            await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
+            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+        }
+    }
+
+    if (playerPokemon.ability === "ビーストブースト") {
+        await showMessage(`じぶんの ${playerPokemon.name} の ビーストブースト！`);
+        const stats = { attack: playerPokemon.attack, defense: playerPokemon.defense, spAttack: playerPokemon.spAttack, spDefense: playerPokemon.spDefense, speed: playerPokemon.speed };
+        const highestStat = Object.keys(stats).reduce((a, b) => stats[a] >= stats[b] ? a : b);
+        playerPokemon.statStages[highestStat]++;
+        const statNames = { attack: "こうげき", defense: "ぼうぎょ", spAttack: "とくこう", spDefense: "とくぼう", speed: "すばやさ" };
+        await showMessage(`${playerPokemon.name} の ${statNames[highestStat]}が あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+
+    if (opponentPokemon.ability === "ビーストブースト") {
+        await showMessage(`あいての ${opponentPokemon.name} の ビーストブースト！`);
+        const stats = { attack: opponentPokemon.attack, defense: opponentPokemon.defense, spAttack: opponentPokemon.spAttack, spDefense: opponentPokemon.spDefense, speed: opponentPokemon.speed };
+        const highestStat = Object.keys(stats).reduce((a, b) => stats[a] >= stats[b] ? a : b);
+        opponentPokemon.statStages[highestStat]++;
+        const statNames = { attack: "こうげき", defense: "ぼうぎょ", spAttack: "とくこう", spDefense: "とくぼう", speed: "すばやさ" };
+        await showMessage(`${opponentPokemon.name} の ${statNames[highestStat]}が あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+
+    if (playerPokemon.ability === "しろのいななき") {
+        await showMessage(`じぶんの ${playerPokemon.name} の しろのいななき！`);
+        if (playerPokemon.spAttack < playerPokemon.attack) {
+            playerPokemon.statStages.attack++;
+            await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
+            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+        } else {
+            playerPokemon.statStages.spAttack++;
+            await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
+            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+        }
+    }
+
+    if (opponentPokemon.ability === "しろのいななき") {
+        await showMessage(`あいての ${opponentPokemon.name} の しろのいななき！`);
+        if (opponentPokemon.spAttack < opponentPokemon.attack) {
+            opponentPokemon.statStages.attack++;
+            await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
+            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+        } else {
+            opponentPokemon.statStages.spAttack++;
+            await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
+            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+        }
+    }
+
+    if (playerPokemon.ability === "かたいつぼ") {
+        await showMessage(`じぶんの ${playerPokemon.name} の かたいつぼ！`);
+        playerPokemon.statStages.defense++;
+        playerPokemon.statStages.spDefense++;
+        await showMessage(`${playerPokemon.name} の ぼうぎょと とくぼうが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+
+    if (opponentPokemon.ability === "かたいつぼ") {
+        await showMessage(`あいての ${opponentPokemon.name} の かたいつぼ！`);
+        opponentPokemon.statStages.defense++;
+        opponentPokemon.statStages.spDefense++;
+        await showMessage(`${opponentPokemon.name} の ぼうぎょと とくぼうが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+
+    if (playerPokemon.ability === "たましいのうろこ") {
+        await showMessage(`じぶんの ${playerPokemon.name} の たましいのうろこ！`);
+        playerPokemon.statStages.defense++;
+        playerPokemon.statStages.spDefense++;
+        await showMessage(`${playerPokemon.name} の ぼうぎょと とくぼうが あがった！`);
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+
+    if (opponentPokemon.ability === "たましいのうろこ") {
+        await showMessage(`あいての ${opponentPokemon.name} の たましいのうろこ！`);
+        opponentPokemon.statStages.defense++;
+        opponentPokemon.statStages.spDefense++;
+        await showMessage(`${opponentPokemon.name} の ぼうぎょと とくぼうが あがった！`);
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
     }
 
     updateWeatherIndicator();

@@ -1168,17 +1168,17 @@ function getShownName(pokemon){
             });
             card.addEventListener('mousemove', (e) => {
 
-    let left = e.pageX + 20;
-    let top = e.pageY + 20;
+    let left = e.clientX + 20;
+let top = e.clientY + 20;
 
     // 右にはみ出す場合は左側へ
     if (left + selectionTooltip.offsetWidth > window.innerWidth) {
-        left = e.pageX - selectionTooltip.offsetWidth - 20;
+left = e.clientX - selectionTooltip.offsetWidth - 20; 
     }
 
     // 下にはみ出す場合は上側へ
     if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
-        top = e.pageY - selectionTooltip.offsetHeight - 20;
+top = e.clientY - selectionTooltip.offsetHeight - 20;
     }
 
     selectionTooltip.style.left = `${left}px`;
@@ -1326,17 +1326,17 @@ function handlePlayerItemSelect(itemName) {
             });
             card.addEventListener('mousemove', (e) => {
 
-    let left = e.pageX + 20;
-    let top = e.pageY + 20;
+    let left = e.clientX + 20;
+    let top = e.clientY + 20;
 
     // 右にはみ出す場合は左側へ
     if (left + selectionTooltip.offsetWidth > window.innerWidth) {
-        left = e.pageX - selectionTooltip.offsetWidth - 20;
+left = e.clientX - selectionTooltip.offsetWidth - 20;
     }
 
     // 下にはみ出す場合は上側へ
     if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
-        top = e.pageY - selectionTooltip.offsetHeight - 20;
+top = e.clientY - selectionTooltip.offsetHeight - 20;
     }
 
     selectionTooltip.style.left = `${left}px`;
@@ -2812,17 +2812,17 @@ function showSwitchSelection() {
             selectionTooltip.innerHTML = tooltipContent;
             selectionTooltip.style.display = 'block';
 
-            let left = e.pageX + 20;
-            let top = e.pageY + 20;
+            let left = e.clientX + 20;
+let top = e.clientY + 20;
 
             // 右にはみ出す場合は左側へ
             if (left + selectionTooltip.offsetWidth > window.innerWidth) {
-                left = e.pageX - selectionTooltip.offsetWidth - 20;
+left = e.clientX - selectionTooltip.offsetWidth - 20;
             }
 
             // 下にはみ出す場合は上側へ
             if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
-                top = e.pageY - selectionTooltip.offsetHeight - 20;
+top = e.clientY - selectionTooltip.offsetHeight - 20;
             }
 
             selectionTooltip.style.left = `${left}px`;
@@ -2831,17 +2831,17 @@ function showSwitchSelection() {
 
         // カーソルを動かしたらツールチップも追従
         button.addEventListener('mousemove', (e) => {
-            let left = e.pageX + 20;
-            let top = e.pageY + 20;
+            let left = e.clientX + 20;
+let top = e.clientY + 20;
 
             // 右にはみ出す場合は左側へ
             if (left + selectionTooltip.offsetWidth > window.innerWidth) {
-                left = e.pageX - selectionTooltip.offsetWidth - 20;
+left = e.clientX - selectionTooltip.offsetWidth - 20;
             }
 
             // 下にはみ出す場合は上側へ
             if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
-                top = e.pageY - selectionTooltip.offsetHeight - 20;
+top = e.clientY - selectionTooltip.offsetHeight - 20;
             }
 
             selectionTooltip.style.left = `${left}px`;
@@ -7427,8 +7427,8 @@ async function showForcedSwitchSelection() {
 
                 selectionTooltip.style.display = 'block';
 
-                let left = e.pageX + 20;
-                let top = e.pageY + 20;
+               let left = e.clientX + 20;
+let top = e.clientY + 20;
 
                 if (
                     left + selectionTooltip.offsetWidth >

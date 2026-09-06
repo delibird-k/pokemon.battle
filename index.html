@@ -7328,9 +7328,80 @@ async function showForcedSwitchSelection() {
                 </p>
             `;
 
+            // カーソルを合わせたらポケモン詳細を表示
+            button.addEventListener('mouseover', (e) => {
+                selectionTooltip.innerHTML =
+                    getTooltipContent(pokemon);
+
+                selectionTooltip.style.display = 'block';
+
+                let left = e.pageX + 20;
+                let top = e.pageY + 20;
+
+                if (
+                    left + selectionTooltip.offsetWidth >
+                    window.innerWidth
+                ) {
+                    left =
+                        e.pageX -
+                        selectionTooltip.offsetWidth -
+                        20;
+                }
+
+                if (
+                    top + selectionTooltip.offsetHeight >
+                    window.innerHeight + window.scrollY
+                ) {
+                    top =
+                        e.pageY -
+                        selectionTooltip.offsetHeight -
+                        20;
+                }
+
+                selectionTooltip.style.left =
+                    `${left}px`;
+
+                selectionTooltip.style.top =
+                    `${top}px`;
+            });
+
+            button.addEventListener('mousemove', (e) => {
+                let left = e.pageX + 20;
+                let top = e.pageY + 20;
+
+                if (
+                    left + selectionTooltip.offsetWidth >
+                    window.innerWidth
+                ) {
+                    left =
+                        e.pageX -
+                        selectionTooltip.offsetWidth -
+                        20;
+                }
+
+                if (
+                    top + selectionTooltip.offsetHeight >
+                    window.innerHeight + window.scrollY
+                ) {
+                    top =
+                        e.pageY -
+                        selectionTooltip.offsetHeight -
+                        20;
+                }
+
+                selectionTooltip.style.left =
+                    `${left}px`;
+
+                selectionTooltip.style.top =
+                    `${top}px`;
+            });
+
+            button.addEventListener('mouseout', () => {
+                selectionTooltip.style.display = 'none';
+            });
+
             button.onclick =
                 async () => {
-
                     button.disabled = true;
 
                     await executeForcedSwitch(index);

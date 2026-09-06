@@ -2770,6 +2770,89 @@ function showSwitchSelection() {
             executePlayerSwitch(index);
         };
 
+        // ポケモンにカーソルを合わせたときツールチップを表示
+        button.addEventListener('mouseover', (e) => {
+            let tooltipContent = `
+                <p class="font-bold text-xs">${pokemon.name}</p>
+                <p class="text-xs">タイプ: ${pokemon.types.join(' / ')}</p>
+                <p class="text-xs">とくせい: ${pokemon.ability}</p>
+                <p class="text-xs">せいかく: ${pokemon.nature}</p>
+
+                <p class="mt-1 font-bold text-xs">種族値:</p>
+                <p class="text-xs">
+                    H:${pokemon.baseHp}
+                    A:${pokemon.baseAttack}
+                    B:${pokemon.baseDefense}
+                </p>
+                <p class="text-xs">
+                    C:${pokemon.baseSpAttack}
+                    D:${pokemon.baseSpDefense}
+                    S:${pokemon.baseSpeed}
+                </p>
+
+                <p class="mt-1 font-bold text-xs">努力値:</p>
+                <p class="text-xs">
+                    H:${pokemon.evs?.hp ?? 0}
+                    A:${pokemon.evs?.atk ?? 0}
+                    B:${pokemon.evs?.def ?? 0}
+                </p>
+                <p class="text-xs">
+                    C:${pokemon.evs?.spa ?? 0}
+                    D:${pokemon.evs?.spd ?? 0}
+                    S:${pokemon.evs?.spe ?? 0}
+                </p>
+
+                <p class="mt-1 font-bold text-xs">おぼえるわざ:</p>
+            `;
+
+            pokemon.moves.forEach(move => {
+                tooltipContent += `<p class="text-xs">- ${move.name}</p>`;
+            });
+
+            selectionTooltip.innerHTML = tooltipContent;
+            selectionTooltip.style.display = 'block';
+
+            let left = e.pageX + 20;
+            let top = e.pageY + 20;
+
+            // 右にはみ出す場合は左側へ
+            if (left + selectionTooltip.offsetWidth > window.innerWidth) {
+                left = e.pageX - selectionTooltip.offsetWidth - 20;
+            }
+
+            // 下にはみ出す場合は上側へ
+            if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
+                top = e.pageY - selectionTooltip.offsetHeight - 20;
+            }
+
+            selectionTooltip.style.left = `${left}px`;
+            selectionTooltip.style.top = `${top}px`;
+        });
+
+        // カーソルを動かしたらツールチップも追従
+        button.addEventListener('mousemove', (e) => {
+            let left = e.pageX + 20;
+            let top = e.pageY + 20;
+
+            // 右にはみ出す場合は左側へ
+            if (left + selectionTooltip.offsetWidth > window.innerWidth) {
+                left = e.pageX - selectionTooltip.offsetWidth - 20;
+            }
+
+            // 下にはみ出す場合は上側へ
+            if (top + selectionTooltip.offsetHeight > window.innerHeight + window.scrollY) {
+                top = e.pageY - selectionTooltip.offsetHeight - 20;
+            }
+
+            selectionTooltip.style.left = `${left}px`;
+            selectionTooltip.style.top = `${top}px`;
+        });
+
+        // カーソルを外したらツールチップを消す
+        button.addEventListener('mouseout', () => {
+            selectionTooltip.style.display = 'none';
+        });
+
         movesContainer.appendChild(button);
     });
 

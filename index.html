@@ -5967,6 +5967,41 @@ for(let hit = 0; hit < hitCount; hit++){
 
     updateHpBars();
 
+        if (move.self && move.self.stats) {
+    let messages = [];
+
+    move.self.stats.forEach(s => {
+        attacker.statStages[s.stat] = Math.max(
+            -6,
+            attacker.statStages[s.stat] + s.stage
+        );
+
+        const statName = {
+            attack: 'こうげき',
+            defense: 'ぼうぎょ',
+            spAttack: 'とくこう',
+            spDefense: 'とくぼう',
+            speed: 'すばやさ'
+        }[s.stat];
+
+        messages.push(statName);
+    });
+
+    updateStatDisplay(
+        playerPokemon,
+        document.getElementById('player-stat-display')
+    );
+
+    updateStatDisplay(
+        opponentPokemon,
+        document.getElementById('opponent-stat-display')
+    );
+
+    await showMessage(
+        `${attacker.name} の ${messages.join(' と ')}が さがった！`
+    );
+}
+
     break;
 }
 }

@@ -6294,6 +6294,7 @@ for(let hit = 0; hit < hitCount; hit++){
         0,
         defender.currentHp - currentDamage
     );
+    defender.lastAttacker = attacker;
     if (
     currentDamage > 0 &&
     defender.ability === "イリュージョン" &&

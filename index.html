@@ -6537,10 +6537,11 @@ if (
         return { hit: true };
     }
 
-    // 本体ダメージ
-    defender.currentHp = Math.max(0, defender.currentHp - damage);
-    defender.lastDamageTaken = damage;
-    defender.lastDamageCategory = move.category;
+// 本体ダメージ
+defender.currentHp = Math.max(0, defender.currentHp - damage);
+defender.lastDamageTaken = damage;
+defender.lastDamageCategory = move.category;
+defender.lastAttacker = attacker;
 
     updateHpBars();
 
@@ -7545,6 +7546,56 @@ async function checkFainted(pokemon, isPlayer) {
 
     // 瀕死処理開始時点でロックする
     pokemon._faintProcessed = true;
+
+    // ビーストブースト：敵を倒したとき、自分の一番高い能力を1段階上げる
+const attacker = pokemon.lastAttacker;
+
+if (
+    attacker &&
+    attacker.currentHp > 0 &&
+    attacker.ability === "ビーストブースト"
+) {
+    const stats = {
+        attack: attacker.attack,
+        defense: attacker.defense,
+        spAttack: attacker.spAttack,
+        spDefense: attacker.spDefense,
+        speed: attacker.speed
+    };
+
+    const highestStat = Object.keys(stats).reduce(
+        (a, b) => stats[a] >= stats[b] ? a : b
+    );
+
+    attacker.statStages[highestStat] = Math.min(
+        6,
+        attacker.statStages[highestStat] + 1
+    );
+
+    const statNames = {
+        attack: "こうげき",
+        defense: "ぼうぎょ",
+        spAttack: "とくこう",
+        spDefense: "とくぼう",
+        speed: "すばやさ"
+    };
+
+    await showMessage(
+        `${attacker.name} の ビーストブースト！`
+    );
+
+    await showMessage(
+        `${attacker.name} の ${statNames[highestStat]}が あがった！`
+    );
+
+    updateStatDisplay(
+        attacker,
+        attacker === playerPokemon
+            ? document.getElementById('player-stat-display')
+            : document.getElementById('opponent-stat-display')
+    );
+}
+    
 
     const faintedSprite =
         isPlayer ? player.sprite : opponent.sprite;
@@ -9215,52 +9266,6 @@ isBattleInProgress = false;
     if (opponentEntered && opponentPokemon.ability === "ダウンロード") {
         await showMessage(`あいての ${opponentPokemon.name} の ダウンロード！`);
         if (playerPokemon.defense < playerPokemon.spDefense) {
-            opponentPokemon.statStages.attack++;
-            await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
-            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-        } else {
-            opponentPokemon.statStages.spAttack++;
-            await showMessage(`${opponentPokemon.name} の とくこうが あがった！`);
-            updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-        }
-    }
-
-    if (playerEntered && playerPokemon.ability === "ビーストブースト") {
-        await showMessage(`じぶんの ${playerPokemon.name} の ビーストブースト！`);
-        const stats = { attack: playerPokemon.attack, defense: playerPokemon.defense, spAttack: playerPokemon.spAttack, spDefense: playerPokemon.spDefense, speed: playerPokemon.speed };
-        const highestStat = Object.keys(stats).reduce((a, b) => stats[a] >= stats[b] ? a : b);
-        playerPokemon.statStages[highestStat]++;
-        const statNames = { attack: "こうげき", defense: "ぼうぎょ", spAttack: "とくこう", spDefense: "とくぼう", speed: "すばやさ" };
-        await showMessage(`${playerPokemon.name} の ${statNames[highestStat]}が あがった！`);
-        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-    }
-
-    if (opponentEntered && opponentPokemon.ability === "ビーストブースト") {
-        await showMessage(`あいての ${opponentPokemon.name} の ビーストブースト！`);
-        const stats = { attack: opponentPokemon.attack, defense: opponentPokemon.defense, spAttack: opponentPokemon.spAttack, spDefense: opponentPokemon.spDefense, speed: opponentPokemon.speed };
-        const highestStat = Object.keys(stats).reduce((a, b) => stats[a] >= stats[b] ? a : b);
-        opponentPokemon.statStages[highestStat]++;
-        const statNames = { attack: "こうげき", defense: "ぼうぎょ", spAttack: "とくこう", spDefense: "とくぼう", speed: "すばやさ" };
-        await showMessage(`${opponentPokemon.name} の ${statNames[highestStat]}が あがった！`);
-        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
-    }
-
-    if (playerEntered && playerPokemon.ability === "しろのいななき") {
-        await showMessage(`じぶんの ${playerPokemon.name} の しろのいななき！`);
-        if (playerPokemon.spAttack < playerPokemon.attack) {
-            playerPokemon.statStages.attack++;
-            await showMessage(`${playerPokemon.name} の こうげきが あがった！`);
-            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-        } else {
-            playerPokemon.statStages.spAttack++;
-            await showMessage(`${playerPokemon.name} の とくこうが あがった！`);
-            updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
-        }
-    }
-
-    if (opponentEntered && opponentPokemon.ability === "しろのいななき") {
-        await showMessage(`あいての ${opponentPokemon.name} の しろのいななき！`);
-        if (opponentPokemon.spAttack < opponentPokemon.attack) {
             opponentPokemon.statStages.attack++;
             await showMessage(`${opponentPokemon.name} の こうげきが あがった！`);
             updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));

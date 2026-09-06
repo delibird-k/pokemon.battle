@@ -5263,38 +5263,12 @@ function getOpponentMove() {
 
 
     // ========================================================
-// 3vs3 AI：通常ターンの交代判断
-// ========================================================
+    // ULTRA AI
+    // ========================================================
 
-if (
-    shouldOpponentSwitch()
-) {
-    return {
-        name: "__AI_SWITCH__",
-        isAISwitch: true
-    };
-}
-
-// ========================================================
-// 3vs3 AI：通常ターンの交代判断
-// ========================================================
-
-if (
-    shouldOpponentSwitch()
-) {
-    return {
-        name: "__AI_SWITCH__",
-        isAISwitch: true
-    };
-}
-
-// ========================================================
-// ULTRA AI
-// ========================================================
-
-return chooseBestAIMoveSecondVersion(
-    usableMoves
-);
+    return chooseBestAIMoveSecondVersion(
+        usableMoves
+    );
 }
     function calculateSelfConfusionDamage(attacker) {
         const level = 50;

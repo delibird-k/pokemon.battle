@@ -7588,6 +7588,11 @@ player.sprite.classList.remove(
     movesContainer.style.display = 'none';
     enableMoves();
 }
+    // ============================================================
+// AI：3vs3 最強交代AI
+// 自分・相手の残りポケモン全体を評価して交代先を決定
+// ============================================================
+
 function chooseBestOpponentSwitch() {
 
     const candidates = opponentTeam
@@ -7604,32 +7609,187 @@ function chooseBestOpponentSwitch() {
         return -1;
     }
 
-    let bestIndex =
-        candidates[0].index;
+    // プレイヤー側の生存ポケモン
+    const playerCandidates = playerTeam
+        .filter(pokemon =>
+            pokemon.currentHp > 0
+        );
 
-    let bestScore =
-        -Infinity;
+    let bestIndex = candidates[0].index;
+    let bestScore = -Infinity;
 
     for (const candidate of candidates) {
 
-        const pokemon =
-            candidate.pokemon;
+        const pokemon = candidate.pokemon;
+
+        if (!pokemon) continue;
 
         let score = 0;
 
         // ====================================================
-        // HP
+        // ① HP
         // ====================================================
 
         const hpRate =
             pokemon.currentHp /
             pokemon.maxHp;
 
-        score += hpRate * 3000;
+        score += hpRate * 3500;
 
         // ====================================================
-        // 相手（プレイヤー）への攻撃性能
+        // ② 今出ているプレイヤーへの性能
         // ====================================================
+
+        const activeBest =
+            getAIBestAttack(
+                pokemon,
+                playerPokemon
+            );
+
+        if (activeBest) {
+
+            const damage =
+                activeBest.damage;
+
+            const expected =
+                activeBest.expected;
+
+            score += expected * 2;
+
+            // 確定KO
+            if (
+                damage >=
+                playerPokemon.currentHp
+            ) {
+                score += 12000;
+            }
+
+            // 2発以内
+            else if (
+                damage * 2 >=
+                playerPokemon.currentHp
+            ) {
+                score += 3500;
+            }
+
+            // 効果抜群
+            const effectiveness =
+                getAITypeEffectiveness(
+                    activeBest.move,
+                    pokemon,
+                    playerPokemon
+                );
+
+            if (effectiveness >= 4) {
+                score += 2500;
+            }
+            else if (effectiveness >= 2) {
+                score += 1200;
+            }
+            else if (effectiveness <= 0.25) {
+                score -= 1800;
+            }
+            else if (effectiveness <= 0.5) {
+                score -= 700;
+            }
+        }
+
+        // ====================================================
+        // ③ プレイヤー側から受ける最大ダメージ
+        // ====================================================
+
+        let strongestIncoming = 0;
+
+        for (const player of playerCandidates) {
+
+            const playerBest =
+                getAIBestAttack(
+                    player,
+                    pokemon
+                );
+
+            if (!playerBest) {
+                continue;
+            }
+
+            const incoming =
+                playerBest.damage;
+
+            strongestIncoming =
+                Math.max(
+                    strongestIncoming,
+                    incoming
+                );
+        }
+
+        score -=
+            strongestIncoming * 1.8;
+
+        // 出した瞬間に倒される
+        if (
+            strongestIncoming >=
+            pokemon.currentHp
+        ) {
+            score -= 12000;
+        }
+
+        // ====================================================
+        // ④ 3匹全体に対する攻撃性能
+        // ====================================================
+
+        for (const player of playerCandidates) {
+
+            const bestAttack =
+                getAIBestAttack(
+                    pokemon,
+                    player
+                );
+
+            if (!bestAttack) {
+                continue;
+            }
+
+            const damage =
+                bestAttack.damage;
+
+            const expected =
+                bestAttack.expected;
+
+            // 全体的な火力
+            score +=
+                expected * 0.8;
+
+            // 確定KOできる相手
+            if (
+                damage >=
+                player.currentHp
+            ) {
+                score += 4500;
+            }
+
+            // 2発圏内
+            else if (
+                damage * 2 >=
+                player.currentHp
+            ) {
+                score += 1200;
+            }
+
+            // 3発圏内
+            else if (
+                damage * 3 >=
+                player.currentHp
+            ) {
+                score += 300;
+            }
+        }
+
+        // ====================================================
+        // ⑤ タイプ相性：プレイヤー3匹全体
+        // ====================================================
+
+        let superEffectiveCount = 0;
+        let resistedCount = 0;
 
         for (const move of pokemon.moves) {
 
@@ -7641,98 +7801,233 @@ function chooseBestOpponentSwitch() {
                 continue;
             }
 
-            const damage =
-                getAIDamage(
-                    move,
-                    pokemon,
-                    playerPokemon
-                );
+            for (const player of playerCandidates) {
 
-            const expected =
-                damage *
-                ((move.accuracy ?? 100) / 100);
+                const effectiveness =
+                    getAITypeEffectiveness(
+                        move,
+                        pokemon,
+                        player
+                    );
 
-            score += expected;
+                if (effectiveness >= 2) {
+                    superEffectiveCount++;
+                }
 
-            // 効果抜群
-            const effectiveness =
-                calculateTypeEffectiveness(
-                    move.type,
-                    playerPokemon.types
-                );
-
-            if (effectiveness > 1) {
-                score +=
-                    1200 *
-                    effectiveness;
+                if (
+                    effectiveness > 0 &&
+                    effectiveness <= 0.5
+                ) {
+                    resistedCount++;
+                }
             }
+        }
 
-            // 確定KO
-            if (
-                damage >=
-                playerPokemon.currentHp
-            ) {
-                score += 8000;
+        score +=
+            superEffectiveCount * 180;
+
+        score +=
+            resistedCount * 120;
+
+        // ====================================================
+        // ⑥ プレイヤー3匹の攻撃をどれだけ受けにくいか
+        // ====================================================
+
+        for (const player of playerCandidates) {
+
+            for (const move of player.moves) {
+
+                if (
+                    (move.currentPp ?? 0) <= 0 ||
+                    move.category === "status" ||
+                    !move.power
+                ) {
+                    continue;
+                }
+
+                const effectiveness =
+                    getAITypeEffectiveness(
+                        move,
+                        player,
+                        pokemon
+                    );
+
+                if (effectiveness === 0) {
+                    score += 700;
+                }
+                else if (effectiveness <= 0.25) {
+                    score += 500;
+                }
+                else if (effectiveness <= 0.5) {
+                    score += 250;
+                }
+                else if (effectiveness >= 4) {
+                    score -= 1200;
+                }
+                else if (effectiveness >= 2) {
+                    score -= 500;
+                }
             }
         }
 
         // ====================================================
-        // プレイヤーから受けるダメージ
+        // ⑦ 交代先が状態異常になっている場合
         // ====================================================
 
-        const playerBest =
-            getAIBestAttack(
-                playerPokemon,
-                pokemon
+        if (
+            pokemon.status &&
+            pokemon.status !== "none"
+        ) {
+            score -= 700;
+        }
+
+        // ====================================================
+        // ⑧ 交代先の素早さ
+        // ====================================================
+
+        const speed =
+            getAIEffectiveStat(
+                pokemon,
+                "speed"
             );
 
-        if (playerBest) {
+        const playerFastestSpeed =
+            playerCandidates.length > 0
+                ? Math.max(
+                    ...playerCandidates.map(
+                        player =>
+                            getAIEffectiveStat(
+                                player,
+                                "speed"
+                            )
+                    )
+                )
+                : 0;
 
-            const incoming =
-                playerBest.damage;
-
-            score -=
-                incoming * 1.5;
-
-            // 出した瞬間に倒されるなら大幅減点
-            if (
-                incoming >=
-                pokemon.currentHp
-            ) {
-                score -= 7000;
-            }
+        if (speed > playerFastestSpeed) {
+            score += 800;
+        }
+        else if (
+            speed >=
+            playerFastestSpeed * 0.9
+        ) {
+            score += 300;
         }
 
         // ====================================================
-        // タイプ相性
+        // ⑨ 残りの味方との役割重複を少し避ける
         // ====================================================
 
-        for (const playerMove of playerPokemon.moves) {
+        for (const ally of opponentTeam) {
 
             if (
-                playerMove.category === "status" ||
-                !playerMove.power
+                ally === pokemon ||
+                ally.currentHp <= 0
             ) {
                 continue;
             }
 
-            const effectiveness =
-                calculateTypeEffectiveness(
-                    playerMove.type,
-                    pokemon.types
+            const allyTypes =
+                Array.isArray(ally.types)
+                    ? ally.types
+                    : [ally.types];
+
+            const myTypes =
+                Array.isArray(pokemon.types)
+                    ? pokemon.types
+                    : [pokemon.types];
+
+            const sharedType =
+                myTypes.some(
+                    type =>
+                        allyTypes.includes(type)
                 );
 
-            if (effectiveness > 1) {
-                score -=
-                    1000 *
-                    effectiveness;
-            }
-
-            if (effectiveness < 1) {
-                score +=
-                    500;
+            if (sharedType) {
+                score -= 80;
             }
         }
+
+        // ====================================================
+        // ⑩ 残りの相手全体に対して最低1匹は強く出られるか
+        // ====================================================
+
+        let favorableMatchups = 0;
+
+        for (const player of playerCandidates) {
+
+            let matchupScore = 0;
+
+            // 自分からの最大火力
+            const myBest =
+                getAIBestAttack(
+                    pokemon,
+                    player
+                );
+
+            if (myBest) {
+                matchupScore +=
+                    myBest.expected;
+            }
+
+            // 相手からの最大火力
+            const enemyBest =
+                getAIBestAttack(
+                    player,
+                    pokemon
+                );
+
+            if (enemyBest) {
+                matchupScore -=
+                    enemyBest.expected;
+            }
+
+            if (matchupScore > 0) {
+                favorableMatchups++;
+            }
+        }
+
+        score +=
+            favorableMatchups * 900;
+
+        // ====================================================
+        // ⑪ 完全に不利なポケモンは大幅減点
+        // ====================================================
+
+        let badMatchups = 0;
+
+        for (const player of playerCandidates) {
+
+            const myBest =
+                getAIBestAttack(
+                    pokemon,
+                    player
+                );
+
+            const enemyBest =
+                getAIBestAttack(
+                    player,
+                    pokemon
+                );
+
+            if (
+                enemyBest &&
+                myBest &&
+                enemyBest.damage >=
+                pokemon.currentHp &&
+                myBest.damage <
+                player.currentHp
+            ) {
+                badMatchups++;
+            }
+        }
+
+        score -=
+            badMatchups * 2500;
+
+        // ====================================================
+        // 最終判定
+        // ====================================================
 
         if (score > bestScore) {
 

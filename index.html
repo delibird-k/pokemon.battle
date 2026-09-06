@@ -3031,6 +3031,194 @@ updateStatDisplay(
     updateMoves();
     enableMoves();
 }
+    // ============================================================
+// AI：通常ターンの交代判断
+// ============================================================
+function shouldOpponentSwitch() {
+
+    // 交代先を選ぶ
+    const nextIndex = chooseBestOpponentSwitch();
+
+    if (nextIndex === -1) {
+        return false;
+    }
+
+    const nextPokemon =
+        opponentTeam[nextIndex];
+
+    // 現在のポケモンがプレイヤーを確定KOできるなら
+    // 無理に交代しない
+    const currentBestAttack =
+        getAIBestAttack(
+            opponentPokemon,
+            playerPokemon
+        );
+
+    if (
+        currentBestAttack &&
+        currentBestAttack.damage >=
+        playerPokemon.currentHp
+    ) {
+        return false;
+    }
+
+    // 現在のポケモンが受ける最大ダメージ
+    const currentIncoming =
+        getAIBestAttack(
+            playerPokemon,
+            opponentPokemon
+        );
+
+    if (!currentIncoming) {
+        return false;
+    }
+
+    // 交代先が受ける最大ダメージ
+    const nextIncoming =
+        getAIBestAttack(
+            playerPokemon,
+            nextPokemon
+        );
+
+    // 交代先が出た瞬間に倒されるなら交代しない
+    if (
+        nextIncoming &&
+        nextIncoming.damage >=
+        nextPokemon.currentHp
+    ) {
+        return false;
+    }
+
+    // 現在のポケモンの攻撃性能
+    const currentOffense =
+        currentBestAttack
+            ? currentBestAttack.expected
+            : 0;
+
+    // 交代先の攻撃性能
+    const nextBestAttack =
+        getAIBestAttack(
+            nextPokemon,
+            playerPokemon
+        );
+
+    const nextOffense =
+        nextBestAttack
+            ? nextBestAttack.expected
+            : 0;
+
+    const currentDamage =
+        currentIncoming.expected;
+
+    const nextDamage =
+        nextIncoming
+            ? nextIncoming.expected
+            : 0;
+
+    // ========================================================
+    // 交代条件
+    // ========================================================
+    //
+    // 現在のポケモンがかなり不利
+    // ＋
+    // 交代先のほうが被ダメージを大きく抑えられる
+    // ＋
+    // 交代先にも攻撃手段がある
+    //
+    if (
+        currentDamage >=
+            opponentPokemon.currentHp * 0.30 &&
+        nextDamage <=
+            currentDamage * 0.65 &&
+        nextOffense >=
+            currentOffense * 0.85
+    ) {
+        return true;
+    }
+
+    return false;
+}
+
+
+// ============================================================
+// AI：通常ターンの交代実行
+// ============================================================
+async function executeOpponentAISwitch(newIndex) {
+
+    if (
+        newIndex === -1 ||
+        newIndex === opponentActiveIndex
+    ) {
+        return false;
+    }
+
+    const oldPokemon =
+        opponentPokemon;
+
+    await showMessage(
+        `あいて は ${oldPokemon.name} を ひっこめた！`
+    );
+
+    opponentActiveIndex =
+        newIndex;
+
+    opponentPokemon =
+        opponentTeam[opponentActiveIndex];
+
+    // 交代したポケモンの能力変化をリセット
+    opponentPokemon.statStages = {
+        attack: 0,
+        defense: 0,
+        spAttack: 0,
+        spDefense: 0,
+        speed: 0
+    };
+
+    opponentPokemon.hasMoved = false;
+    opponentPokemon.pendingMega = false;
+
+    const opponentShown =
+        opponentPokemon.disguiseData ||
+        opponentPokemon;
+
+    opponent.nameEl.textContent =
+        opponentShown.name;
+
+    document.getElementById(
+        'opponent-max-hp'
+    ).textContent =
+        opponentPokemon.maxHp;
+
+    opponent.sprite.src =
+        getSpriteUrl(opponentShown);
+
+    opponent.sprite.className =
+        `mx-auto ${
+            opponentPokemon.id === 'necrozma-ultra' ||
+            opponentPokemon.id === 'eternatus-eternamax'
+                ? 'h-28 sm:h-36 md:h-44'
+                : 'h-24 sm:h-32 md:h-40'
+        } object-contain transition-all duration-1000`;
+
+    opponent.sprite.classList.remove(
+        'sprite-faint'
+    );
+
+    await showMessage(
+        `あいて は ${opponentPokemon.name} を くりだした！`
+    );
+
+    // 場に出たときの特性
+    await handleAbilityEffectsOnEntry(
+        "opponent"
+    );
+
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+
+    return true;
+}
     async function startBattleRound(playerMove) {
       battleMenu.style.display = "none";
 movesContainer.style.display = "none";
@@ -3049,10 +3237,36 @@ opponentPokemon.hasMoved = false;
              playerMove.currentPp--;
         }
 
-        const opponentMove = getOpponentMove();
-        playerPokemon.selectedMove = playerMove;
-opponentPokemon.selectedMove = opponentMove;
-        if (
+playerPokemon.selectedMove = playerMove;
+
+// ========================================================
+// AIの通常交代判定
+// ========================================================
+let opponentSwitched = false;
+let opponentMove = null;
+
+if (
+    difficulty !== "easy" &&
+    shouldOpponentSwitch()
+) {
+    const nextIndex =
+        chooseBestOpponentSwitch();
+
+    opponentSwitched =
+        await executeOpponentAISwitch(
+            nextIndex
+        );
+}
+
+if (!opponentSwitched) {
+    opponentMove =
+        getOpponentMove();
+
+    opponentPokemon.selectedMove =
+        opponentMove;
+}
+if (
+    !opponentSwitched &&
     canMegaEvolve(opponentPokemon) &&
     !opponentPokemon.megaEvolved
 ) {
@@ -3067,7 +3281,13 @@ if (opponentPokemon.pendingMega) {
     await megaEvolve(opponentPokemon, false);
     opponentPokemon.pendingMega = false;
 }
-        if(opponentMove.name !== 'わるあがき') opponentMove.currentPp--;
+
+if (
+    !opponentSwitched &&
+    opponentMove.name !== 'わるあがき'
+) {
+    opponentMove.currentPp--;
+}
         let playerClaw = false;
 let opponentClaw = false;
 
@@ -3160,19 +3380,101 @@ if (playerClaw && !opponentClaw) {
     else playerGoesFirst = Math.random() < 0.5;
 }
 
-        const first = { pokemon: playerGoesFirst ? playerPokemon : opponentPokemon, move: playerGoesFirst ? playerMove : opponentMove };
-        const second = { pokemon: playerGoesFirst ? opponentPokemon : playerPokemon, move: playerGoesFirst ? opponentMove : playerMove };
-        
-        let gameOver = await handleAttack(first.pokemon, second.pokemon, first.move, true);
-        if (gameOver) { isBattleInProgress = false; return; }
-        
-        if (second.pokemon.currentHp > 0 && !second.pokemon.isFlinched) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            gameOver = await handleAttack(second.pokemon, first.pokemon, second.move, false);
-            if (gameOver) { isBattleInProgress = false; return; }
-        } else if (second.pokemon.isFlinched) {
-            await showMessage(` ${second.pokemon.name} は ひるんで うごけない！`);
+let gameOver;
+
+if (opponentSwitched) {
+
+    // ====================================================
+    // 相手が交代した場合
+    // 交代は攻撃より先なので、
+    // プレイヤーの技は新しく出てきたポケモンに当たる
+    // ====================================================
+
+    gameOver =
+        await handleAttack(
+            playerPokemon,
+            opponentPokemon,
+            playerMove,
+            true
+        );
+
+    if (gameOver) {
+        isBattleInProgress = false;
+        return;
+    }
+
+} else {
+
+    // ====================================================
+    // 通常の攻撃処理
+    // ====================================================
+
+    const first = {
+        pokemon:
+            playerGoesFirst
+                ? playerPokemon
+                : opponentPokemon,
+        move:
+            playerGoesFirst
+                ? playerMove
+                : opponentMove
+    };
+
+    const second = {
+        pokemon:
+            playerGoesFirst
+                ? opponentPokemon
+                : playerPokemon,
+        move:
+            playerGoesFirst
+                ? opponentMove
+                : playerMove
+    };
+
+    gameOver =
+        await handleAttack(
+            first.pokemon,
+            second.pokemon,
+            first.move,
+            true
+        );
+
+    if (gameOver) {
+        isBattleInProgress = false;
+        return;
+    }
+
+    if (
+        second.pokemon.currentHp > 0 &&
+        !second.pokemon.isFlinched
+    ) {
+        await new Promise(
+            resolve =>
+                setTimeout(resolve, 1000)
+        );
+
+        gameOver =
+            await handleAttack(
+                second.pokemon,
+                first.pokemon,
+                second.move,
+                false
+            );
+
+        if (gameOver) {
+            isBattleInProgress = false;
+            return;
         }
+
+    } else if (
+        second.pokemon.isFlinched
+    ) {
+
+        await showMessage(
+            ` ${second.pokemon.name} は ひるんで うごけない！`
+        );
+    }
+}
 
         gameOver = await handleEndOfTurnEffects();
         if (gameOver) { isBattleInProgress = false; return; }

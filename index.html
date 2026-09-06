@@ -7526,8 +7526,8 @@ async function applyBerryBasketEffect(pokemon, isPlayer) {
     return false;
 }
 
-async function checkFainted(pokemon, isPlayer) {
-
+async function checkFainted(pokemon, isPlayer, attacker = null) {
+    
     // 同じポケモンの瀕死処理を二重に実行しない
     if (pokemon._faintProcessed) {
         return false;
@@ -7548,28 +7548,28 @@ async function checkFainted(pokemon, isPlayer) {
 pokemon._faintProcessed = true;
 
 // ビーストブースト：敵を倒したとき、自分の一番高い能力を1段階上げる
-const attacker = pokemon.lastAttacker;
+const beastBoostAttacker = attacker || pokemon.lastAttacker;
 
 if (
-    attacker &&
-    attacker.currentHp > 0 &&
-    attacker.ability === "ビーストブースト"
+    beastBoostAttacker &&
+    beastBoostAttacker.currentHp > 0 &&
+    beastBoostAttacker.ability === "ビーストブースト"
 ) {
     const stats = {
-        attack: attacker.attack,
-        defense: attacker.defense,
-        spAttack: attacker.spAttack,
-        spDefense: attacker.spDefense,
-        speed: attacker.speed
+        attack: beastBoostAttacker.attack,
+        defense: beastBoostAttacker.defense,
+        spAttack: beastBoostAttacker.spAttack,
+        spDefense: beastBoostAttacker.spDefense,
+        speed: beastBoostAttacker.speed
     };
 
     const highestStat = Object.keys(stats).reduce(
         (a, b) => stats[a] >= stats[b] ? a : b
     );
 
-    attacker.statStages[highestStat] = Math.min(
+    beastBoostAttacker.statStages[highestStat] = Math.min(
         6,
-        attacker.statStages[highestStat] + 1
+        beastBoostAttacker.statStages[highestStat] + 1
     );
 
     const statNames = {
@@ -7581,16 +7581,16 @@ if (
     };
 
     await showMessage(
-        `${attacker.name} の ビーストブースト！`
+        `${beastBoostAttacker.name} の ビーストブースト！`
     );
 
     await showMessage(
-        `${attacker.name} の ${statNames[highestStat]}が あがった！`
+        `${beastBoostAttacker.name} の ${statNames[highestStat]}が あがった！`
     );
 
     updateStatDisplay(
-        attacker,
-        attacker === playerPokemon
+        beastBoostAttacker,
+        beastBoostAttacker === playerPokemon
             ? document.getElementById('player-stat-display')
             : document.getElementById('opponent-stat-display')
     );

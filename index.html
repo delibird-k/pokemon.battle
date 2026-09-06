@@ -4961,13 +4961,25 @@ function getOpponentMove() {
 
 
     // ========================================================
-    // ULTRA AI
-    // ========================================================
+// 3vs3 AI：通常ターンの交代判断
+// ========================================================
 
-    return chooseBestAIMoveSecondVersion(
-        usableMoves
-    );
+if (
+    shouldOpponentSwitch()
+) {
+    return {
+        name: "__AI_SWITCH__",
+        isAISwitch: true
+    };
 }
+
+// ========================================================
+// ULTRA AI
+// ========================================================
+
+return chooseBestAIMoveSecondVersion(
+    usableMoves
+);
     function calculateSelfConfusionDamage(attacker) {
         const level = 50;
         const movePower = 40;
@@ -7588,13 +7600,29 @@ player.sprite.classList.remove(
     movesContainer.style.display = 'none';
     enableMoves();
 }
-    // ============================================================
-// AI：3vs3 最強交代AI
-// 自分・相手の残りポケモン全体を評価して交代先を決定
+
+// ============================================================
+// AI：3vs3 通常ターンの交代判断
+// 「このまま戦うより交代した方が明確に得」なら交代
 // ============================================================
 
-function chooseBestOpponentSwitch() {
+function shouldOpponentSwitch() {
 
+    // EASYでは交代判断をしない
+    if (difficulty === "easy") {
+        return false;
+    }
+
+    if (
+        !opponentPokemon ||
+        !playerPokemon ||
+        opponentPokemon.currentHp <= 0 ||
+        playerPokemon.currentHp <= 0
+    ) {
+        return false;
+    }
+
+    // 交代候補
     const candidates = opponentTeam
         .map((pokemon, index) => ({
             pokemon,
@@ -7606,440 +7634,213 @@ function chooseBestOpponentSwitch() {
         );
 
     if (candidates.length === 0) {
-        return -1;
+        return false;
     }
 
-    // プレイヤー側の生存ポケモン
-    const playerCandidates = playerTeam
-        .filter(pokemon =>
-            pokemon.currentHp > 0
+    // ========================================================
+    // 現在の対面を評価
+    // ========================================================
+
+    const currentAttack =
+        getAIBestAttack(
+            opponentPokemon,
+            playerPokemon
         );
 
-    let bestIndex = candidates[0].index;
-    let bestScore = -Infinity;
+    const currentDefense =
+        getAIBestAttack(
+            playerPokemon,
+            opponentPokemon
+        );
+
+    let stayScore = 0;
+
+    if (currentAttack) {
+        stayScore +=
+            currentAttack.expected;
+
+        // 確定KOできるなら基本的に居座る
+        if (
+            currentAttack.damage >=
+            playerPokemon.currentHp
+        ) {
+            stayScore += 15000;
+        }
+
+        // 2発圏内
+        else if (
+            currentAttack.damage * 2 >=
+            playerPokemon.currentHp
+        ) {
+            stayScore += 2500;
+        }
+    }
+
+    if (currentDefense) {
+
+        stayScore -=
+            currentDefense.expected * 1.5;
+
+        // 相手に確定KOされる
+        if (
+            currentDefense.damage >=
+            opponentPokemon.currentHp
+        ) {
+            stayScore -= 15000;
+        }
+
+        // 2発圏内
+        else if (
+            currentDefense.damage * 2 >=
+            opponentPokemon.currentHp
+        ) {
+            stayScore -= 3000;
+        }
+    }
+
+    // ========================================================
+    // 交代候補の中で一番強いポケモンを探す
+    // ========================================================
+
+    let bestSwitchIndex = -1;
+    let bestSwitchScore = -Infinity;
 
     for (const candidate of candidates) {
 
-        const pokemon = candidate.pokemon;
+        const pokemon =
+            candidate.pokemon;
 
-        if (!pokemon) continue;
+        let switchScore = 0;
 
-        let score = 0;
-
-        // ====================================================
-        // ① HP
-        // ====================================================
-
-        const hpRate =
-            pokemon.currentHp /
-            pokemon.maxHp;
-
-        score += hpRate * 3500;
-
-        // ====================================================
-        // ② 今出ているプレイヤーへの性能
-        // ====================================================
-
-        const activeBest =
+        const attack =
             getAIBestAttack(
                 pokemon,
                 playerPokemon
             );
 
-        if (activeBest) {
+        const defense =
+            getAIBestAttack(
+                playerPokemon,
+                pokemon
+            );
 
-            const damage =
-                activeBest.damage;
+        // 攻撃性能
+        if (attack) {
 
-            const expected =
-                activeBest.expected;
-
-            score += expected * 2;
+            switchScore +=
+                attack.expected * 2;
 
             // 確定KO
             if (
-                damage >=
+                attack.damage >=
                 playerPokemon.currentHp
             ) {
-                score += 12000;
+                switchScore += 12000;
             }
 
-            // 2発以内
+            // 2発圏内
             else if (
-                damage * 2 >=
+                attack.damage * 2 >=
                 playerPokemon.currentHp
             ) {
-                score += 3500;
+                switchScore += 3000;
             }
 
-            // 効果抜群
             const effectiveness =
                 getAITypeEffectiveness(
-                    activeBest.move,
+                    attack.move,
                     pokemon,
                     playerPokemon
                 );
 
             if (effectiveness >= 4) {
-                score += 2500;
+                switchScore += 3000;
             }
             else if (effectiveness >= 2) {
-                score += 1200;
+                switchScore += 1400;
             }
             else if (effectiveness <= 0.25) {
-                score -= 1800;
+                switchScore -= 2000;
             }
             else if (effectiveness <= 0.5) {
-                score -= 700;
+                switchScore -= 800;
             }
         }
 
-        // ====================================================
-        // ③ プレイヤー側から受ける最大ダメージ
-        // ====================================================
+        // 防御性能
+        if (defense) {
 
-        let strongestIncoming = 0;
+            switchScore -=
+                defense.expected * 1.8;
 
-        for (const player of playerCandidates) {
-
-            const playerBest =
-                getAIBestAttack(
-                    player,
-                    pokemon
-                );
-
-            if (!playerBest) {
-                continue;
-            }
-
-            const incoming =
-                playerBest.damage;
-
-            strongestIncoming =
-                Math.max(
-                    strongestIncoming,
-                    incoming
-                );
-        }
-
-        score -=
-            strongestIncoming * 1.8;
-
-        // 出した瞬間に倒される
-        if (
-            strongestIncoming >=
-            pokemon.currentHp
-        ) {
-            score -= 12000;
-        }
-
-        // ====================================================
-        // ④ 3匹全体に対する攻撃性能
-        // ====================================================
-
-        for (const player of playerCandidates) {
-
-            const bestAttack =
-                getAIBestAttack(
-                    pokemon,
-                    player
-                );
-
-            if (!bestAttack) {
-                continue;
-            }
-
-            const damage =
-                bestAttack.damage;
-
-            const expected =
-                bestAttack.expected;
-
-            // 全体的な火力
-            score +=
-                expected * 0.8;
-
-            // 確定KOできる相手
+            // 出した瞬間に倒される
             if (
-                damage >=
-                player.currentHp
+                defense.damage >=
+                pokemon.currentHp
             ) {
-                score += 4500;
+                switchScore -= 12000;
             }
 
             // 2発圏内
             else if (
-                damage * 2 >=
-                player.currentHp
+                defense.damage * 2 >=
+                pokemon.currentHp
             ) {
-                score += 1200;
-            }
-
-            // 3発圏内
-            else if (
-                damage * 3 >=
-                player.currentHp
-            ) {
-                score += 300;
+                switchScore -= 2500;
             }
         }
 
-        // ====================================================
-        // ⑤ タイプ相性：プレイヤー3匹全体
-        // ====================================================
-
-        let superEffectiveCount = 0;
-        let resistedCount = 0;
-
-        for (const move of pokemon.moves) {
-
-            if (
-                (move.currentPp ?? 0) <= 0 ||
-                move.category === "status" ||
-                !move.power
-            ) {
-                continue;
-            }
-
-            for (const player of playerCandidates) {
-
-                const effectiveness =
-                    getAITypeEffectiveness(
-                        move,
-                        pokemon,
-                        player
-                    );
-
-                if (effectiveness >= 2) {
-                    superEffectiveCount++;
-                }
-
-                if (
-                    effectiveness > 0 &&
-                    effectiveness <= 0.5
-                ) {
-                    resistedCount++;
-                }
-            }
-        }
-
-        score +=
-            superEffectiveCount * 180;
-
-        score +=
-            resistedCount * 120;
-
-        // ====================================================
-        // ⑥ プレイヤー3匹の攻撃をどれだけ受けにくいか
-        // ====================================================
-
-        for (const player of playerCandidates) {
-
-            for (const move of player.moves) {
-
-                if (
-                    (move.currentPp ?? 0) <= 0 ||
-                    move.category === "status" ||
-                    !move.power
-                ) {
-                    continue;
-                }
-
-                const effectiveness =
-                    getAITypeEffectiveness(
-                        move,
-                        player,
-                        pokemon
-                    );
-
-                if (effectiveness === 0) {
-                    score += 700;
-                }
-                else if (effectiveness <= 0.25) {
-                    score += 500;
-                }
-                else if (effectiveness <= 0.5) {
-                    score += 250;
-                }
-                else if (effectiveness >= 4) {
-                    score -= 1200;
-                }
-                else if (effectiveness >= 2) {
-                    score -= 500;
-                }
-            }
-        }
-
-        // ====================================================
-        // ⑦ 交代先が状態異常になっている場合
-        // ====================================================
+        // HP
+        switchScore +=
+            (
+                pokemon.currentHp /
+                pokemon.maxHp
+            ) * 1500;
 
         if (
-            pokemon.status &&
-            pokemon.status !== "none"
+            switchScore >
+            bestSwitchScore
         ) {
-            score -= 700;
-        }
+            bestSwitchScore =
+                switchScore;
 
-        // ====================================================
-        // ⑧ 交代先の素早さ
-        // ====================================================
-
-        const speed =
-            getAIEffectiveStat(
-                pokemon,
-                "speed"
-            );
-
-        const playerFastestSpeed =
-            playerCandidates.length > 0
-                ? Math.max(
-                    ...playerCandidates.map(
-                        player =>
-                            getAIEffectiveStat(
-                                player,
-                                "speed"
-                            )
-                    )
-                )
-                : 0;
-
-        if (speed > playerFastestSpeed) {
-            score += 800;
-        }
-        else if (
-            speed >=
-            playerFastestSpeed * 0.9
-        ) {
-            score += 300;
-        }
-
-        // ====================================================
-        // ⑨ 残りの味方との役割重複を少し避ける
-        // ====================================================
-
-        for (const ally of opponentTeam) {
-
-            if (
-                ally === pokemon ||
-                ally.currentHp <= 0
-            ) {
-                continue;
-            }
-
-            const allyTypes =
-                Array.isArray(ally.types)
-                    ? ally.types
-                    : [ally.types];
-
-            const myTypes =
-                Array.isArray(pokemon.types)
-                    ? pokemon.types
-                    : [pokemon.types];
-
-            const sharedType =
-                myTypes.some(
-                    type =>
-                        allyTypes.includes(type)
-                );
-
-            if (sharedType) {
-                score -= 80;
-            }
-        }
-
-        // ====================================================
-        // ⑩ 残りの相手全体に対して最低1匹は強く出られるか
-        // ====================================================
-
-        let favorableMatchups = 0;
-
-        for (const player of playerCandidates) {
-
-            let matchupScore = 0;
-
-            // 自分からの最大火力
-            const myBest =
-                getAIBestAttack(
-                    pokemon,
-                    player
-                );
-
-            if (myBest) {
-                matchupScore +=
-                    myBest.expected;
-            }
-
-            // 相手からの最大火力
-            const enemyBest =
-                getAIBestAttack(
-                    player,
-                    pokemon
-                );
-
-            if (enemyBest) {
-                matchupScore -=
-                    enemyBest.expected;
-            }
-
-            if (matchupScore > 0) {
-                favorableMatchups++;
-            }
-        }
-
-        score +=
-            favorableMatchups * 900;
-
-        // ====================================================
-        // ⑪ 完全に不利なポケモンは大幅減点
-        // ====================================================
-
-        let badMatchups = 0;
-
-        for (const player of playerCandidates) {
-
-            const myBest =
-                getAIBestAttack(
-                    pokemon,
-                    player
-                );
-
-            const enemyBest =
-                getAIBestAttack(
-                    player,
-                    pokemon
-                );
-
-            if (
-                enemyBest &&
-                myBest &&
-                enemyBest.damage >=
-                pokemon.currentHp &&
-                myBest.damage <
-                player.currentHp
-            ) {
-                badMatchups++;
-            }
-        }
-
-        score -=
-            badMatchups * 2500;
-
-        // ====================================================
-        // 最終判定
-        // ====================================================
-
-        if (score > bestScore) {
-
-            bestScore =
-                score;
-
-            bestIndex =
+            bestSwitchIndex =
                 candidate.index;
         }
     }
 
-    return bestIndex;
+    if (bestSwitchIndex === -1) {
+        return false;
+    }
+
+    // ========================================================
+    // 交代する価値が十分あるか
+    // ========================================================
+
+    const advantage =
+        bestSwitchScore -
+        stayScore;
+
+    // ハードなら積極的に交代
+    if (
+        difficulty === "hard" &&
+        advantage >= 2500
+    ) {
+        return true;
+    }
+
+    // ノーマルはかなり明確な有利不利だけ
+    if (
+        (
+            difficulty === "normal" ||
+            difficulty === "ノーマル"
+        ) &&
+        advantage >= 5000
+    ) {
+        return true;
+    }
+
+    return false;
 }
 
     function getStatModifier(stage) {

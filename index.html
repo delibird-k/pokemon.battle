@@ -2916,7 +2916,7 @@ async function executePlayerSwitch(newIndex) {
         spDefense: 0,
         speed: 0
     };
-    updateStatDisplay(
+updateStatDisplay(
     playerPokemon,
     document.getElementById('player-stat-display')
 );
@@ -7318,7 +7318,7 @@ async function checkFainted(pokemon, isPlayer) {
         spDefense: 0,
         speed: 0
     };
-    updateStatDisplay(
+updateStatDisplay(
     opponentPokemon,
     document.getElementById('opponent-stat-display')
 );
@@ -7352,6 +7352,11 @@ async function checkFainted(pokemon, isPlayer) {
         } object-contain transition-all duration-1000`;
 
     await handleAbilityEffectsOnEntry("opponent");
+
+updateStatDisplay(
+    opponentPokemon,
+    document.getElementById('opponent-stat-display')
+);
 
     updateHpBars();
     updateStatusMarkers();
@@ -7533,7 +7538,7 @@ async function executeForcedSwitch(newIndex) {
         spDefense: 0,
         speed: 0
     };
-    updateStatDisplay(
+updateStatDisplay(
     playerPokemon,
     document.getElementById('player-stat-display')
 );

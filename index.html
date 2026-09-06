@@ -2897,13 +2897,15 @@ async function executePlayerSwitch(newIndex) {
 
     movesContainer.style.display = "none";
 
-    const oldPokemon = playerPokemon;
+const oldPokemon = playerPokemon;
 
-    await showMessage(
-        `${oldPokemon.name} を ひっこめた！`
-    );
+await showMessage(
+    `${oldPokemon.name} を ひっこめた！`
+);
 
-    playerActiveIndex = newIndex;
+playerPokemon.hasSwitchedThisTurn = true;
+
+playerActiveIndex = newIndex;
 
     playerPokemon =
         playerTeam[playerActiveIndex];
@@ -6011,7 +6013,13 @@ if (defender.currentHp <= 0) {
 
         await showMessage(`${attacker.name} の ${move.name}！`);
 
-        if (move.name === "ふいうち") {
+       if (move.name === "ふいうち") {
+
+    // 相手が交代した
+    if (defender.hasSwitchedThisTurn) {
+        await showMessage("しかし しっぱいした！");
+        return false;
+    }
 
     // 相手が変化技
     if (
@@ -6029,6 +6037,12 @@ if (defender.currentHp <= 0) {
     }
 }
 if (move.name === "じんらい") {
+
+    // 相手が交代した
+    if (defender.hasSwitchedThisTurn) {
+        await showMessage("しかし しっぱいした！");
+        return false;
+    }
 
     // 相手が変化技
     if (

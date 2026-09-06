@@ -2916,6 +2916,10 @@ async function executePlayerSwitch(newIndex) {
         spDefense: 0,
         speed: 0
     };
+    updateStatDisplay(
+    playerPokemon,
+    document.getElementById('player-stat-display')
+);
 
     playerPokemon.isFlinched = false;
 
@@ -7314,6 +7318,10 @@ async function checkFainted(pokemon, isPlayer) {
         spDefense: 0,
         speed: 0
     };
+    updateStatDisplay(
+    opponentPokemon,
+    document.getElementById('opponent-stat-display')
+);
 
     await showMessage(
         `あいて は ${opponentPokemon.name} を くりだした！`
@@ -7525,6 +7533,10 @@ async function executeForcedSwitch(newIndex) {
         spDefense: 0,
         speed: 0
     };
+    updateStatDisplay(
+    playerPokemon,
+    document.getElementById('player-stat-display')
+);
 
     const playerShown =
     playerPokemon.disguiseData ||

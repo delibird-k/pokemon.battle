@@ -7545,10 +7545,15 @@ async function checkFainted(pokemon, isPlayer) {
     pokemon.faintProcessed = true;
 
     // 瀕死処理開始時点でロックする
-    pokemon._faintProcessed = true;
+pokemon._faintProcessed = true;
 
-    // ビーストブースト：敵を倒したとき、自分の一番高い能力を1段階上げる
+// ビーストブースト：敵を倒したとき、自分の一番高い能力を1段階上げる
 const attacker = pokemon.lastAttacker;
+
+if (
+    attacker &&
+    attacker.ability === "ビーストブースト"
+) {
 
 if (
     attacker &&

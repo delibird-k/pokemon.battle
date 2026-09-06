@@ -7158,10 +7158,8 @@ async function checkFainted(pokemon, isPlayer) {
     // 相手の3匹すべて倒れたときだけ勝利
     if (remainingOpponentIndexes.length === 0) {
 
-        screenOverlay.classList.add('active');
-
         await new Promise(resolve =>
-            setTimeout(resolve, 1500)
+            setTimeout(resolve, 500)
         );
 
         endGame(true);

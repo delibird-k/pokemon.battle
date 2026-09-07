@@ -2911,15 +2911,17 @@ await showMessage(
     `${oldPokemon.name} を ひっこめた！`
 );
 
-playerPokemon.hasSwitchedThisTurn = true;
-
 playerActiveIndex = newIndex;
 
-    playerPokemon =
-        playerTeam[playerActiveIndex];
+playerPokemon =
+    playerTeam[playerActiveIndex];
 
-    // 交代したポケモンの能力変化をリセット
-    playerPokemon.statStages = {
+// 交代して出てきたポケモンは、このターンまだ行動していない
+playerPokemon.hasMoved = false;
+playerPokemon.selectedMove = null;
+
+// 交代したポケモンの能力変化をリセット
+playerPokemon.statStages = {
         attack: 0,
         defense: 0,
         spAttack: 0,

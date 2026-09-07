@@ -2718,6 +2718,139 @@ function getTooltipContent(pokemon) {
     `;
 }
 
+function showUTurnSwitchSelection() {
+    return new Promise((resolve) => {
+
+        battleMenu.style.display = "none";
+        movesContainer.style.display = "grid";
+
+        movesContainer.classList.remove("grid-cols-2");
+        movesContainer.classList.add("grid-cols-3");
+
+        movesContainer.innerHTML = "";
+
+        playerTeam.forEach((pokemon, index) => {
+
+            // 今出ているポケモンは選べない
+            if (index === playerActiveIndex) {
+                return;
+            }
+
+            // 瀕死も選べない
+            if (pokemon.currentHp <= 0) {
+                return;
+            }
+
+            const button = document.createElement("button");
+
+            button.className =
+                "border-2 border-gray-800 rounded p-2 bg-green-200 hover:bg-green-300";
+
+            const hpRate =
+                pokemon.maxHp > 0
+                    ? Math.floor(
+                        pokemon.currentHp /
+                        pokemon.maxHp *
+                        100
+                    )
+                    : 0;
+
+            button.innerHTML = `
+                <div class="font-bold">
+                    ${pokemon.name}
+                </div>
+
+                <div class="text-xs mt-1">
+                    HP ${pokemon.currentHp} / ${pokemon.maxHp}
+                </div>
+
+                <div class="text-xs">
+                    ${hpRate}%
+                </div>
+            `;
+
+            button.onclick = async () => {
+
+                button.disabled = true;
+
+                await executeUTurnSwitch(index);
+
+                resolve();
+            };
+
+            movesContainer.appendChild(button);
+        });
+    });
+}
+
+
+async function executeUTurnSwitch(newIndex) {
+
+    const oldPokemon = playerPokemon;
+
+    await showMessage(
+        `${oldPokemon.name} を ひっこめた！`
+    );
+
+    playerActiveIndex = newIndex;
+
+    playerPokemon =
+        playerTeam[playerActiveIndex];
+
+    // 交代先のポケモンは、このターンまだ行動していない
+    playerPokemon.hasMoved = false;
+    playerPokemon.selectedMove = null;
+    playerPokemon.isFlinched = false;
+
+    const playerShown =
+        playerPokemon.disguiseData ||
+        playerPokemon;
+
+    player.nameEl.textContent =
+        playerShown.name;
+
+    player.maxHpEl.textContent =
+        playerPokemon.maxHp;
+
+    player.sprite.src =
+        getSpriteUrl(
+            playerShown,
+            true
+        );
+
+    player.sprite.className =
+        `mx-auto ${
+            playerPokemon.id === 'necrozma-ultra' ||
+            playerPokemon.id === 'eternatus-eternamax'
+                ? 'h-28 sm:h-36 md:h-44'
+                : 'h-24 sm:h-32 md:h-40'
+        } object-contain transition-all duration-1000`;
+
+    player.sprite.classList.remove(
+        'sprite-faint'
+    );
+
+    await showMessage(
+        `いけ！ ${playerPokemon.name}！`
+    );
+
+    await handleAbilityEffectsOnEntry(
+        "player"
+    );
+
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+    updateMoves();
+
+    movesContainer.style.display = "none";
+    movesContainer.innerHTML = "";
+    movesContainer.classList.remove("grid-cols-3");
+    movesContainer.classList.add("grid-cols-2");
+
+    uTurnSwitched = true;
+}
+    
 function showSwitchSelection() {
 
     battleMenu.style.display = "none";
@@ -3021,6 +3154,7 @@ updateStatDisplay(
     }
 
     currentTurn++;
+    uTurnSwitched = false;
 
     turnCounter.textContent =
         `ターン: ${currentTurn}`;
@@ -3236,6 +3370,7 @@ async function executeOpponentAISwitch(newIndex) {
 movesContainer.style.display = "none";
       playerPokemon.hasMoved = false;
 opponentPokemon.hasMoved = false;
+        let uTurnSwitched = false;
       if(isBattleInProgress) return;
         isBattleInProgress = true;
         disableMoves();
@@ -3392,6 +3527,8 @@ if (playerClaw && !opponentClaw) {
     else playerGoesFirst = Math.random() < 0.5;
 }
 
+const playerPokemonAtStart = playerPokemon;
+        
 let gameOver;
 
 if (opponentSwitched) {
@@ -3465,13 +3602,20 @@ if (opponentSwitched) {
                 setTimeout(resolve, 1000)
         );
 
-        gameOver =
-            await handleAttack(
-                second.pokemon,
-                first.pokemon,
-                second.move,
-                false
-            );
+const secondDefender =
+    uTurnSwitched &&
+    second.pokemon === opponentPokemon &&
+    playerPokemon !== playerPokemonAtStart
+        ? playerPokemon
+        : first.pokemon;
+
+gameOver =
+    await handleAttack(
+        second.pokemon,
+        secondDefender,
+        second.move,
+        false
+    );
 
         if (gameOver) {
             isBattleInProgress = false;
@@ -3492,6 +3636,7 @@ if (opponentSwitched) {
         if (gameOver) { isBattleInProgress = false; return; }
         
         currentTurn++;
+        uTurnSwitched = false;
         turnCounter.textContent = `ターン: ${currentTurn}`;
         
         if (playerPokemon.isRampaging && playerPokemon.currentHp > 0) {
@@ -6487,11 +6632,32 @@ if (
         const berryHealed = await checkAndUseItem(defender);
         if(berryHealed) await new Promise(resolve => setTimeout(resolve, 1000));
         
-        if (move.name === 'げきりん' && !attacker.isRampaging) {
-            attacker.isRampaging = true;
-            attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
-        }
-        attacker.hasMoved = true;
+       if (move.name === 'げきりん' && !attacker.isRampaging) {
+    attacker.isRampaging = true;
+    attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
+}
+
+// ========================================================
+// とんぼがえり
+// 攻撃後、自分のポケモンを交代する
+// ========================================================
+if (
+    move.name === "とんぼがえり" &&
+    attacker === playerPokemon &&
+    playerTeam.some(
+        (pokemon, index) =>
+            index !== playerActiveIndex &&
+            pokemon.currentHp > 0
+    )
+) {
+    await showMessage(
+        `${attacker.name} は とんぼがえりで ひっこんだ！`
+    );
+
+    await showUTurnSwitchSelection();
+}
+
+attacker.hasMoved = true;
     }
     
     async function applyDamage(attacker, defender, damage, move, defenderUI) {

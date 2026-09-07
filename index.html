@@ -434,6 +434,7 @@ let selectedOpponentItemName;
     let field = { type: 'none', turns: 0 };
     let isBattleInProgress = false;
     let forcedSwitchPending = false;
+    let opponentSwitchedLastTurn = false;
 
     const POKE_API_BASE_URL = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/";
     const backgroundImages = [ 'morii.webp' ];
@@ -3321,7 +3322,8 @@ async function executeOpponentAISwitch(newIndex) {
     };
 
     opponentPokemon.hasMoved = false;
-    opponentPokemon.pendingMega = false;
+opponentPokemon.pendingMega = false;
+opponentPokemon.protectUsed = false;
 
     const opponentShown =
         opponentPokemon.disguiseData ||
@@ -3634,8 +3636,11 @@ gameOver =
         if (gameOver) { isBattleInProgress = false; return; }
         
         currentTurn++;
-        uTurnSwitched = false;
-        turnCounter.textContent = `ターン: ${currentTurn}`;
+
+opponentSwitchedLastTurn = opponentSwitched;
+
+uTurnSwitched = false;
+turnCounter.textContent = `ターン: ${currentTurn}`;
         
         if (playerPokemon.isRampaging && playerPokemon.currentHp > 0) {
             await new Promise(resolve => setTimeout(resolve, 1500));
@@ -4517,34 +4522,39 @@ function getAIStatusMoveScore(
         }
     }
 
-    // まもる
-    if (move.name === "まもる") {
+// まもる
+if (move.name === "まもる") {
 
-        const enemyBest =
-            getAIBestAttack(
-                defender,
-                attacker
-            );
-
-        if (!enemyBest) {
-            return 20;
-        }
-
-        if (
-            enemyBest.damage >=
-            attacker.currentHp
-        ) {
-            score += 450;
-        }
-        else if (
-            hpRate <= 0.30
-        ) {
-            score += 180;
-        }
-        else {
-            score += 20;
-        }
+    // 前のターンに成功したまもるの直後は使わない
+    if (attacker.protectUsed) {
+        return -1000;
     }
+
+    const enemyBest =
+        getAIBestAttack(
+            defender,
+            attacker
+        );
+
+    if (!enemyBest) {
+        return 20;
+    }
+
+    if (
+        enemyBest.damage >=
+        attacker.currentHp
+    ) {
+        score += 450;
+    }
+    else if (
+        hpRate <= 0.30
+    ) {
+        score += 180;
+    }
+    else {
+        score += 20;
+    }
+}
 
     return score;
 }
@@ -8136,6 +8146,11 @@ player.sprite.classList.remove(
 // ============================================================
 
 function shouldOpponentSwitch() {
+
+    // 直前のターンに交代した場合、連続して交代しない
+    if (opponentSwitchedLastTurn) {
+        return false;
+    }
 
     // EASYでは交代判断をしない
     if (difficulty === "easy") {

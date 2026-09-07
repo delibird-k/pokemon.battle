@@ -2211,6 +2211,8 @@ function determineOpponentItem(pokemon) {
     pokemon.speed = newStats.speed;
 
     pokemon.megaEvolved = true;
+    pokemon.megaSpriteFront = mega.spriteFront;
+    pokemon.megaSpriteBack = mega.spriteBack;
 
     if (isPlayer) {
     updateMoves();
@@ -2462,6 +2464,9 @@ btn.onmouseout = () => {
 
     
     function getSpriteUrl(pokemon, back = false) {
+        if (pokemon.megaEvolved && pokemon.megaSpriteFront) {
+            return back ? pokemon.megaSpriteBack : pokemon.megaSpriteFront;
+        }
         if (typeof pokemon.id === 'string') {
              const baseUrl = "https://play.pokemonshowdown.com/sprites/";
              const folder = back ? "ani-back" : "ani";

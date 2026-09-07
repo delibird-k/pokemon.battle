@@ -2848,7 +2848,6 @@ async function executeUTurnSwitch(newIndex) {
     movesContainer.classList.remove("grid-cols-3");
     movesContainer.classList.add("grid-cols-2");
 
-    uTurnSwitched = true;
 }
     
 function showSwitchSelection() {
@@ -3055,12 +3054,13 @@ playerPokemon.selectedMove = null;
 
 // 交代したポケモンの能力変化をリセット
 playerPokemon.statStages = {
-        attack: 0,
-        defense: 0,
-        spAttack: 0,
-        spDefense: 0,
-        speed: 0
-    };
+    attack: 0,
+    defense: 0,
+    spAttack: 0,
+    spDefense: 0,
+    speed: 0
+};
+
 updateStatDisplay(
     playerPokemon,
     document.getElementById('player-stat-display')
@@ -3370,7 +3370,6 @@ async function executeOpponentAISwitch(newIndex) {
 movesContainer.style.display = "none";
       playerPokemon.hasMoved = false;
 opponentPokemon.hasMoved = false;
-        let uTurnSwitched = false;
       if(isBattleInProgress) return;
         isBattleInProgress = true;
         disableMoves();
@@ -3603,7 +3602,6 @@ if (opponentSwitched) {
         );
 
 const secondDefender =
-    uTurnSwitched &&
     second.pokemon === opponentPokemon &&
     playerPokemon !== playerPokemonAtStart
         ? playerPokemon

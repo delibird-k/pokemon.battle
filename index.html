@@ -8963,7 +8963,7 @@ if (
         }
         else if (typeMultiplier > 1) effectivenessMessage = "こうかは ばつぐんだ！";
         else if (typeMultiplier < 1 && typeMultiplier > 0) effectivenessMessage = "こうかは いまひとつの ようだ...";
-        else if (typeMultiplier === 0) effectivenessMessage = "こうかが ない みたいだ...";
+        else if (typeMultiplier === 0 && actualTypeMultiplier === 0) effectivenessMessage = "こうかが ない みたいだ...";
 
         damage = Math.floor(damage * actualTypeMultiplier);
         if (attacker.ability === 'ブレインフォース' && typeMultiplier > 1) {

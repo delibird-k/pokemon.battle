@@ -5647,7 +5647,77 @@ if (attacker.currentHp <= 0) {
 }
 
 if (defender.currentHp <= 0) {
-    if (await checkFainted(defender, defender === playerPokemon, attacker)) return true;
+
+    // ========================================================
+    // 反動技は、相手を倒した場合でも反動を受ける
+    // ========================================================
+    const recoilMoves = [
+        "フレアドライブ",
+        "ワイルドボルト",
+        "ブレイブバード",
+        "もろはのずつき",
+        "すてみタックル",
+        "ボルテッカー",
+        "ウェーブタックル"
+    ];
+
+    if (
+        recoilMoves.includes(move.name) &&
+        attacker.ability !== "マジックガード"
+    ) {
+        const recoilDamage =
+            Math.floor(damage / 3);
+
+        if (recoilDamage > 0) {
+
+            await showMessage(
+                `${attacker.name} は はんどうで ダメージを うけた！`
+            );
+
+            attacker.currentHp =
+                Math.max(
+                    0,
+                    attacker.currentHp - recoilDamage
+                );
+
+            updateHpBars();
+
+            if (
+                await checkAndUseItem(attacker)
+            ) {
+                await new Promise(
+                    resolve =>
+                        setTimeout(resolve, 1000)
+                );
+            }
+
+            if (
+                attacker.currentHp <= 0
+            ) {
+                if (
+                    await checkFainted(
+                        attacker,
+                        attacker === playerPokemon
+                    )
+                ) {
+                    return true;
+                }
+
+                return true;
+            }
+        }
+    }
+
+    if (
+        await checkFainted(
+            defender,
+            defender === playerPokemon,
+            attacker
+        )
+    ) {
+        return true;
+    }
+
     return false;
 }
 

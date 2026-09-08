@@ -6729,7 +6729,23 @@ if (
     )
 ) {
     await showMessage(
-        `${attacker.name} は とんぼがえりで ひっこんだ！`
+        `${attacker.name} は お前の元へ 戻っていく！`
+    );
+
+    await showUTurnSwitchSelection();
+}
+
+if (
+    move.name === "クイックターン" &&
+    attacker === playerPokemon &&
+    playerTeam.some(
+        (pokemon, index) =>
+            index !== playerActiveIndex &&
+            pokemon.currentHp > 0
+    )
+) {
+    await showMessage(
+        `${attacker.name} は お前の元へ 戻っていく！`
     );
 
     await showUTurnSwitchSelection();

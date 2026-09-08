@@ -5497,7 +5497,10 @@ if (move.isDynamicType) {
 
     updateStatusMarkers();
 }
-        if (move.name !== "まもる") {
+       if (
+    move.name !== "まもる" &&
+    move.name !== "キングシールド"
+) {
     attacker.protectUsed = false;
 }
 

@@ -7287,9 +7287,9 @@ if (
         pokemon === playerPokemon;
 
     const hasStealthRock =
-        isPlayerPokemon
-            ? playerStealthRock
-            : opponentStealthRock;
+    isPlayerPokemon
+        ? opponentStealthRock
+        : playerStealthRock;
 
     if (!hasStealthRock) {
         return false;

@@ -6768,6 +6768,22 @@ if (
     await showUTurnSwitchSelection();
 }
 
+if (
+    move.name === "ボルトチェンジ" &&
+    attacker === playerPokemon &&
+    playerTeam.some(
+        (pokemon, index) =>
+            index !== playerActiveIndex &&
+            pokemon.currentHp > 0
+    )
+) {
+    await showMessage(
+        `${attacker.name} は お前の元へ 戻っていく！`
+    );
+
+    await showUTurnSwitchSelection();
+}
+
 attacker.hasMoved = true;
     }
     

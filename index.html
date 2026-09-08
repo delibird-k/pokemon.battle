@@ -430,9 +430,13 @@ let selectedOpponentItemName;
     let loseStreak = Number(localStorage.getItem("loseStreak")) || 0;
     let gameId = 0;
     let currentTurn = 1;
-    let weather = { type: 'none', turns: 0 };
-    let field = { type: 'none', turns: 0 };
-    let isBattleInProgress = false;
+let weather = { type: 'none', turns: 0 };
+let field = { type: 'none', turns: 0 };
+
+let playerStealthRock = false;
+let opponentStealthRock = false;
+
+let isBattleInProgress = false;
     let forcedSwitchPending = false;
     let opponentSwitchedLastTurn = false;
 
@@ -7279,9 +7283,85 @@ if (
 
     async function applyStealthRockOnEntry(pokemon) {
 
-    if (!pokemon.stealthRock) {
+    const isPlayerPokemon =
+        pokemon === playerPokemon;
+
+    const hasStealthRock =
+        isPlayerPokemon
+            ? playerStealthRock
+            : opponentStealthRock;
+
+    if (!hasStealthRock) {
         return false;
     }
+
+    // マジックガードならダメージを受けない
+    if (pokemon.ability === "マジックガード") {
+        return false;
+    }
+
+    const types =
+        Array.isArray(pokemon.types)
+            ? pokemon.types
+            : [pokemon.types];
+
+    // ステルスロックは岩タイプとして相性計算
+    const effectiveness =
+        calculateTypeEffectiveness(
+            "いわ",
+            types
+        );
+
+    // こうかがない場合はダメージなし
+    if (effectiveness === 0) {
+        return false;
+    }
+
+    const damage =
+        Math.max(
+            1,
+            Math.floor(
+                pokemon.maxHp *
+                1 / 8 *
+                effectiveness
+            )
+        );
+
+    await showMessage(
+        `${pokemon.name} は ステルスロックの ダメージを うけた！`
+    );
+
+    pokemon.currentHp =
+        Math.max(
+            0,
+            pokemon.currentHp - damage
+        );
+
+    updateHpBars();
+
+    if (await checkAndUseItem(pokemon)) {
+        await new Promise(
+            resolve =>
+                setTimeout(resolve, 500)
+        );
+    }
+
+    if (pokemon.currentHp <= 0) {
+
+        if (
+            await checkFainted(
+                pokemon,
+                pokemon === playerPokemon
+            )
+        ) {
+            return true;
+        }
+
+        return true;
+    }
+
+    return false;
+}
 
     // マジックガードならダメージを受けない
     if (pokemon.ability === "マジックガード") {
@@ -7360,11 +7440,24 @@ if (
         switch(move.name) {
                 case 'ステルスロック':
 
-    if (defender.stealthRock) {
-        message = "しかし うまく決まらなかった！";
+    if (attacker === playerPokemon) {
+
+        if (opponentStealthRock) {
+            message = "しかし うまく決まらなかった！";
+        } else {
+            opponentStealthRock = true;
+            message = "相手の 周りに とがった岩が ただよい始めた！";
+        }
+
     } else {
-        defender.stealthRock = true;
-        message = "周りに とがった岩が ただよい始めた！";
+
+        if (playerStealthRock) {
+            message = "しかし うまく決まらなかった！";
+        } else {
+            playerStealthRock = true;
+            message = "自分の 周りに とがった岩が ただよい始めた！";
+        }
+
     }
 
     break;

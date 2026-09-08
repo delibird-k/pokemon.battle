@@ -987,6 +987,7 @@ function useZMove(pokemon){
         instance.status = null;
         instance.statusTurns = 0;
         auroraVeil: 0;
+        instance.yawnTurns = 0;
         instance.volatileStatus = {
     seeded: false,
     seedSource: null
@@ -2802,6 +2803,7 @@ async function executeUTurnSwitch(newIndex) {
     // 交代先のポケモンは、このターンまだ行動していない
     playerPokemon.hasMoved = false;
     playerPokemon.selectedMove = null;
+    playerPokemon.yawnTurns = 0;
     playerPokemon.isFlinched = false;
 
     const playerShown =
@@ -3055,6 +3057,7 @@ playerPokemon =
 // 交代して出てきたポケモンは、このターンまだ行動していない
 playerPokemon.hasMoved = false;
 playerPokemon.selectedMove = null;
+    playerPokemon.yawnTurns = 0;
 
 // 交代したポケモンの能力変化をリセット
 playerPokemon.statStages = {
@@ -3327,6 +3330,7 @@ async function executeOpponentAISwitch(newIndex) {
     opponentPokemon.hasMoved = false;
 opponentPokemon.pendingMega = false;
 opponentPokemon.protectUsed = false;
+    opponentPokemon.yawnTurns = 0;
 
     const opponentShown =
         opponentPokemon.disguiseData ||
@@ -7493,7 +7497,24 @@ if (
                 }
                 updateHpBars();
                 break;
-            case 'あくび': message = `あいて の ${defender.name} は ねむけに おそわれた！`; break;
+            case 'あくび':
+
+    if (defender.status !== null) {
+        message = `しかし うまくきまらなかった！`;
+    }
+    else if (
+        defender.ability === "ふみん" ||
+        defender.ability === "やるき"
+    ) {
+        message = `しかし ${defender.name} には きかなかった！`;
+    }
+    else {
+        defender.yawnTurns = 2;
+        message =
+            `あいて の ${defender.name} は ねむけに おそわれた！`;
+    }
+
+    break;
             case 'てっぺき': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 2); message = `${attacker.name} の ぼうぎょが ぐーんと あがった！`; break;
             case 'コットンガード': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 3); message = `${attacker.name} の ぼうぎょが ぐぐーんと あがった！`; break;
         }
@@ -7775,6 +7796,45 @@ if (opponentPokemon.mummyTurns > 0 && opponentPokemon.currentHp > 0) {
         await showMessage(`ミイラのしばりの こうかが きれた！`);
     }
 }
+
+       // ========================================================
+// あくび：眠気の処理
+// ========================================================
+
+async function handleYawnEffect(pokemon) {
+
+    if (
+        pokemon.yawnTurns <= 0 ||
+        pokemon.currentHp <= 0
+    ) {
+        return false;
+    }
+
+    pokemon.yawnTurns--;
+
+    if (pokemon.yawnTurns <= 0) {
+
+        // 交代していなければ眠る
+        if (pokemon.status === null) {
+
+            pokemon.status = "sleep";
+
+            // 現在のゲームの睡眠ターン数に合わせる
+            pokemon.statusTurns =
+                Math.floor(Math.random() * 3) + 2;
+
+            await showMessage(
+                `${pokemon.name} は ねむってしまった！`
+            );
+
+            updateStatusMarkers();
+        }
+    }
+
+    return false;
+}
+       if (await handleYawnEffect(playerPokemon)) return true;
+if (await handleYawnEffect(opponentPokemon)) return true;
         if (await handleStatusDamage(playerPokemon, true)) return true;
         if (await handleStatusDamage(opponentPokemon, false)) return true;
         if (await applyBerryBasketEffect(playerPokemon, true)) return true;

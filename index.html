@@ -481,7 +481,7 @@ let isBattleInProgress = false;
         Kangaskhan: { name: "ガルーラ", id: "kangaskhan", types: ["ノーマル"], baseHp: 105, baseAttack: 95, baseDefense: 80, baseSpAttack: 40, baseSpDefense: 80, baseSpeed: 90, ability: "きもったま", evs: { hp: 212, atk: 252, def: 0, spa: 0, spd: 0, spe: 36 },ai: "aggressive",nature: "いじっぱり", moves: [{ name: "おんがえし", power: 102, pp: 10, type: "ノーマル", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{name: "ほのおのパンチ", type: "ほのお", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true,secondary: { chance: 20, effect: 'status', status: 'burn' } }, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
         Starmie: { name: "スターミー", id: "starmie", types: ["みず", "エスパー"],baseHp: 60, baseAttack: 75, baseDefense: 85, baseSpAttack: 100, baseSpDefense: 85, baseSpeed: 115,  ability: "アナライズ", evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり", moves: [{ name: "アクアブレイク", power: 85, pp: 10, type: "みず" , category: "physical", accuracy: 100, isContact: true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } }, { name: "しねんのずつき", power: 80, pp: 15, type: "エスパー", category: "physical", accuracy: 90, isContact: true, secondary: { chance: 20, effect: 'flinch' } },  {name: "アイススピナー", type: "こおり", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true },  { name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true }] },
         Gyarados: { name: "ギャラドス", id: "gyarados", types: ["みず", "ひこう"],baseHp: 95, baseAttack: 125, baseDefense: 79, baseSpAttack: 60, baseSpDefense: 100, baseSpeed: 81,  ability: "いかく",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{name: "たきのぼり", type: "みず", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 20, effect: 'flinch'}}, { name: "かみくだく", power: 80, pp: 15, type: "あく", category: "physical", accuracy: 100, isContact: true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } }, { name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true },  { name: "りゅうのまい", type: "ドラゴン", pp: 20, category: "status", accuracy: 101 }] },
-        snorlax: { name: "カビゴン", id: "snorlax", types: ["ノーマル"], baseHp: 160, baseAttack: 110, baseDefense: 65, baseSpAttack: 65, baseSpDefense: 110, baseSpeed: 30, ability: "あついしぼう", evs: { hp: 44, atk: 252, def: 212, spa: 0, spd: 4, spe: 0 },ai: "aggressive", nature: "わんぱく", moves: [{ name: "すてみタックル", power: 120, pp: 10, type: "ノーマル", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 }, { name: "ヒートスタンプ", power: 100, pp: 10, type: "ほのお", category: "physical", accuracy: 100, isContact: true }, { name: "ヘビーボンバー", power: 100, pp: 10, type: "はがね", category: "physical", accuracy: 100, isContact: true }] },
+        snorlax: { name: "カビゴン", id: "snorlax", types: ["ノーマル"], baseHp: 160, baseAttack: 110, baseDefense: 65, baseSpAttack: 65, baseSpDefense: 110, baseSpeed: 30, ability: "あついしぼう", evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 252, spe: 0 },ai: "aggressive", nature: "わんぱく", moves: [{ name: "のしかかり", power: 85, pp: 15, type: "ノーマル", category: "physical", accuracy: 100, isContact: true ,secondary: { chance: 30, effect: 'status', status: 'paralyze' }}, { name: "じわれ", power: 0, pp: 8, type: "じめん", category: "physical", accuracy: 30 }, { name:"あくび", type:"ノーマル", category:"status", pp:10, accuracy:101 },{ name:"のろい", type:"ゴースト", category:"status", pp:20, accuracy:101 }] },
         dragonite: { name: "カイリュー", id: "dragonite", types: ["ドラゴン", "ひこう"], baseHp: 91, baseAttack: 134, baseDefense: 95, baseSpAttack: 100, baseSpDefense: 100, baseSpeed: 80, ability: "マルチスケイル",evs: { hp: 36, atk: 252, def: 4, spa: 0, spd: 100, spe: 116 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true }, { name: "しんそく", power: 80, pp: 5, type: "ノーマル", category: "physical", accuracy: 100, priority: 2, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 }, {name: "アイススピナー", type: "こおり", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true }] },
         scizor: { name: "ハッサム", id: "scizor", types: ["むし", "はがね"], baseHp: 70, baseAttack: 130, baseDefense: 100, baseSpAttack: 55, baseSpDefense: 80, baseSpeed: 65, ability: "テクニシャン",evs: { hp: 252, atk: 252, def: 4, spa: 0, spd: 0, spe: 0 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "バレットパンチ", power: 40, pp: 30, type: "はがね", category: "physical", accuracy: 100, priority: 1, isContact: true }, { name: "とんぼがえり", power: 70, pp: 15, type: "むし", category: "physical", accuracy: 100, isContact: true }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} }, { name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
         Porygon2: { name: "ポリゴン2", id: "porygon2", types: ["ノーマル"], baseHp: 85, baseAttack: 80, baseDefense: 90, baseSpAttack: 105, baseSpDefense: 95, baseSpeed: 60, ability: "ダウンロード", evs: { hp: 244, atk: 0, def: 124, spa: 0, spd: 140, spe: 0 },ai:"defensive", nature: "のんき", moves: [{ name: "トライアタック", power: 80, pp: 10, type: "ノーマル", category: "special", accuracy: 100 ,secondary: {effect: "triAttack", chance: 30}},{ name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } },{name: "じこさいせい", type: "ノーマル", pp: 8, category: "status", accuracy: 100 },{ name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
@@ -498,7 +498,7 @@ let isBattleInProgress = false;
         garchomp: { name: "ガブリアス", id: "garchomp", types: ["ドラゴン", "じめん"], baseHp: 108, baseAttack: 130, baseDefense: 95, baseSpAttack: 80, baseSpDefense: 85, baseSpeed: 102, ability: "さめはだ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true },{ name: "ほのおのキバ", power: 65, pp: 15, type: "ほのお", category: "physical", accuracy: 95, isContact: true, secondary: { chance: 10, effect: 'flinch' }, secondary: { chance: 10, effect: 'status', status: 'burn' } },{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
         Lucario: { name: "ルカリオ", id: "lucario", types: ["かくとう", "はがね"], baseHp: 70, baseAttack: 110, baseDefense: 70, baseSpAttack: 115, baseSpDefense: 70, baseSpeed: 90, ability: "せいしんりょく",evs: { hp: 0, atk: 0, def: 4, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "はどうだん", power: 80, pp: 15, type: "かくとう", category: "special", accuracy: 101 },{ name: "ラスターカノン", power: 80, pp: 10, type: "はがね", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } },  { name: "りゅうのはどう", power: 85, pp: 10, type: "ドラゴン", category: "special", accuracy: 100 },{ name: "しんくうは", power: 40, pp: 30, type: "かくとう", category: "special", accuracy: 100, priority: 1}] },
         Hippowdon: { name: "カバルドン", id: "hippowdon", types: ["じめん"], baseHp: 108, baseAttack: 112, baseDefense: 118, baseSpAttack: 68, baseSpDefense: 72, baseSpeed: 48, ability: "すなおこし",evs: { hp: 228, atk: 0, def: 140, spa: 0, spd: 140, spe: 0 },ai:"aggressive",nature: "わんぱく", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name:"ステルスロック", type:"いわ", category:"status", pp:10, accuracy:101},{ name:"なまける", type:"ノーマル", category:"status", pp:10, accuracy:101},{ name:"あくび", type:"ノーマル", category:"status", pp:10, accuracy:101},] },
-        Rotom: { name: "水ロトム", id: "rotom-wash", types: ["でんき", "みず"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 220, spa: 36, spd: 4, spe: 0},ai:"aggressive",nature: "ずぶとい", moves: [{ name: "ハイドロポンプ", power: 120, pp: 5, type: "みず", category: "special", accuracy: 80 },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
+        Rotom: { name: "水ロトム", id: "rotom-wash", types: ["でんき", "みず"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 220, spa: 36, spd: 4, spe: 0},ai:"aggressive",nature: "ずぶとい", moves: [{ name: "ハイドロポンプ", power: 120, pp: 5, type: "みず", category: "special", accuracy: 80 },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
         Heatran: { name: "ヒードラン", id: "heatran" , types: ["ほのお","はがね"],baseHp: 91, baseAttack: 90, baseDefense: 106, baseSpAttack: 130, baseSpDefense: 106, baseSpeed: 77, ability: "ほのおのからだ", evs: { hp: 212, atk: 0, def: 76, spa: 60, spd: 156, spe: 4 },ai:"aggressive", nature: "ずぶとい", moves:[{ name: "マグマストーム", power: 110, pp: 5, type: "ほのお", category: "special", accuracy: 75,isTrapMove: true},{ name: "パワージェム", power: 80, pp: 10, type: "いわ", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }]},
         Cresselia: { name: "クレセリア", id: "cresselia" , types: ["エスパー"],baseHp: 120, baseAttack: 70, baseDefense: 120, baseSpAttack: 75, baseSpDefense: 130, baseSpeed: 85, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 252, spa: 0, spd: 4, spe: 0 }, ai:"defensive",nature: "ずぶとい", moves:[{ name: "ムーンフォース", power: 95, pp: 15, type: "フェアリー", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 } },{ name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 },{ name: "つきのひかり", type: "フェアリー", pp: 8, category: "status", accuracy: 101 },{ name: "どくどく", type: "どく", pp: 20, category: "status", accuracy: 90 }]},
         zoroarkhisui: { name: "ゾロアーク", id: "zoroark-hisui", types: ["ノーマル","ゴースト"], baseHp: 55, baseAttack: 100, baseDefense: 60, baseSpAttack: 125, baseSpDefense: 60, baseSpeed: 110, ability: "イリュージョン", evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai: "aggressive", nature: "おくびょう", moves: [{ name: "うらみつらみ", power: 75, pp: 10, type: "ゴースト", category: "special", accuracy: 100, secondary: { chance: 100, effect: 'stat', stat: 'attack', stage: -1 } }, { name: "ハイパーボイス", power: 90, pp: 10, type: "ノーマル", category: "special", accuracy: 100},{ name: "きあいだま", power: 120, pp: 5, type: "かくとう", category: "special", accuracy: 70, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
@@ -1508,10 +1508,6 @@ function handleOpponentItemSelect(itemName) {
     
 function startGame(difficultyLevel) {
     difficulty = difficultyLevel;
-
-    // 新しい試合なのでステルスロックをリセット
-    playerStealthRock = false;
-    opponentStealthRock = false;
 
     // ========================================================
     // 3匹のチームを作成
@@ -6439,6 +6435,50 @@ if (move.name === "じんらい") {
 // ============================================================
 // ぜったいれいど
 // ============================================================
+if (move.name === "じわれ") {
+
+    await showMessage(
+        `${attacker.name} の じわれ！`
+    );
+
+    // 命中判定
+    if (Math.random() * 100 >= move.accuracy) {
+        await showMessage(
+            `しかし こうげきは はずれた！`
+        );
+        return false;
+    }
+
+    // こおりタイプには無効
+    if (defender.types?.includes("ひこう")) {
+        await showMessage(
+            `しかし ${defender.name} には きかなかった！`
+        );
+        return false;
+    }
+
+    // 一撃でHPを0にする
+    defender.currentHp = 0;
+
+    updateHpBars();
+
+    await showMessage(
+        `${defender.name} は たおれた！`
+    );
+
+    const isPlayerDefender =
+        defender === playerPokemon;
+
+return await checkFainted(
+    defender,
+    isPlayerDefender,
+    attacker
+);
+}
+
+// ============================================================
+// ぜったいれいど
+// ============================================================
 if (move.name === "ぜったいれいど") {
 
     await showMessage(
@@ -7495,7 +7535,7 @@ if (
             message = "しかし うまく決まらなかった！";
         } else {
             opponentStealthRock = true;
-            message = "あいての まわりに とがったいわが ただよいはじめた！";
+            message = "相手の 周りに とがった岩が ただよい始めた！";
         }
 
     } else {
@@ -7504,7 +7544,7 @@ if (
             message = "しかし うまく決まらなかった！";
         } else {
             playerStealthRock = true;
-            message = "じぶんの まわりに とがったいわが ただよいはじめた！";
+            message = "自分の 周りに とがった岩が ただよい始めた！";
         }
 
     }

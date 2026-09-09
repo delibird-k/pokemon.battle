@@ -1509,6 +1509,10 @@ function handleOpponentItemSelect(itemName) {
 function startGame(difficultyLevel) {
     difficulty = difficultyLevel;
 
+    // 新しい試合なのでステルスロックをリセット
+    playerStealthRock = false;
+    opponentStealthRock = false;
+
     // ========================================================
     // 3匹のチームを作成
     // ========================================================

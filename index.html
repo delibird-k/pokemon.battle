@@ -30927,6 +30927,1812 @@ console.log(
 
 })();
 
+/* ============================================================
+   ULTIMATE AI V10
+   FINAL INTEGRATED / ADAPTIVE / ACTION-COMPARE AI
+   ============================================================ */
+
+(() => {
+    "use strict";
+
+    // ============================================================
+    // 二重ロード防止
+    // ============================================================
+
+    if (window.__AI_V10_LOADED__) {
+        console.warn("AI V10 already loaded.");
+        return;
+    }
+
+    window.__AI_V10_LOADED__ = true;
+
+    // ============================================================
+    // V10設定
+    // ============================================================
+
+    const AI_V10 = {
+
+        version: "10.0",
+
+        maxHistory: 500,
+
+        recentDecay: 0.88,
+
+        switchMargin: 8,
+
+        koBonus: 100000,
+
+        guaranteedKoBonus: 150000,
+
+        survivalWeight: 1.35,
+
+        reactionWeight: 1.15
+    };
+
+    window.AI_V10 = AI_V10;
+
+    // ============================================================
+    // V9以前の関数を保存
+    // ============================================================
+
+    const v9GetOpponentMove =
+        typeof getOpponentMove === "function"
+            ? getOpponentMove
+            : null;
+
+    const v9ShouldOpponentSwitch =
+        typeof shouldOpponentSwitch === "function"
+            ? shouldOpponentSwitch
+            : null;
+
+    const v9ChooseBestOpponentSwitch =
+        typeof chooseBestOpponentSwitch === "function"
+            ? chooseBestOpponentSwitch
+            : null;
+
+    const v9ExecuteOpponentAISwitch =
+        typeof executeOpponentAISwitch === "function"
+            ? executeOpponentAISwitch
+            : null;
+
+    const v9StartBattleRound =
+        typeof startBattleRound === "function"
+            ? startBattleRound
+            : null;
+
+    // ============================================================
+    // 基本ユーティリティ
+    // ============================================================
+
+    function safeNumber(value, fallback = 0) {
+
+        const n = Number(value);
+
+        return Number.isFinite(n)
+            ? n
+            : fallback;
+    }
+
+    function getHp(pokemon) {
+
+        if (!pokemon) return 0;
+
+        return safeNumber(
+            pokemon.hp,
+            safeNumber(
+                pokemon.currentHp,
+                0
+            )
+        );
+    }
+
+    function getMaxHp(pokemon) {
+
+        if (!pokemon) return 1;
+
+        return Math.max(
+            1,
+            safeNumber(
+                pokemon.maxHp,
+                safeNumber(
+                    pokemon.baseHp,
+                    1
+                )
+            )
+        );
+    }
+
+    function hpRate(pokemon) {
+
+        if (!pokemon) return 0;
+
+        return Math.max(
+            0,
+            Math.min(
+                1,
+                getHp(pokemon) /
+                getMaxHp(pokemon)
+            )
+        );
+    }
+
+    function isAlive(pokemon) {
+
+        return !!pokemon &&
+            getHp(pokemon) > 0;
+    }
+
+    function moveName(move) {
+
+        if (!move) return "";
+
+        return String(
+            move.name ||
+            move.moveName ||
+            move.id ||
+            ""
+        );
+    }
+
+    function movePP(move) {
+
+        if (!move) return 0;
+
+        if (
+            move.currentPp !== undefined
+        ) {
+            return safeNumber(
+                move.currentPp
+            );
+        }
+
+        if (
+            move.pp !== undefined
+        ) {
+            return safeNumber(
+                move.pp
+            );
+        }
+
+        return 1;
+    }
+
+    function usableMoves(pokemon) {
+
+        if (!pokemon) return [];
+
+        const moves =
+            Array.isArray(pokemon.moves)
+                ? pokemon.moves
+                : [];
+
+        return moves.filter(
+            move =>
+                move &&
+                movePP(move) > 0
+        );
+    }
+
+    function pokemonKey(pokemon) {
+
+        if (!pokemon) {
+            return "unknown";
+        }
+
+        return String(
+            pokemon.id ||
+            pokemon.name ||
+            pokemon.species ||
+            "unknown"
+        );
+    }
+
+    function getTypes(pokemon) {
+
+        if (!pokemon) return [];
+
+        if (
+            Array.isArray(pokemon.types)
+        ) {
+            return pokemon.types;
+        }
+
+        if (
+            pokemon.type
+        ) {
+            return [pokemon.type];
+        }
+
+        return [];
+    }
+
+    function hasType(
+        pokemon,
+        type
+    ) {
+
+        return getTypes(
+            pokemon
+        ).includes(type);
+    }
+
+    // ============================================================
+    // V9学習メモリ
+    // ============================================================
+
+    function getV9Memory() {
+
+        try {
+
+            if (
+                window.AI_V9_DEBUG &&
+                window.AI_V9_DEBUG.memory
+            ) {
+                return window.AI_V9_DEBUG.memory;
+            }
+
+        } catch (error) {}
+
+        return null;
+    }
+
+    // ============================================================
+    // 最近使った技の確率
+    // ============================================================
+
+    function recentMoveProbability(
+        pokemon,
+        opponent,
+        move
+    ) {
+
+        const memory =
+            getV9Memory();
+
+        if (
+            !memory ||
+            !Array.isArray(
+                memory.history
+            ) ||
+            !move
+        ) {
+            return 0;
+        }
+
+        const pKey =
+            pokemonKey(pokemon);
+
+        const oKey =
+            pokemonKey(opponent);
+
+        const mKey =
+            moveName(move);
+
+        let totalWeight = 0;
+        let matchingWeight = 0;
+
+        let weight = 1;
+
+        for (
+            let i =
+                memory.history.length - 1;
+
+            i >= 0;
+
+            i--
+        ) {
+
+            const h =
+                memory.history[i];
+
+            if (!h) continue;
+
+            totalWeight += weight;
+
+            if (
+                h.pokemon === pKey &&
+                h.opponent === oKey &&
+                h.move === mKey
+            ) {
+                matchingWeight += weight;
+            }
+
+            weight *=
+                AI_V10.recentDecay;
+        }
+
+        if (
+            totalWeight <= 0
+        ) {
+            return 0;
+        }
+
+        return (
+            matchingWeight /
+            totalWeight
+        );
+    }
+
+    // ============================================================
+    // ダメージ推定
+    // ============================================================
+
+    function estimateDamage(
+        move,
+        attacker,
+        defender
+    ) {
+
+        if (
+            !move ||
+            !attacker ||
+            !defender
+        ) {
+            return 0;
+        }
+
+        try {
+
+            if (
+                typeof ultimateAIDamage ===
+                "function"
+            ) {
+
+                const damage =
+                    Number(
+                        ultimateAIDamage(
+                            move,
+                            attacker,
+                            defender
+                        )
+                    );
+
+                if (
+                    Number.isFinite(damage)
+                ) {
+                    return Math.max(
+                        0,
+                        damage
+                    );
+                }
+            }
+
+        } catch (error) {}
+
+        const power =
+            safeNumber(
+                move.power,
+                0
+            );
+
+        if (
+            power <= 0
+        ) {
+            return 0;
+        }
+
+        const attack =
+            safeNumber(
+                attacker.attack,
+                safeNumber(
+                    attacker.baseAttack,
+                    50
+                )
+            );
+
+        const defense =
+            safeNumber(
+                defender.defense,
+                safeNumber(
+                    defender.baseDefense,
+                    50
+                )
+            );
+
+        const level =
+            safeNumber(
+                attacker.level,
+                50
+            );
+
+        const damage =
+            (
+                (
+                    (
+                        2 * level / 5 + 2
+                    ) *
+                    power *
+                    Math.max(
+                        1,
+                        attack
+                    ) /
+                    Math.max(
+                        1,
+                        defense
+                    )
+                ) /
+                50
+            ) + 2;
+
+        return Math.max(
+            1,
+            Math.floor(damage)
+        );
+    }
+
+    // ============================================================
+    // タイプ相性
+    // ============================================================
+
+    function typeEffectiveness(
+        move,
+        attacker,
+        defender
+    ) {
+
+        try {
+
+            if (
+                typeof ultimateAITypeEffectiveness ===
+                "function"
+            ) {
+
+                const result =
+                    Number(
+                        ultimateAITypeEffectiveness(
+                            move,
+                            attacker,
+                            defender
+                        )
+                    );
+
+                if (
+                    Number.isFinite(result)
+                ) {
+                    return result;
+                }
+            }
+
+        } catch (error) {}
+
+        return 1;
+    }
+
+    // ============================================================
+    // KO判定
+    // ============================================================
+
+    function canKO(
+        move,
+        attacker,
+        defender
+    ) {
+
+        if (
+            !move ||
+            !attacker ||
+            !defender
+        ) {
+            return false;
+        }
+
+        return (
+            estimateDamage(
+                move,
+                attacker,
+                defender
+            ) >= getHp(defender)
+        );
+    }
+
+    // ============================================================
+    // 優先度
+    // ============================================================
+
+    function movePriority(move) {
+
+        return safeNumber(
+            move?.priority,
+            0
+        );
+    }
+
+    // ============================================================
+    // 命中率
+    // ============================================================
+
+    function moveAccuracy(move) {
+
+        if (!move) {
+            return 100;
+        }
+
+        const accuracy =
+            safeNumber(
+                move.accuracy,
+                100
+            );
+
+        return accuracy <= 0
+            ? 100
+            : accuracy;
+    }
+
+    // ============================================================
+    // 技カテゴリ
+    // ============================================================
+
+    const SETUP_MOVES =
+        new Set([
+            "つるぎのまい",
+            "りゅうのまい",
+            "わるだくみ",
+            "めいそう",
+            "こうそくいどう",
+            "てっぺき",
+            "ドわすれ",
+            "ビルドアップ",
+            "ちょうのまい"
+        ]);
+
+    const RECOVERY_MOVES =
+        new Set([
+            "じこさいせい",
+            "はねやすめ",
+            "なまける",
+            "ねむる",
+            "ミルクのみ",
+            "タマゴうみ",
+            "あさのひざし",
+            "こうごうせい",
+            "つきのひかり"
+        ]);
+
+    const STATUS_MOVES =
+        new Set([
+            "でんじは",
+            "おにび",
+            "どくどく",
+            "あくび",
+            "さいみんじゅつ",
+            "キノコのほうし",
+            "ちょうはつ",
+            "アンコール",
+            "まもる"
+        ]);
+
+    const RECOIL_MOVES =
+        new Set([
+            "すてみタックル",
+            "フレアドライブ",
+            "ブレイブバード",
+            "もろはのずつき",
+            "ウッドハンマー",
+            "とっしん",
+            "ワイルドボルト",
+            "ボルテッカー",
+            "とびひざげり"
+        ]);
+
+    // ============================================================
+    // 技評価
+    // ============================================================
+
+    function evaluateMove(
+        move,
+        attacker,
+        defender
+    ) {
+
+        if (
+            !move ||
+            !attacker ||
+            !defender
+        ) {
+            return -Infinity;
+        }
+
+        let score = 0;
+
+        const name =
+            moveName(move);
+
+        const damage =
+            estimateDamage(
+                move,
+                attacker,
+                defender
+            );
+
+        const defenderHp =
+            Math.max(
+                1,
+                getHp(defender)
+            );
+
+        const damageRate =
+            damage /
+            defenderHp;
+
+        const effectiveness =
+            typeEffectiveness(
+                move,
+                attacker,
+                defender
+            );
+
+        // --------------------------------------------------------
+        // 火力
+        // --------------------------------------------------------
+
+        score +=
+            damageRate * 100;
+
+        // --------------------------------------------------------
+        // タイプ相性
+        // --------------------------------------------------------
+
+        if (
+            effectiveness >= 4
+        ) {
+
+            score += 90;
+
+        } else if (
+            effectiveness >= 2
+        ) {
+
+            score += 45;
+
+        } else if (
+            effectiveness === 0
+        ) {
+
+            score -= 120;
+
+        } else if (
+            effectiveness < 1
+        ) {
+
+            score -= 25;
+        }
+
+        // --------------------------------------------------------
+        // KO
+        // --------------------------------------------------------
+
+        if (
+            damage >= defenderHp
+        ) {
+
+            score +=
+                AI_V10.koBonus;
+
+            if (
+                movePriority(move) > 0
+            ) {
+
+                score +=
+                    AI_V10.guaranteedKoBonus;
+            }
+        }
+
+        // --------------------------------------------------------
+        // 命中率
+        // --------------------------------------------------------
+
+        score *=
+            moveAccuracy(move) /
+            100;
+
+        // --------------------------------------------------------
+        // 優先技
+        // --------------------------------------------------------
+
+        score +=
+            movePriority(move) * 18;
+
+        // --------------------------------------------------------
+        // STAB
+        // --------------------------------------------------------
+
+        if (
+            move.type &&
+            hasType(
+                attacker,
+                move.type
+            )
+        ) {
+
+            score += 18;
+        }
+
+        // --------------------------------------------------------
+        // 積み技
+        // --------------------------------------------------------
+
+        if (
+            SETUP_MOVES.has(name)
+        ) {
+
+            const selfHp =
+                hpRate(attacker);
+
+            if (
+                selfHp >= 0.65
+            ) {
+
+                score += 42;
+
+            } else if (
+                selfHp >= 0.40
+            ) {
+
+                score += 15;
+
+            } else {
+
+                score -= 55;
+            }
+
+            if (
+                hpRate(defender) < 0.20
+            ) {
+
+                score -= 50;
+            }
+        }
+
+        // --------------------------------------------------------
+        // 回復
+        // --------------------------------------------------------
+
+        if (
+            RECOVERY_MOVES.has(name)
+        ) {
+
+            const selfHp =
+                hpRate(attacker);
+
+            if (
+                selfHp < 0.30
+            ) {
+
+                score += 85;
+
+            } else if (
+                selfHp < 0.50
+            ) {
+
+                score += 45;
+
+            } else {
+
+                score -= 35;
+            }
+        }
+
+        // --------------------------------------------------------
+        // 状態異常
+        // --------------------------------------------------------
+
+        if (
+            STATUS_MOVES.has(name)
+        ) {
+
+            if (
+                hpRate(defender) > 0.20
+            ) {
+
+                score += 22;
+            }
+
+            if (
+                defender.status
+            ) {
+
+                score -= 50;
+            }
+        }
+
+        // --------------------------------------------------------
+        // 反動
+        // --------------------------------------------------------
+
+        if (
+            RECOIL_MOVES.has(name)
+        ) {
+
+            if (
+                hpRate(attacker) < 0.30
+            ) {
+
+                score -= 60;
+
+            } else {
+
+                score -= 8;
+            }
+        }
+
+        // --------------------------------------------------------
+        // 学習補正
+        // --------------------------------------------------------
+
+        score +=
+            recentMoveProbability(
+                attacker,
+                defender,
+                move
+            ) * 25;
+
+        // --------------------------------------------------------
+        // V9評価
+        // --------------------------------------------------------
+
+        try {
+
+            if (
+                window.AI_V9_DEBUG &&
+                typeof
+                window.AI_V9_DEBUG.evaluateMove ===
+                "function"
+            ) {
+
+                const v9Score =
+                    Number(
+                        window.AI_V9_DEBUG.evaluateMove(
+                            move,
+                            attacker,
+                            defender
+                        )
+                    );
+
+                if (
+                    Number.isFinite(v9Score)
+                ) {
+
+                    score +=
+                        v9Score * 0.35;
+                }
+            }
+
+        } catch (error) {}
+
+        return score;
+    }
+
+    // ============================================================
+    // V10最強技選択
+    // ============================================================
+
+    function v10ChooseMove() {
+
+        if (
+            !opponentPokemon
+        ) {
+            return null;
+        }
+
+        const moves =
+            usableMoves(
+                opponentPokemon
+            );
+
+        if (
+            moves.length === 0
+        ) {
+
+            return null;
+        }
+
+        if (
+            !playerPokemon
+        ) {
+
+            return moves[0];
+        }
+
+        const scored =
+            moves.map(move => {
+
+                let score =
+                    evaluateMove(
+                        move,
+                        opponentPokemon,
+                        playerPokemon
+                    );
+
+                // ------------------------------------------------
+                // 相手の反撃予測
+                // ------------------------------------------------
+
+                try {
+
+                    if (
+                        typeof getLikelyEnemyMove ===
+                        "function"
+                    ) {
+
+                        const predicted =
+                            getLikelyEnemyMove(
+                                playerPokemon,
+                                opponentPokemon
+                            );
+
+                        if (
+                            predicted
+                        ) {
+
+                            const incoming =
+                                estimateDamage(
+                                    predicted,
+                                    playerPokemon,
+                                    opponentPokemon
+                                );
+
+                            const selfHp =
+                                Math.max(
+                                    1,
+                                    getHp(
+                                        opponentPokemon
+                                    )
+                                );
+
+                            const risk =
+                                incoming /
+                                selfHp;
+
+                            score -=
+                                risk *
+                                100 *
+                                AI_V10.reactionWeight;
+                        }
+
+                    }
+
+                } catch (error) {}
+
+                // ------------------------------------------------
+                // 瀕死時のKO優先
+                // ------------------------------------------------
+
+                if (
+                    hpRate(opponentPokemon) < 0.25
+                ) {
+
+                    if (
+                        movePriority(move) > 0
+                    ) {
+
+                        score += 30;
+                    }
+
+                    if (
+                        canKO(
+                            move,
+                            opponentPokemon,
+                            playerPokemon
+                        )
+                    ) {
+
+                        score +=
+                            AI_V10.guaranteedKoBonus;
+                    }
+                }
+
+                return {
+                    move,
+                    score
+                };
+
+            });
+
+        scored.sort(
+            (a, b) =>
+                b.score - a.score
+        );
+
+        return scored[0]
+            ? scored[0].move
+            : moves[0];
+    }
+
+    // ============================================================
+    // 交代候補
+    // ============================================================
+
+    function getSwitchCandidates() {
+
+        if (
+            !Array.isArray(opponentTeam)
+        ) {
+            return [];
+        }
+
+        const candidates = [];
+
+        for (
+            let i = 0;
+            i < opponentTeam.length;
+            i++
+        ) {
+
+            if (
+                i === opponentActiveIndex
+            ) {
+                continue;
+            }
+
+            const pokemon =
+                opponentTeam[i];
+
+            if (
+                !isAlive(pokemon)
+            ) {
+                continue;
+            }
+
+            candidates.push({
+                index: i,
+                pokemon
+            });
+        }
+
+        return candidates;
+    }
+
+    // ============================================================
+    // 交代先評価
+    // ============================================================
+
+    function evaluateSwitchTarget(
+        candidate
+    ) {
+
+        if (
+            !candidate ||
+            !playerPokemon
+        ) {
+            return -Infinity;
+        }
+
+        let score = 0;
+
+        // --------------------------------------------------------
+        // HP
+        // --------------------------------------------------------
+
+        score +=
+            hpRate(candidate) * 45;
+
+        // --------------------------------------------------------
+        // 攻撃性能
+        // --------------------------------------------------------
+
+        try {
+
+            if (
+                typeof ultimateAIBestAttack ===
+                "function"
+            ) {
+
+                const bestAttack =
+                    ultimateAIBestAttack(
+                        candidate,
+                        playerPokemon
+                    );
+
+                if (
+                    bestAttack
+                ) {
+
+                    const damage =
+                        safeNumber(
+                            bestAttack.damage,
+                            bestAttack.expected
+                        );
+
+                    const enemyHp =
+                        Math.max(
+                            1,
+                            getHp(
+                                playerPokemon
+                            )
+                        );
+
+                    score +=
+                        (
+                            damage /
+                            enemyHp
+                        ) * 100;
+
+                    if (
+                        damage >= enemyHp
+                    ) {
+
+                        score +=
+                            AI_V10.koBonus;
+                    }
+                }
+            }
+
+        } catch (error) {}
+
+        // --------------------------------------------------------
+        // 受け性能
+        // --------------------------------------------------------
+
+        try {
+
+            if (
+                typeof ultimateAIBestAttack ===
+                "function"
+            ) {
+
+                const incoming =
+                    ultimateAIBestAttack(
+                        playerPokemon,
+                        candidate
+                    );
+
+                if (
+                    incoming
+                ) {
+
+                    const damage =
+                        safeNumber(
+                            incoming.damage,
+                            incoming.expected
+                        );
+
+                    const candidateHp =
+                        Math.max(
+                            1,
+                            getMaxHp(candidate)
+                        );
+
+                    const incomingRate =
+                        damage /
+                        candidateHp;
+
+                    score -=
+                        incomingRate *
+                        115 *
+                        AI_V10.survivalWeight;
+
+                    if (
+                        damage >=
+                        getHp(candidate)
+                    ) {
+
+                        score -= 180;
+                    }
+                }
+            }
+
+        } catch (error) {}
+
+        // --------------------------------------------------------
+        // 現在ポケモンが危険なら交代価値UP
+        // --------------------------------------------------------
+
+        if (
+            hpRate(opponentPokemon) < 0.35
+        ) {
+
+            score += 35;
+        }
+
+        if (
+            hpRate(opponentPokemon) < 0.20
+        ) {
+
+            score += 50;
+        }
+
+        // --------------------------------------------------------
+        // V9評価
+        // --------------------------------------------------------
+
+        try {
+
+            if (
+                window.AI_V9_DEBUG &&
+                typeof
+                window.AI_V9_DEBUG.evaluateSwitch ===
+                "function"
+            ) {
+
+                const v9Score =
+                    Number(
+                        window.AI_V9_DEBUG.evaluateSwitch(
+                            candidate,
+                            playerPokemon
+                        )
+                    );
+
+                if (
+                    Number.isFinite(v9Score)
+                ) {
+
+                    score +=
+                        v9Score * 0.40;
+                }
+            }
+
+        } catch (error) {}
+
+        return score;
+    }
+
+    // ============================================================
+    // V10最良交代先
+    // ============================================================
+
+    function v10ChooseSwitch() {
+
+        const candidates =
+            getSwitchCandidates();
+
+        if (
+            candidates.length === 0
+        ) {
+            return -1;
+        }
+
+        let bestIndex = -1;
+        let bestScore = -Infinity;
+
+        for (
+            const candidate
+            of candidates
+        ) {
+
+            const score =
+                evaluateSwitchTarget(
+                    candidate.pokemon
+                );
+
+            if (
+                score > bestScore
+            ) {
+
+                bestScore =
+                    score;
+
+                bestIndex =
+                    candidate.index;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    // ============================================================
+    // 技 vs 交代
+    // ============================================================
+
+    function getBestMoveScore() {
+
+        if (
+            !opponentPokemon ||
+            !playerPokemon
+        ) {
+            return -Infinity;
+        }
+
+        const moves =
+            usableMoves(
+                opponentPokemon
+            );
+
+        let best =
+            -Infinity;
+
+        for (
+            const move of moves
+        ) {
+
+            const score =
+                evaluateMove(
+                    move,
+                    opponentPokemon,
+                    playerPokemon
+                );
+
+            if (
+                score > best
+            ) {
+                best = score;
+            }
+        }
+
+        return best;
+    }
+
+    function getBestSwitchScore() {
+
+        const candidates =
+            getSwitchCandidates();
+
+        let bestScore =
+            -Infinity;
+
+        let bestIndex =
+            -1;
+
+        for (
+            const candidate
+            of candidates
+        ) {
+
+            const score =
+                evaluateSwitchTarget(
+                    candidate.pokemon
+                );
+
+            if (
+                score > bestScore
+            ) {
+
+                bestScore =
+                    score;
+
+                bestIndex =
+                    candidate.index;
+            }
+        }
+
+        return {
+            score: bestScore,
+            index: bestIndex
+        };
+    }
+
+    // ============================================================
+    // V10交代判断
+    // ============================================================
+
+    function v10ShouldSwitch() {
+
+        if (
+            difficulty === "easy"
+        ) {
+            return false;
+        }
+
+        if (
+            !opponentPokemon ||
+            !playerPokemon
+        ) {
+            return false;
+        }
+
+        const candidates =
+            getSwitchCandidates();
+
+        if (
+            candidates.length === 0
+        ) {
+            return false;
+        }
+
+        // --------------------------------------------------------
+        // 瀕死寸前
+        // --------------------------------------------------------
+
+        if (
+            hpRate(opponentPokemon) <= 0.15
+        ) {
+            return true;
+        }
+
+        // --------------------------------------------------------
+        // 相手から確定KOされる場合
+        // --------------------------------------------------------
+
+        try {
+
+            if (
+                typeof ultimateAIBestAttack ===
+                "function"
+            ) {
+
+                const incoming =
+                    ultimateAIBestAttack(
+                        playerPokemon,
+                        opponentPokemon
+                    );
+
+                if (
+                    incoming &&
+                    incoming.damage >=
+                    getHp(opponentPokemon)
+                ) {
+
+                    return true;
+                }
+            }
+
+        } catch (error) {}
+
+        // --------------------------------------------------------
+        // 現在ポケモンが確定KOできるなら攻撃優先
+        // --------------------------------------------------------
+
+        const currentMoves =
+            usableMoves(
+                opponentPokemon
+            );
+
+        for (
+            const move of currentMoves
+        ) {
+
+            if (
+                canKO(
+                    move,
+                    opponentPokemon,
+                    playerPokemon
+                )
+            ) {
+
+                return false;
+            }
+        }
+
+        // --------------------------------------------------------
+        // V9の交代判断
+        // --------------------------------------------------------
+
+        let v9Switch =
+            false;
+
+        try {
+
+            if (
+                window.AI_V9_DEBUG &&
+                typeof
+                window.AI_V9_DEBUG.shouldSwitch ===
+                "function"
+            ) {
+
+                v9Switch =
+                    !!window.AI_V9_DEBUG.shouldSwitch();
+            }
+
+        } catch (error) {}
+
+        // --------------------------------------------------------
+        // 技と交代を比較
+        // --------------------------------------------------------
+
+        const moveScore =
+            getBestMoveScore();
+
+        const switchData =
+            getBestSwitchScore();
+
+        if (
+            switchData.index < 0
+        ) {
+            return false;
+        }
+
+        // V9が交代を希望している場合
+        // ただしKO可能なら上でfalseにしている
+        if (
+            v9Switch
+        ) {
+            return true;
+        }
+
+        // 交代先の方が明確に有利
+        if (
+            switchData.score >
+            moveScore +
+            AI_V10.switchMargin
+        ) {
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // ============================================================
+    // getOpponentMove V10化
+    // ============================================================
+
+    getOpponentMove =
+        function () {
+
+            try {
+
+                if (
+                    difficulty === "easy"
+                ) {
+
+                    if (
+                        v9GetOpponentMove
+                    ) {
+
+                        return v9GetOpponentMove();
+                    }
+
+                    return null;
+                }
+
+                const move =
+                    v10ChooseMove();
+
+                if (
+                    move
+                ) {
+
+                    // --------------------------------------------
+                    // V9学習へ記録
+                    // --------------------------------------------
+
+                    try {
+
+                        if (
+                            window.AI_V9_RECORD &&
+                            typeof
+                            window.AI_V9_RECORD.move ===
+                            "function"
+                        ) {
+
+                            window.AI_V9_RECORD.move(
+                                opponentPokemon,
+                                playerPokemon,
+                                move
+                            );
+                        }
+
+                    } catch (error) {}
+
+                    return move;
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "AI V10 move error:",
+                    error
+                );
+            }
+
+            if (
+                v9GetOpponentMove
+            ) {
+
+                return v9GetOpponentMove();
+            }
+
+            return null;
+        };
+
+    // ============================================================
+    // shouldOpponentSwitch V10化
+    // ============================================================
+
+    shouldOpponentSwitch =
+        function () {
+
+            try {
+
+                if (
+                    difficulty === "easy"
+                ) {
+                    return false;
+                }
+
+                return v10ShouldSwitch();
+
+            } catch (error) {
+
+                console.error(
+                    "AI V10 switch error:",
+                    error
+                );
+
+                if (
+                    v9ShouldOpponentSwitch
+                ) {
+
+                    return v9ShouldOpponentSwitch();
+                }
+
+                return false;
+            }
+        };
+
+    // ============================================================
+    // chooseBestOpponentSwitch V10化
+    // ============================================================
+
+    chooseBestOpponentSwitch =
+        function () {
+
+            try {
+
+                if (
+                    difficulty === "easy"
+                ) {
+
+                    if (
+                        v9ChooseBestOpponentSwitch
+                    ) {
+
+                        return v9ChooseBestOpponentSwitch();
+                    }
+
+                    return -1;
+                }
+
+                const index =
+                    v10ChooseSwitch();
+
+                if (
+                    index >= 0
+                ) {
+
+                    return index;
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "AI V10 choose switch error:",
+                    error
+                );
+            }
+
+            if (
+                v9ChooseBestOpponentSwitch
+            ) {
+
+                return v9ChooseBestOpponentSwitch();
+            }
+
+            return -1;
+        };
+
+    // ============================================================
+    // 実際の交代を記録
+    // ============================================================
+
+    if (
+        v9ExecuteOpponentAISwitch
+    ) {
+
+        executeOpponentAISwitch =
+            async function (newIndex) {
+
+                const oldIndex =
+                    opponentActiveIndex;
+
+                const result =
+                    await v9ExecuteOpponentAISwitch(
+                        newIndex
+                    );
+
+                if (
+                    result &&
+                    newIndex !== oldIndex
+                ) {
+
+                    try {
+
+                        if (
+                            window.AI_V9_RECORD &&
+                            typeof
+                            window.AI_V9_RECORD.switch ===
+                            "function"
+                        ) {
+
+                            window.AI_V9_RECORD.switch(
+                                opponentPokemon,
+                                playerPokemon
+                            );
+                        }
+
+                    } catch (error) {}
+                }
+
+                return result;
+            };
+    }
+
+    // ============================================================
+    // プレイヤーの技を学習
+    // ============================================================
+
+    if (
+        v9StartBattleRound
+    ) {
+
+        startBattleRound =
+            async function (playerMove) {
+
+                try {
+
+                    if (
+                        playerMove &&
+                        window.AI_V9_RECORD &&
+                        typeof
+                        window.AI_V9_RECORD.move ===
+                        "function"
+                    ) {
+
+                        window.AI_V9_RECORD.move(
+                            playerPokemon,
+                            opponentPokemon,
+                            playerMove
+                        );
+                    }
+
+                } catch (error) {}
+
+                return await v9StartBattleRound(
+                    playerMove
+                );
+            };
+    }
+
+    // ============================================================
+    // デバッグAPI
+    // ============================================================
+
+    window.AI_V10_DEBUG = {
+
+        version:
+            AI_V10.version,
+
+        chooseMove:
+            v10ChooseMove,
+
+        chooseSwitch:
+            v10ChooseSwitch,
+
+        shouldSwitch:
+            v10ShouldSwitch,
+
+        evaluateMove:
+            evaluateMove,
+
+        evaluateSwitch:
+            evaluateSwitchTarget,
+
+        recentMoveProbability:
+            recentMoveProbability,
+
+        getSwitchCandidates:
+            getSwitchCandidates,
+
+        getBestMoveScore:
+            getBestMoveScore,
+
+        getBestSwitchScore:
+            getBestSwitchScore
+    };
+
+    // ============================================================
+    // ロード確認
+    // ============================================================
+
+    console.log(
+        "ULTIMATE AI V10 LOADED"
+    );
+
+    console.log(
+        "FINAL INTEGRATED / ADAPTIVE / ACTION-COMPARE AI"
+    );
+
+})();
+
 </script>
 
 </body>

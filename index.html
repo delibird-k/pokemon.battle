@@ -2853,20 +2853,33 @@ async function executeUTurnSwitch(newIndex) {
 
     const oldPokemon = playerPokemon;
 
-    await showMessage(
-        `${oldPokemon.name} を ひっこめた！`
-    );
+await showMessage(
+    `${oldPokemon.name} を ひっこめた！`
+);
 
-    playerActiveIndex = newIndex;
+// 交代するとみがわりは消える
+oldPokemon.hasSubstitute = false;
+oldPokemon.substituteHp = 0;
 
-    playerPokemon =
-        playerTeam[playerActiveIndex];
+playerActiveIndex = newIndex;
+
+playerPokemon =
+    playerTeam[playerActiveIndex];
 
     // 交代先のポケモンは、このターンまだ行動していない
     playerPokemon.hasMoved = false;
     playerPokemon.selectedMove = null;
     playerPokemon.yawnTurns = 0;
     playerPokemon.isFlinched = false;
+
+    // 交代したポケモンの能力変化をリセット
+playerPokemon.statStages = {
+    attack: 0,
+    defense: 0,
+    spAttack: 0,
+    spDefense: 0,
+    speed: 0
+};
 
     const playerShown =
         playerPokemon.disguiseData ||
@@ -3110,6 +3123,10 @@ const oldPokemon = playerPokemon;
 await showMessage(
     `${oldPokemon.name} を ひっこめた！`
 );
+
+// 交代するとみがわりは消える
+oldPokemon.hasSubstitute = false;
+oldPokemon.substituteHp = 0;
 
 playerActiveIndex = newIndex;
 
@@ -3368,17 +3385,21 @@ async function executeOpponentAISwitch(newIndex) {
     }
 
     const oldPokemon =
-        opponentPokemon;
+    opponentPokemon;
 
-    await showMessage(
-        `あいて は ${oldPokemon.name} を ひっこめた！`
-    );
+await showMessage(
+    `あいて は ${oldPokemon.name} を ひっこめた！`
+);
 
-    opponentActiveIndex =
-        newIndex;
+// 交代するとみがわりは消える
+oldPokemon.hasSubstitute = false;
+oldPokemon.substituteHp = 0;
 
-    opponentPokemon =
-        opponentTeam[opponentActiveIndex];
+opponentActiveIndex =
+    newIndex;
+
+opponentPokemon =
+    opponentTeam[opponentActiveIndex];
 
     // 交代したポケモンの能力変化をリセット
     opponentPokemon.statStages = {
@@ -7242,41 +7263,6 @@ for(let hit = 0; hit < hitCount; hit++){
 
     updateHpBars();
 
-        if (move.self && move.self.stats) {
-    let messages = [];
-
-    move.self.stats.forEach(s => {
-        attacker.statStages[s.stat] = Math.max(
-            -6,
-            attacker.statStages[s.stat] + s.stage
-        );
-
-        const statName = {
-            attack: 'こうげき',
-            defense: 'ぼうぎょ',
-            spAttack: 'とくこう',
-            spDefense: 'とくぼう',
-            speed: 'すばやさ'
-        }[s.stat];
-
-        messages.push(statName);
-    });
-
-    updateStatDisplay(
-        playerPokemon,
-        document.getElementById('player-stat-display')
-    );
-
-    updateStatDisplay(
-        opponentPokemon,
-        document.getElementById('opponent-stat-display')
-    );
-
-    await showMessage(
-        `${attacker.name} の ${messages.join(' と ')}が さがった！`
-    );
-}
-
     break;
 }
 }
@@ -7324,6 +7310,45 @@ if (
     }
 }
         }
+
+        // ========================================================
+// 技を使ったことによる自分の能力変化
+// みがわりに当たった場合でも発動する
+// ========================================================
+if (move.self && move.self.stats) {
+    let messages = [];
+
+    move.self.stats.forEach(s => {
+        attacker.statStages[s.stat] = Math.max(
+            -6,
+            attacker.statStages[s.stat] + s.stage
+        );
+
+        const statName = {
+            attack: 'こうげき',
+            defense: 'ぼうぎょ',
+            spAttack: 'とくこう',
+            spDefense: 'とくぼう',
+            speed: 'すばやさ'
+        }[s.stat];
+
+        messages.push(statName);
+    });
+
+    updateStatDisplay(
+        playerPokemon,
+        document.getElementById('player-stat-display')
+    );
+
+    updateStatDisplay(
+        opponentPokemon,
+        document.getElementById('opponent-stat-display')
+    );
+
+    await showMessage(
+        `${attacker.name} の ${messages.join(' と ')}が さがった！`
+    );
+}
 
         updateHpBars();
         await new Promise(resolve => setTimeout(resolve, 1200));

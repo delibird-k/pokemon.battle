@@ -32619,10 +32619,13 @@ console.log(
                         newIndex
                     );
 
-                if (
-                    result &&
-                    newIndex !== oldIndex
-                ) {
+                const switched =
+    Number.isInteger(newIndex) &&
+    newIndex >= 0 &&
+    newIndex !== oldIndex &&
+    opponentActiveIndex === newIndex;
+
+if (switched) {
 
                     try {
 

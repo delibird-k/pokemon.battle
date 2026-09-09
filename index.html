@@ -1509,6 +1509,10 @@ function handleOpponentItemSelect(itemName) {
 function startGame(difficultyLevel) {
     difficulty = difficultyLevel;
 
+    // 新しい試合なのでステルスロックをリセット
+    playerStealthRock = false;
+    opponentStealthRock = false;
+
     // ========================================================
     // 3匹のチームを作成
     // ========================================================
@@ -7532,19 +7536,19 @@ if (
     if (attacker === playerPokemon) {
 
         if (opponentStealthRock) {
-            message = "しかし うまく決まらなかった！";
+            message = "しかし うまくきまらなかった！";
         } else {
             opponentStealthRock = true;
-            message = "相手の 周りに とがった岩が ただよい始めた！";
+            message = "あいての まわりに とがったいわが ただよいはじめた！";
         }
 
     } else {
 
         if (playerStealthRock) {
-            message = "しかし うまく決まらなかった！";
+            message = "しかし うまくきまらなかった！";
         } else {
             playerStealthRock = true;
-            message = "自分の 周りに とがった岩が ただよい始めた！";
+            message = "じぶんの まわりに とがったいわが ただよいはじめた！";
         }
 
     }

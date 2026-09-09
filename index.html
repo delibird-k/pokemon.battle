@@ -3601,6 +3601,7 @@ if (playerClaw && !opponentClaw) {
 }
 
 const playerPokemonAtStart = playerPokemon;
+const opponentPokemonAtStart = opponentPokemon;
         
 let gameOver;
 
@@ -3675,11 +3676,26 @@ if (opponentSwitched) {
                 setTimeout(resolve, 1000)
         );
 
-const secondDefender =
-    second.pokemon === opponentPokemon &&
-    playerPokemon !== playerPokemonAtStart
-        ? playerPokemon
-        : first.pokemon;
+let secondDefender;
+
+if (second.pokemon === opponentPokemonAtStart) {
+
+    // COMがとんぼがえり等で交代した場合
+    if (opponentPokemon !== opponentPokemonAtStart) {
+        secondDefender = opponentPokemon;
+
+    // プレイヤーが交代した場合
+    } else if (playerPokemon !== playerPokemonAtStart) {
+        secondDefender = playerPokemon;
+
+    // 通常
+    } else {
+        secondDefender = first.pokemon;
+    }
+
+} else {
+    secondDefender = first.pokemon;
+}
 
 gameOver =
     await handleAttack(

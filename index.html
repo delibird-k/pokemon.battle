@@ -3699,23 +3699,47 @@ if (opponentSwitched) {
 
 let secondDefender;
 
-if (second.pokemon === opponentPokemonAtStart) {
+// ========================================================
+// 2回目の攻撃の対象を「現在場にいるポケモン」にする
+// ========================================================
+//
+// 相手がとんぼがえり・ボルトチェンジ・クイックターンで
+// 交代した場合は、プレイヤーの攻撃は「新しく出てきた相手」に当たる。
+//
+// プレイヤー側が交代技で交代した場合も同様に、
+// 相手の攻撃は「新しく出てきたプレイヤー」に当たる。
+// ========================================================
 
-    // COMがとんぼがえり等で交代した場合
+if (second.pokemon === playerPokemonAtStart) {
+
+    // プレイヤーが交代した
+    if (playerPokemon !== playerPokemonAtStart) {
+        secondDefender = playerPokemon;
+
+    // プレイヤーが交代していない
+    } else {
+        secondDefender = opponentPokemon;
+    }
+
+} else if (second.pokemon === opponentPokemonAtStart) {
+
+    // 相手が交代した
     if (opponentPokemon !== opponentPokemonAtStart) {
         secondDefender = opponentPokemon;
 
-    // プレイヤーが交代した場合
-    } else if (playerPokemon !== playerPokemonAtStart) {
-        secondDefender = playerPokemon;
-
-    // 通常
+    // 相手が交代していない
     } else {
-        secondDefender = first.pokemon;
+        secondDefender = playerPokemon;
     }
 
 } else {
-    secondDefender = first.pokemon;
+
+    // 念のため、攻撃側の所属から現在の相手を決定
+    if (second.pokemon === playerPokemon) {
+        secondDefender = opponentPokemon;
+    } else {
+        secondDefender = playerPokemon;
+    }
 }
 
 gameOver =

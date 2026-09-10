@@ -7387,11 +7387,92 @@ if (move.self && move.self.stats) {
         await new Promise(resolve => setTimeout(resolve, 1200));
         
         if (defender.currentHp <= 0) {
-            // 瀕死処理の結果をそのまま返す。
-            // 相手が倒れた場合は checkFainted が2体目を出して
-            // falseを返すので、ここでバトルを止めない。
+            // ========================================================
+            // 瀕死処理
+            // ========================================================
+            // 交代技で相手を倒した場合でも、
+            // 「相手の後続を出す」→「交代技を使った側が交代する」
+            // という順番にする。
             const isPlayerDefender = defender === playerPokemon;
-            return await checkFainted(defender, isPlayerDefender);
+
+            const gameOver =
+                await checkFainted(
+                    defender,
+                    isPlayerDefender,
+                    attacker
+                );
+
+            if (gameOver) {
+                return true;
+            }
+
+            // ========================================================
+            // 交代技でKOした場合
+            // ========================================================
+            const isPivotMove =
+                move.name === "とんぼがえり" ||
+                move.name === "ボルトチェンジ" ||
+                move.name === "クイックターン";
+
+            if (
+                isPivotMove &&
+                attacker.currentHp > 0
+            ) {
+
+                // ----------------------------------------------------
+                // プレイヤー側
+                // ----------------------------------------------------
+                if (attacker === playerPokemon) {
+
+                    const canSwitch =
+                        playerTeam.some(
+                            (pokemon, index) =>
+                                index !== playerActiveIndex &&
+                                pokemon.currentHp > 0
+                        );
+
+                    if (canSwitch) {
+                        await showMessage(
+                            `${attacker.name} は お前の元へ 戻っていく！`
+                        );
+
+                        uTurnSwitched = true;
+
+                        await showUTurnSwitchSelection();
+                    }
+
+                // ----------------------------------------------------
+                // COM側
+                // ----------------------------------------------------
+                } else if (attacker === opponentPokemon) {
+
+                    const canSwitch =
+                        opponentTeam.some(
+                            (pokemon, index) =>
+                                index !== opponentActiveIndex &&
+                                pokemon.currentHp > 0
+                        );
+
+                    if (canSwitch) {
+                        await showMessage(
+                            `あいて の ${attacker.name} は 戻っていく！`
+                        );
+
+                        const nextIndex =
+                            chooseBestOpponentSwitch();
+
+                        if (nextIndex !== -1) {
+                            uTurnSwitched = true;
+
+                            await executeOpponentAISwitch(
+                                nextIndex
+                            );
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
         
         const berryHealed = await checkAndUseItem(defender);

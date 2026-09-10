@@ -36224,6 +36224,27 @@ if (switched) {
 
 })();
 
+    // ============================================================
+// 対戦中にページを更新したら敗北扱い
+// ============================================================
+window.addEventListener("beforeunload", function () {
+    if (isBattleInProgress) {
+        sessionStorage.setItem("battle_reload_loss", "true");
+    }
+});
+
+// ページ再読み込み後、前回が対戦中だった場合は敗北扱い
+window.addEventListener("load", function () {
+    if (sessionStorage.getItem("battle_reload_loss") === "true") {
+        sessionStorage.removeItem("battle_reload_loss");
+
+        // 少し待ってから敗北画面を表示
+        setTimeout(() => {
+            endGame(false);
+        }, 100);
+    }
+});
+
 </script>
 
 </body>

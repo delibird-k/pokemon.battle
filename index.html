@@ -2872,6 +2872,11 @@ playerPokemon =
     playerPokemon.yawnTurns = 0;
     playerPokemon.isFlinched = false;
 
+    // 交代したら「まもる」の連続使用判定をリセット
+playerPokemon.protectUsed = false;
+playerPokemon.isProtected = false;
+playerPokemon.isKingShield = false;
+
     // 交代したポケモンの能力変化をリセット
 playerPokemon.statStages = {
     attack: 0,
@@ -3137,6 +3142,11 @@ playerPokemon =
 playerPokemon.hasMoved = false;
 playerPokemon.selectedMove = null;
     playerPokemon.yawnTurns = 0;
+
+    // 交代したら「まもる」の連続使用判定をリセット
+playerPokemon.protectUsed = false;
+playerPokemon.isProtected = false;
+playerPokemon.isKingShield = false;
 
 // 交代したポケモンの能力変化をリセット
 playerPokemon.statStages = {

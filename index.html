@@ -32738,75 +32738,143 @@ if (switched) {
 /* ============================================================
    ULTIMATE AI V11 FINAL
    PART 1
-   REAL BATTLE ENGINE / STATE SNAPSHOT
+   BATTLE ENGINE / REAL GAME BRIDGE
    ============================================================ */
 
 (function () {
     "use strict";
 
-    if (window.__AI_V11_REBUILD_PART1__) return;
-    window.__AI_V11_REBUILD_PART1__ = true;
+    if (window.__AI_V11_ENGINE_100__) return;
+    window.__AI_V11_ENGINE_100__ = true;
 
-    /*
-     * ----------------------------------------------------------
-     * V10を必ず残したまま、その上にV11を構築する
-     * ----------------------------------------------------------
-     */
-
-    const V10 =
-        window.AI_V10_DEBUG ||
-        {};
-
-    const V11 = {
-        version: "11.0 FINAL REBUILD",
-
-        /*
-         * 探索設定
-         */
-        maxRootMoves: 4,
-        maxResponseMoves: 4,
-        maxSwitches: 3,
-
-        depthNormal: 2,
-        depthHard: 3,
-
-        /*
-         * 評価
-         */
-        koBonus: 1000000,
-        deathPenalty: 1000000,
-
-        hpWeight: 3200,
-        teamWeight: 5200,
-        matchupWeight: 850,
-        speedWeight: 500,
-        setupWeight: 350,
-        statusWeight: 300,
-        switchWeight: 260,
-
-        /*
-         * 不確実性
-         */
-        accuracyWeight: 0.01,
-
-        debug: false
-    };
-
-    window.AI_V11 = V11;
-
+    const VERSION = "11.0.100";
 
     /* =========================================================
-       数値
+       数値安全化
        ========================================================= */
 
-    function n(value, fallback) {
-        const x = Number(value);
-
-        return Number.isFinite(x)
-            ? x
-            : fallback;
+    function num(v, fallback = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fallback;
     }
 
+    function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+    }
+
+    function clone(obj) {
+        if (obj == null) return obj;
+
+        try {
+            return structuredClone(obj);
+        } catch (e) {
+            try {
+                return JSON.parse(JSON.stringify(obj));
+            } catch (e2) {
+                return obj;
+            }
+        }
+    }
+
+    /* =========================================================
+       実ゲーム変数との接続
+       
+       重要：
+       DOMContentLoaded内部のlet変数はwindowに存在しない。
+       そのため、直接windowだけを見るのではなく、
+       実際のゲーム側の変数を安全に取得する。
+       ========================================================= */
+
+    function getRealTeam(side) {
+
+        if (side === "player") {
+
+            if (
+                typeof playerTeam !== "undefined" &&
+                Array.isArray(playerTeam)
+            ) {
+                return playerTeam;
+            }
+
+            if (
+                typeof window.playerTeam !== "undefined" &&
+                Array.isArray(window.playerTeam)
+            ) {
+                return window.playerTeam;
+            }
+
+            if (
+                typeof playerPokemon !== "undefined" &&
+                playerPokemon
+            ) {
+                return [playerPokemon];
+            }
+
+            return [];
+        }
+
+        if (
+            typeof opponentTeam !== "undefined" &&
+            Array.isArray(opponentTeam)
+        ) {
+            return opponentTeam;
+        }
+
+        if (
+            typeof window.opponentTeam !== "undefined" &&
+            Array.isArray(window.opponentTeam)
+        ) {
+            return window.opponentTeam;
+        }
+
+        if (
+            typeof opponentPokemon !== "undefined" &&
+            opponentPokemon
+        ) {
+            return [opponentPokemon];
+        }
+
+        return [];
+    }
+
+    function getRealActiveIndex(side) {
+
+        if (side === "player") {
+
+            if (
+                typeof playerActiveIndex !== "undefined"
+            ) {
+                return num(playerActiveIndex, 0);
+            }
+
+            return num(
+                window.playerActiveIndex,
+                0
+            );
+        }
+
+        if (
+            typeof opponentActiveIndex !== "undefined"
+        ) {
+            return num(opponentActiveIndex, 0);
+        }
+
+        return num(
+            window.opponentActiveIndex,
+            0
+        );
+    }
+
+    function getDifficulty() {
+
+        if (
+            typeof difficulty !== "undefined"
+        ) {
+            return difficulty;
+        }
+
+        return window.difficulty || "normal";
+    }
 
     /* =========================================================
        HP
@@ -32815,124 +32883,71 @@ if (switched) {
     function hp(pokemon) {
         if (!pokemon) return 0;
 
-        /*
-         * index (38) のV10と同じく
-         * hp → currentHp の順で扱う。
-         */
-        return Math.max(
+        return clamp(
+            num(
+                pokemon.currentHp ??
+                pokemon.hp ??
+                pokemon.currentHP,
+                0
+            ),
             0,
-            n(
-                pokemon.hp,
-                n(
-                    pokemon.currentHp,
-                    0
-                )
+            num(
+                pokemon.maxHp ??
+                pokemon.maxHP ??
+                pokemon.hpMax,
+                Infinity
             )
         );
     }
-
 
     function maxHp(pokemon) {
         if (!pokemon) return 1;
 
         return Math.max(
             1,
-            n(
-                pokemon.maxHp,
-                n(
-                    pokemon.baseHp,
-                    1
-                )
+            num(
+                pokemon.maxHp ??
+                pokemon.maxHP ??
+                pokemon.hpMax,
+                pokemon.hp ?? 1
             )
         );
     }
-
 
     function hpRate(pokemon) {
-        if (!pokemon) return 0;
-
-        return Math.max(
-            0,
-            Math.min(
-                1,
-                hp(pokemon) /
-                maxHp(pokemon)
-            )
-        );
+        return hp(pokemon) / maxHp(pokemon);
     }
-
 
     function alive(pokemon) {
-        return !!pokemon &&
-            hp(pokemon) > 0;
+        return !!pokemon && hp(pokemon) > 0;
     }
-
-
-    /* =========================================================
-       名前
-       ========================================================= */
-
-    function nameOf(pokemon) {
-        if (!pokemon) return "";
-
-        return String(
-            pokemon.name ||
-            pokemon.species ||
-            pokemon.id ||
-            ""
-        );
-    }
-
-
-    function moveName(move) {
-        if (!move) return "";
-
-        return String(
-            move.name ||
-            move.moveName ||
-            move.id ||
-            ""
-        );
-    }
-
 
     /* =========================================================
        PP
        ========================================================= */
 
     function pp(move) {
+
         if (!move) return 0;
 
         if (
-            move.currentPp !==
-            undefined
+            move.pp === undefined ||
+            move.pp === null
         ) {
-            return n(
-                move.currentPp,
-                0
-            );
+            return 1;
         }
 
-        if (
-            move.pp !==
-            undefined
-        ) {
-            return n(
-                move.pp,
-                0
-            );
-        }
-
-        return 1;
+        return Math.max(
+            0,
+            num(move.pp, 0)
+        );
     }
 
-
     function usableMoves(pokemon) {
+
         if (
             !pokemon ||
-            !Array.isArray(
-                pokemon.moves
-            )
+            !Array.isArray(pokemon.moves)
         ) {
             return [];
         }
@@ -32944,65 +32959,27 @@ if (switched) {
         );
     }
 
-
     /* =========================================================
-       チーム取得
+       実ゲームから取得
        ========================================================= */
 
     function getTeam(side) {
-
-        if (
-            side === "player"
-        ) {
-            return Array.isArray(
-                window.playerTeam
-            )
-                ? window.playerTeam
-                : [];
-        }
-
-        return Array.isArray(
-            window.opponentTeam
-        )
-            ? window.opponentTeam
-            : [];
+        return getRealTeam(side);
     }
-
 
     function getActiveIndex(side) {
-
-        if (
-            side === "player"
-        ) {
-            return n(
-                window.playerActiveIndex,
-                0
-            );
-        }
-
-        return n(
-            window.opponentActiveIndex,
-            0
-        );
+        return getRealActiveIndex(side);
     }
-
 
     function getActive(side) {
 
-        const team =
-            getTeam(side);
+        const t = getTeam(side);
 
         const index =
             getActiveIndex(side);
 
-        return team[index] ||
-            null;
+        return t[index] || null;
     }
-
-
-    /* =========================================================
-       生存数
-       ========================================================= */
 
     function aliveCount(side) {
 
@@ -33011,76 +32988,104 @@ if (switched) {
             .length;
     }
 
-
     /* =========================================================
-       ステータス
+       タイプ
        ========================================================= */
 
-    function getStatus(pokemon) {
+    function types(pokemon) {
 
-        if (!pokemon) return "";
+        if (!pokemon) return [];
 
-        return String(
-            pokemon.status ||
-            ""
+        if (Array.isArray(pokemon.types)) {
+            return pokemon.types;
+        }
+
+        const result = [];
+
+        if (pokemon.type1) {
+            result.push(pokemon.type1);
+        }
+
+        if (pokemon.type2) {
+            result.push(pokemon.type2);
+        }
+
+        return result;
+    }
+
+    /* =========================================================
+       能力値
+       ========================================================= */
+
+    function stageMultiplier(stage) {
+
+        stage = clamp(
+            num(stage, 0),
+            -6,
+            6
+        );
+
+        if (stage >= 0) {
+            return (2 + stage) / 2;
+        }
+
+        return 2 / (2 - stage);
+    }
+
+    function statValue(pokemon, stat) {
+
+        if (!pokemon) return 0;
+
+        let value =
+            num(
+                pokemon[stat],
+                0
+            );
+
+        const stages =
+            pokemon.stages || {};
+
+        value *= stageMultiplier(
+            stages[stat] || 0
+        );
+
+        if (
+            stat === "speed" &&
+            (
+                pokemon.status === "paralyzed" ||
+                pokemon.status === "まひ"
+            )
+        ) {
+            value *= 0.5;
+        }
+
+        return Math.max(
+            1,
+            value
         );
     }
 
-
-    function getStages(pokemon) {
-
-        if (!pokemon) {
-            return {};
-        }
-
-        const stages =
-            pokemon.statStages ||
-            pokemon.stages ||
-            {};
-
-        return {
-            attack:
-                n(
-                    stages.attack,
-                    0
-                ),
-
-            defense:
-                n(
-                    stages.defense,
-                    0
-                ),
-
-            specialAttack:
-                n(
-                    stages.specialAttack,
-                    0
-                ),
-
-            specialDefense:
-                n(
-                    stages.specialDefense,
-                    0
-                ),
-
-            speed:
-                n(
-                    stages.speed,
-                    0
-                )
-        };
-    }
-
-
     /* =========================================================
-       実際のダメージ計算
+       優先度
        ========================================================= */
 
-    function damage(
-        move,
-        attacker,
-        defender
-    ) {
+    function priority(move) {
+
+        if (!move) return 0;
+
+        return num(
+            move.priority ??
+            move.priorityValue ??
+            0,
+            0
+        );
+    }
+
+    /* =========================================================
+       ダメージ
+       ========================================================= */
+
+    function damage(move, attacker, defender) {
 
         if (
             !move ||
@@ -33092,10 +33097,8 @@ if (switched) {
             return 0;
         }
 
+        /* 実ゲームのダメージ計算を最優先 */
 
-        /*
-         * まずゲーム側のAI専用ダメージ計算を使用
-         */
         try {
 
             if (
@@ -33103,8 +33106,8 @@ if (switched) {
                 "function"
             ) {
 
-                const value =
-                    n(
+                const d =
+                    num(
                         getAIDamage(
                             move,
                             attacker,
@@ -33113,119 +33116,82 @@ if (switched) {
                         0
                     );
 
-                if (
-                    value >= 0
-                ) {
+                if (d > 0) {
                     return Math.min(
                         hp(defender),
-                        value
+                        Math.floor(d)
                     );
                 }
             }
 
         } catch (e) {}
 
+        /* フォールバック計算 */
 
-        /*
-         * V10のダメージ計算
-         */
-        try {
+        const power =
+            num(move.power, 0);
 
-            if (
-                typeof ultimateAIDamage ===
-                "function"
-            ) {
+        if (power <= 0) {
+            return 0;
+        }
 
-                const value =
-                    n(
-                        ultimateAIDamage(
-                            move,
-                            attacker,
-                            defender
-                        ),
-                        0
-                    );
+        const level =
+            num(
+                attacker.level,
+                50
+            );
 
-                if (
-                    value >= 0
-                ) {
-                    return Math.min(
-                        hp(defender),
-                        value
-                    );
-                }
-            }
+        const category =
+            String(
+                move.category ??
+                move.damageClass ??
+                ""
+            ).toLowerCase();
 
-        } catch (e) {}
+        const special =
+            category.includes("special") ||
+            category === "特殊";
 
+        const attack =
+            statValue(
+                attacker,
+                special
+                    ? "specialAttack"
+                    : "attack"
+            );
 
-        /*
-         * 最後のフォールバック
-         */
-        try {
+        const defense =
+            statValue(
+                defender,
+                special
+                    ? "specialDefense"
+                    : "defense"
+            );
 
-            if (
-                typeof calculateDamage ===
-                "function"
-            ) {
+        let result =
+            Math.floor(
+                (
+                    (
+                        (
+                            2 * level / 5
+                        ) + 2
+                    ) *
+                    power *
+                    attack /
+                    Math.max(1, defense)
+                ) / 50
+            ) + 2;
 
-                const result =
-                    calculateDamage(
-                        move,
-                        attacker,
-                        defender
-                    );
-
-                if (
-                    typeof result ===
-                    "number"
-                ) {
-                    return Math.min(
-                        hp(defender),
-                        Math.max(
-                            0,
-                            result
-                        )
-                    );
-                }
-
-                if (
-                    result &&
-                    typeof result.damage ===
-                    "number"
-                ) {
-                    return Math.min(
-                        hp(defender),
-                        Math.max(
-                            0,
-                            result.damage
-                        )
-                    );
-                }
-            }
-
-        } catch (e) {}
-
-
-        return 0;
-    }
-
-
-    /* =========================================================
-       タイプ相性
-       ========================================================= */
-
-    function effectiveness(
-        move,
-        defender
-    ) {
+        /* STAB */
 
         if (
-            !move ||
-            !defender
+            types(attacker)
+                .includes(move.type)
         ) {
-            return 1;
+            result *= 1.5;
         }
+
+        /* タイプ相性 */
 
         try {
 
@@ -33234,208 +33200,29 @@ if (switched) {
                 "function"
             ) {
 
-                const type =
-                    Array.isArray(
-                        move.type
-                    )
-                        ? move.type[0]
-                        : move.type;
-
-                return Math.max(
-                    0,
-                    n(
+                const eff =
+                    num(
                         calculateTypeEffectiveness(
-                            type,
-                            defender.types ||
-                            []
+                            move.type,
+                            types(defender)
                         ),
                         1
-                    )
-                );
+                    );
+
+                result *= eff;
             }
 
         } catch (e) {}
 
-        return 1;
+        return clamp(
+            Math.floor(result),
+            0,
+            hp(defender)
+        );
     }
-
 
     /* =========================================================
-       実戦盤面スナップショット
-       ========================================================= */
-
-    function snapshotPokemon(
-        pokemon
-    ) {
-
-        if (!pokemon) {
-            return null;
-        }
-
-        return {
-            name:
-                nameOf(pokemon),
-
-            hp:
-                hp(pokemon),
-
-            maxHp:
-                maxHp(pokemon),
-
-            hpRate:
-                hpRate(pokemon),
-
-            status:
-                getStatus(pokemon),
-
-            types:
-                Array.isArray(
-                    pokemon.types
-                )
-                    ? pokemon.types.slice()
-                    : [],
-
-            ability:
-                pokemon.ability ||
-                "",
-
-            item:
-                pokemon.item ||
-                "",
-
-            stages:
-                getStages(pokemon),
-
-            speed:
-                n(
-                    pokemon.speed,
-                    n(
-                        pokemon.baseSpeed,
-                        0
-                    )
-                ),
-
-            moves:
-                usableMoves(
-                    pokemon
-                ).map(
-                    move => ({
-                        name:
-                            moveName(
-                                move
-                            ),
-
-                        type:
-                            move.type,
-
-                        power:
-                            n(
-                                move.power,
-                                0
-                            ),
-
-                        accuracy:
-                            n(
-                                move.accuracy,
-                                100
-                            ),
-
-                        priority:
-                            n(
-                                move.priority,
-                                0
-                            ),
-
-                        category:
-                            move.category ||
-                            move.damageClass ||
-                            "",
-
-                        pp:
-                            pp(move)
-                    })
-                )
-        };
-    }
-
-
-    function createBattleSnapshot() {
-
-        const player =
-            getActive("player");
-
-        const opponent =
-            getActive("opponent");
-
-        return {
-
-            playerActive:
-                snapshotPokemon(
-                    player
-                ),
-
-            opponentActive:
-                snapshotPokemon(
-                    opponent
-                ),
-
-            playerTeam:
-                getTeam("player")
-                    .map(
-                        snapshotPokemon
-                    ),
-
-            opponentTeam:
-                getTeam("opponent")
-                    .map(
-                        snapshotPokemon
-                    ),
-
-            playerActiveIndex:
-                getActiveIndex(
-                    "player"
-                ),
-
-            opponentActiveIndex:
-                getActiveIndex(
-                    "opponent"
-                ),
-
-            playerAlive:
-                aliveCount(
-                    "player"
-                ),
-
-            opponentAlive:
-                aliveCount(
-                    "opponent"
-                ),
-
-            weather:
-                typeof weather !==
-                "undefined"
-                    ? JSON.parse(
-                        JSON.stringify(
-                            weather
-                        )
-                    )
-                    : null,
-
-            field:
-                typeof field !==
-                "undefined"
-                    ? JSON.parse(
-                        JSON.stringify(
-                            field
-                        )
-                    )
-                    : null
-        };
-    }
-
-
-    /* =========================================================
-       技の基本評価
+       基本技評価
        ========================================================= */
 
     function basicMoveScore(
@@ -33452,1280 +33239,1357 @@ if (switched) {
             return -Infinity;
         }
 
-        const dmg =
+        const d =
             damage(
                 move,
                 attacker,
                 defender
             );
 
-        const targetHp =
-            Math.max(
-                1,
-                hp(defender)
-            );
+        let score = 0;
 
-        const rate =
-            dmg /
-            targetHp;
+        /* ダメージ */
 
-        const eff =
-            effectiveness(
-                move,
-                defender
-            );
+        score += d * 3;
 
-        let score =
-            rate * 1000;
+        /* KO */
 
-        /*
-         * 相性
-         */
-        if (eff >= 4) {
-            score += 900;
-        } else if (eff >= 2) {
-            score += 500;
-        } else if (eff === 0) {
-            score -= 1500;
-        } else if (eff < 1) {
-            score -= 250;
+        if (
+            d >= hp(defender)
+        ) {
+            score += 10000;
         }
 
-        /*
-         * KO
-         */
+        /* 相手HP割合 */
+
         if (
-            dmg >= hp(defender)
+            hp(defender) > 0
         ) {
             score +=
-                V11.koBonus;
+                (
+                    d /
+                    hp(defender)
+                ) * 800;
         }
 
-        /*
-         * 命中率
-         */
-        const acc =
-            n(
-                move.accuracy,
-                100
+        /* 回復技 */
+
+        const name =
+            String(
+                move.name || ""
             );
 
+        const recoveryMoves = new Set([
+            "じこさいせい",
+            "はねやすめ",
+            "なまける",
+            "ねむる",
+            "ミルクのみ",
+            "タマゴうみ",
+            "あさのひざし",
+            "こうごうせい",
+            "つきのひかり"
+        ]);
+
         if (
-            acc > 0 &&
-            acc <= 100
+            recoveryMoves.has(name)
         ) {
-            score *=
-                acc / 100;
+            score +=
+                (1 - hpRate(attacker))
+                * 1200;
         }
 
-        /*
-         * 優先度
-         */
-        score +=
-            n(
-                move.priority,
-                0
-            ) * 80;
+        /* 状態異常 */
 
-        /*
-         * STAB
-         */
         if (
-            Array.isArray(
-                attacker.types
+            name === "でんじは" &&
+            !defender.status
+        ) {
+            score += 500;
+        }
+
+        if (
+            (
+                name === "おにび" ||
+                name === "どくどく"
             ) &&
-            attacker.types.includes(
-                move.type
-            )
+            !defender.status
         ) {
-            score += 180;
+            score += 450;
         }
+
+        /* 積み技 */
+
+        const setup = {
+            "つるぎのまい": 700,
+            "わるだくみ": 700,
+            "りゅうのまい": 850,
+            "めいそう": 650,
+            "こうそくいどう": 500,
+            "てっぺき": 450,
+            "ドわすれ": 450
+        };
+
+        if (setup[name]) {
+
+            score +=
+                setup[name] *
+                (
+                    1 -
+                    hpRate(defender)
+                );
+
+            score +=
+                hpRate(attacker) *
+                250;
+        }
+
+        /* 優先度 */
+
+        score +=
+            priority(move) * 180;
 
         return score;
     }
 
-
     /* =========================================================
-       V11公開API
+       公開
        ========================================================= */
 
     window.AI_V11_ENGINE = {
 
-        version:
-            V11.version,
+        version: VERSION,
 
-        config:
-            V11,
-
-        hp,
-        maxHp,
-        hpRate,
-        alive,
+        num,
+        clamp,
+        clone,
 
         getTeam,
         getActive,
         getActiveIndex,
+        getDifficulty,
+
+        alive,
         aliveCount,
 
+        hp,
+        maxHp,
+        hpRate,
+
+        types,
+        pp,
         usableMoves,
 
+        stageMultiplier,
+        statValue,
+
+        priority,
+
         damage,
-        effectiveness,
-
-        basicMoveScore,
-
-        snapshotPokemon,
-        createBattleSnapshot
+        basicMoveScore
     };
 
-
     console.log(
-        "[AI V11] PART 1 REBUILT / REAL ENGINE"
+        "[AI V11 100] PART 1 LOADED"
     );
 
 })();
 /* ============================================================
    ULTIMATE AI V11 FINAL
    PART 2
-   BATTLE-AWARE VIRTUAL STATE
+   VIRTUAL BATTLE STATE / EVALUATION
    ============================================================ */
 
 (function () {
     "use strict";
 
-    if (window.__AI_V11_REBUILD_PART2__) return;
-    window.__AI_V11_REBUILD_PART2__ = true;
-
-    const E =
-        window.AI_V11_ENGINE;
-
-    if (!E) {
-        console.error(
-            "[AI V11] PART 1 NOT FOUND"
-        );
+    if (!window.AI_V11_ENGINE) {
+        console.error("[AI V11 100] PART 1 NOT FOUND");
         return;
     }
 
+    if (window.__AI_V11_SEARCH_100__) return;
+    window.__AI_V11_SEARCH_100__ = true;
 
-    /* =========================================================
-       コピー
-       ========================================================= */
+    const E = window.AI_V11_ENGINE;
 
-    function clone(data) {
+    const VERSION = "11.0.100";
 
-        try {
-            return JSON.parse(
-                JSON.stringify(data)
-            );
-        } catch (e) {
-            return data;
-        }
+    /* ---------------------------------------------------------
+       設定
+       --------------------------------------------------------- */
+
+    const CONFIG = {
+        normalDepth: 2,
+        hardDepth: 3,
+
+        maxRootMoves: 6,
+        maxResponseMoves: 5,
+        maxSwitches: 4,
+
+        koBonus: 100000,
+        hpWeight: 1600,
+        teamWeight: 5000,
+        damageWeight: 3,
+
+        switchBase: 250
+    };
+
+
+    /* ---------------------------------------------------------
+       安全なコピー
+       --------------------------------------------------------- */
+
+    function clonePokemon(pokemon) {
+        return E.clone(pokemon);
+    }
+
+    function cloneTeam(team) {
+        if (!Array.isArray(team)) return [];
+
+        return team.map(function (pokemon) {
+            return clonePokemon(pokemon);
+        });
     }
 
 
-    /* =========================================================
-       仮想ポケモン
-       ========================================================= */
-
-    function virtualPokemon(
-        pokemon
-    ) {
-
-        if (!pokemon) {
-            return null;
-        }
-
-        return {
-            name:
-                pokemon.name,
-
-            hp:
-                E.hp(pokemon),
-
-            maxHp:
-                E.maxHp(pokemon),
-
-            status:
-                pokemon.status ||
-                "",
-
-            types:
-                Array.isArray(
-                    pokemon.types
-                )
-                    ? pokemon.types.slice()
-                    : [],
-
-            ability:
-                pokemon.ability ||
-                "",
-
-            item:
-                pokemon.item ||
-                "",
-
-            attack:
-                Number(
-                    pokemon.attack
-                ) || 0,
-
-            defense:
-                Number(
-                    pokemon.defense
-                ) || 0,
-
-            specialAttack:
-                Number(
-                    pokemon.specialAttack
-                ) || 0,
-
-            specialDefense:
-                Number(
-                    pokemon.specialDefense
-                ) || 0,
-
-            speed:
-                Number(
-                    pokemon.speed
-                ) || 0,
-
-            stages:
-                clone(
-                    pokemon.statStages ||
-                    pokemon.stages ||
-                    {}
-                ),
-
-            moves:
-                clone(
-                    pokemon.moves ||
-                    []
-                ),
-
-            substitute:
-                !!pokemon.substitute,
-
-            protected:
-                !!pokemon.protected,
-
-            yawn:
-                !!pokemon.yawn,
-
-            volatileStatus:
-                clone(
-                    pokemon.volatileStatus ||
-                    {}
-                )
-        };
-    }
-
-
-    /* =========================================================
-       仮想盤面
-       ========================================================= */
+    /* ---------------------------------------------------------
+       仮想状態
+       --------------------------------------------------------- */
 
     function createState() {
 
-        const playerTeam =
-            E.getTeam(
-                "player"
-            ).map(
-                virtualPokemon
-            );
-
-        const opponentTeam =
-            E.getTeam(
-                "opponent"
-            ).map(
-                virtualPokemon
-            );
+        const playerTeam = cloneTeam(E.getTeam("player"));
+        const opponentTeam = cloneTeam(E.getTeam("opponent"));
 
         return {
+            player: {
+                team: playerTeam,
+                active: E.getActiveIndex("player")
+            },
 
-            playerTeam,
+            opponent: {
+                team: opponentTeam,
+                active: E.getActiveIndex("opponent")
+            },
 
-            opponentTeam,
-
-            playerActiveIndex:
-                E.getActiveIndex(
-                    "player"
-                ),
-
-            opponentActiveIndex:
-                E.getActiveIndex(
-                    "opponent"
-                ),
-
-            weather:
-                typeof weather !==
-                "undefined"
-                    ? clone(weather)
-                    : null,
-
-            field:
-                typeof field !==
-                "undefined"
-                    ? clone(field)
-                    : null,
-
-            playerStealthRock:
-                !!window.playerStealthRock,
-
-            opponentStealthRock:
-                !!window.opponentStealthRock
+            turn: 0
         };
     }
 
 
-    function team(
-        state,
-        side
-    ) {
-        return side === "player"
-            ? state.playerTeam
-            : state.opponentTeam;
+    function side(state, name) {
+        return state[name];
     }
 
 
-    function active(
-        state,
-        side
-    ) {
+    function getActive(state, name) {
 
-        const t =
-            team(
-                state,
-                side
-            );
+        const s = side(state, name);
 
-        const i =
-            side === "player"
-                ? state.playerActiveIndex
-                : state.opponentActiveIndex;
-
-        return t[i] || null;
-    }
-
-
-    function aliveCount(
-        state,
-        side
-    ) {
-
-        return team(
-            state,
-            side
-        ).filter(
-            E.alive
-        ).length;
-    }
-
-
-    /* =========================================================
-       状態ランク補正
-       ========================================================= */
-
-    function stageMultiplier(
-        stage
-    ) {
-
-        stage =
-            Math.max(
-                -6,
-                Math.min(
-                    6,
-                    Number(stage) || 0
-                )
-            );
-
-        if (stage >= 0) {
-            return (
-                2 + stage
-            ) / 2;
+        if (!s || !Array.isArray(s.team)) {
+            return null;
         }
 
-        return (
-            2 /
-            (2 - stage)
-        );
+        return s.team[s.active] || null;
     }
 
 
-    function effectiveStat(
-        pokemon,
-        stat
-    ) {
+    function isAlive(pokemon) {
+        return E.alive(pokemon);
+    }
 
-        if (!pokemon) {
+
+    function aliveCount(state, name) {
+
+        const s = side(state, name);
+
+        if (!s || !Array.isArray(s.team)) {
             return 0;
         }
 
-        const base =
-            Number(
-                pokemon[stat]
-            ) || 0;
-
-        const stages =
-            pokemon.stages ||
-            {};
-
-        const stage =
-            Number(
-                stages[stat]
-            ) || 0;
-
-        let value =
-            base *
-            stageMultiplier(
-                stage
-            );
-
-        /*
-         * まひの素早さ低下
-         */
-        if (
-            stat === "speed" &&
-            (
-                pokemon.status ===
-                "paralyzed" ||
-                pokemon.status ===
-                "まひ"
-            )
-        ) {
-            value *= 0.5;
-        }
-
-        return Math.max(
-            1,
-            value
-        );
+        return s.team.filter(isAlive).length;
     }
 
 
-    /* =========================================================
-       仮想ダメージ
-       ========================================================= */
+    /* ---------------------------------------------------------
+       状態評価
+       COM側から見た評価
+       --------------------------------------------------------- */
 
-    function virtualDamage(
-        move,
-        attacker,
-        defender
-    ) {
+    function pokemonValue(pokemon) {
 
-        if (
-            !move ||
-            !attacker ||
-            !defender ||
-            !E.alive(attacker) ||
-            !E.alive(defender)
-        ) {
-            return 0;
+        if (!pokemon) return 0;
+
+        if (!isAlive(pokemon)) {
+            return -50000;
         }
 
+        const hpRate = E.hpRate(pokemon);
 
-        /*
-         * 現在のゲーム側AIダメージを
-         * ベースとして使用。
-         *
-         * ただし探索中は実際のポケモンを
-         * 渡さず、仮想ポケモンを渡す。
-         */
         let value = 0;
 
-        try {
+        value += hpRate * CONFIG.hpWeight;
 
-            if (
-                typeof getAIDamage ===
-                "function"
-            ) {
+        value += 1200;
 
-                value =
-                    Number(
-                        getAIDamage(
-                            move,
-                            attacker,
-                            defender
-                        )
-                    ) || 0;
-            }
-
-        } catch (e) {
-            value = 0;
+        if (pokemon.status) {
+            value -= 500;
         }
 
-
-        /*
-         * ダメージ計算が仮想状態に
-         * 対応できない場合の独立計算。
-         */
-        if (value <= 0) {
-
-            const power =
-                Number(
-                    move.power
-                ) || 0;
-
-            if (power <= 0) {
-                return 0;
-            }
-
-            const level =
-                Number(
-                    attacker.level
-                ) || 50;
-
-            const category =
-                String(
-                    move.category ||
-                    move.damageClass ||
-                    ""
-                ).toLowerCase();
-
-            const special =
-                category.includes(
-                    "special"
-                ) ||
-                category ===
-                    "特殊";
-
-            const attack =
-                effectiveStat(
-                    attacker,
-                    special
-                        ? "specialAttack"
-                        : "attack"
-                );
-
-            const defense =
-                effectiveStat(
-                    defender,
-                    special
-                        ? "specialDefense"
-                        : "defense"
-                );
-
-            value =
-                Math.floor(
-                    (
-                        (
-                            (
-                                2 *
-                                level /
-                                5
-                            ) + 2
-                        ) *
-                        power *
-                        attack /
-                        Math.max(
-                            1,
-                            defense
-                        )
-                    ) /
-                    50
-                ) + 2;
-
-
-            /*
-             * STAB
-             */
-            if (
-                Array.isArray(
-                    attacker.types
-                ) &&
-                attacker.types.includes(
-                    move.type
-                )
-            ) {
-                value *= 1.5;
-            }
-
-
-            /*
-             * タイプ相性
-             */
-            let eff = 1;
-
-            try {
-
-                if (
-                    typeof calculateTypeEffectiveness ===
-                    "function"
-                ) {
-
-                    eff =
-                        Number(
-                            calculateTypeEffectiveness(
-                                move.type,
-                                defender.types ||
-                                []
-                            )
-                        ) || 1;
-                }
-
-            } catch (e) {}
-
-            value *= eff;
-        }
-
-
-        return Math.max(
-            0,
-            Math.min(
-                E.hp(defender),
-                Math.floor(value)
-            )
-        );
+        return value;
     }
 
 
-    /* =========================================================
-       技の効果を仮想的に適用
-       ========================================================= */
+    function teamValue(state, name) {
 
-    function applyMove(
-        state,
-        side,
-        move
-    ) {
+        const s = side(state, name);
 
-        const attacker =
-            active(
-                state,
-                side
-            );
-
-        const defenderSide =
-            side === "player"
-                ? "opponent"
-                : "player";
-
-        const defender =
-            active(
-                state,
-                defenderSide
-            );
-
-        if (
-            !attacker ||
-            !defender ||
-            !move
-        ) {
-            return {
-                damage: 0,
-                ko: false
-            };
-        }
-
-
-        const before =
-            E.hp(
-                defender
-            );
-
-        let damage =
-            virtualDamage(
-                move,
-                attacker,
-                defender
-            );
-
-
-        /*
-         * みがわり
-         */
-        if (
-            defender.substitute
-        ) {
-
-            damage =
-                Math.min(
-                    damage,
-                    defender.hp
-                );
-
-            defender.hp =
-                Math.max(
-                    0,
-                    defender.hp -
-                    damage
-                );
-
-        } else {
-
-            defender.hp =
-                Math.max(
-                    0,
-                    defender.hp -
-                    damage
-                );
-        }
-
-
-        /*
-         * 回復技
-         */
-        const name =
-            String(
-                move.name ||
-                ""
-            );
-
-        const recovery =
-            new Set([
-                "じこさいせい",
-                "はねやすめ",
-                "なまける",
-                "ねむる",
-                "ミルクのみ",
-                "タマゴうみ",
-                "あさのひざし",
-                "こうごうせい",
-                "つきのひかり",
-                "ギガドレイン",
-                "ドレインパンチ",
-                "きゅうけつ"
-            ]);
-
-        if (
-            recovery.has(name)
-        ) {
-
-            if (
-                name ===
-                    "じこさいせい" ||
-                name ===
-                    "はねやすめ" ||
-                name ===
-                    "なまける" ||
-                name ===
-                    "ミルクのみ" ||
-                name ===
-                    "タマゴうみ"
-            ) {
-
-                attacker.hp =
-                    Math.min(
-                        attacker.maxHp,
-                        attacker.hp +
-                        Math.floor(
-                            attacker.maxHp *
-                            0.5
-                        )
-                    );
-            }
-        }
-
-
-        /*
-         * ステータス技
-         */
-        if (
-            name ===
-                "でんじは"
-        ) {
-
-            if (
-                !defender.status
-            ) {
-                defender.status =
-                    "paralyzed";
-            }
-        }
-
-
-        if (
-            name ===
-                "おにび"
-        ) {
-
-            if (
-                !defender.status
-            ) {
-                defender.status =
-                    "burned";
-            }
-        }
-
-
-        if (
-            name ===
-                "どくどく"
-        ) {
-
-            if (
-                !defender.status
-            ) {
-                defender.status =
-                    "poisoned";
-            }
-        }
-
-
-        if (
-            name ===
-                "あくび"
-        ) {
-
-            defender.yawn =
-                true;
-        }
-
-
-        /*
-         * 積み技
-         */
-        const stageMap = {
-
-            "りゅうのまい":
-                [
-                    ["attack", 1],
-                    ["speed", 1]
-                ],
-
-            "つるぎのまい":
-                [
-                    ["attack", 2]
-                ],
-
-            "わるだくみ":
-                [
-                    ["specialAttack", 2]
-                ],
-
-            "めいそう":
-                [
-                    ["specialAttack", 1],
-                    ["specialDefense", 1]
-                ],
-
-            "こうそくいどう":
-                [
-                    ["speed", 2]
-                ],
-
-            "てっぺき":
-                [
-                    ["defense", 2]
-                ],
-
-            "ドわすれ":
-                [
-                    ["specialDefense", 2]
-                ]
-        };
-
-
-        if (
-            stageMap[name]
-        ) {
-
-            if (!attacker.stages) {
-                attacker.stages = {};
-            }
-
-            stageMap[name].forEach(
-                pair => {
-
-                    const stat =
-                        pair[0];
-
-                    const amount =
-                        pair[1];
-
-                    attacker.stages[stat] =
-                        Math.max(
-                            -6,
-                            Math.min(
-                                6,
-                                (
-                                    Number(
-                                        attacker.stages[
-                                            stat
-                                        ]
-                                    ) || 0
-                                ) +
-                                amount
-                            )
-                        );
-                }
-            );
-        }
-
-
-        return {
-
-            damage:
-                before -
-                E.hp(defender),
-
-            ko:
-                !E.alive(
-                    defender
-                ),
-
-            defenderHp:
-                E.hp(defender),
-
-            attackerHp:
-                E.hp(attacker)
-        };
-    }
-
-
-    /* =========================================================
-       交代
-       ========================================================= */
-
-    function applySwitch(
-        state,
-        side,
-        index
-    ) {
-
-        const t =
-            team(
-                state,
-                side
-            );
-
-        if (
-            !t[index] ||
-            !E.alive(
-                t[index]
-            )
-        ) {
-            return false;
-        }
-
-        if (
-            side ===
-            "player"
-        ) {
-            state.playerActiveIndex =
-                index;
-        } else {
-            state.opponentActiveIndex =
-                index;
-        }
-
-        return true;
-    }
-
-
-    /* =========================================================
-       状態評価
-       ========================================================= */
-
-    function evaluateState(
-        state
-    ) {
-
-        const player =
-            active(
-                state,
-                "player"
-            );
-
-        const opponent =
-            active(
-                state,
-                "opponent"
-            );
-
-        if (!player || !opponent) {
+        if (!s || !Array.isArray(s.team)) {
             return 0;
         }
 
+        let value = 0;
 
-        const playerAlive =
-            aliveCount(
-                state,
-                "player"
-            );
+        for (const pokemon of s.team) {
+            value += pokemonValue(pokemon);
+        }
 
-        const opponentAlive =
-            aliveCount(
-                state,
-                "opponent"
-            );
+        value += aliveCount(state, name) * CONFIG.teamWeight;
+
+        return value;
+    }
 
 
-        /*
-         * COM視点。
-         *
-         * 正：
-         *   COM有利
-         *
-         * 負：
-         *   プレイヤー有利
-         */
+    function evaluateState(state) {
 
-        let score = 0;
+        const comValue =
+            teamValue(state, "opponent");
 
+        const playerValue =
+            teamValue(state, "player");
 
-        /*
-         * 3匹全体
-         */
-        score +=
-            (
-                opponentAlive -
-                playerAlive
-            ) *
-            E.config.teamWeight;
+        const comActive =
+            getActive(state, "opponent");
+
+        const playerActive =
+            getActive(state, "player");
+
+        let score =
+            comValue -
+            playerValue;
 
 
-        /*
-         * 全員のHP
-         */
-        state.opponentTeam
-            .forEach(
-                pokemon => {
+        /* 現在対面 */
 
-                    if (
-                        E.alive(
-                            pokemon
-                        )
-                    ) {
-                        score +=
-                            E.hpRate(
-                                pokemon
-                            ) *
-                            E.config.hpWeight;
-                    }
-                }
-            );
+        if (comActive && playerActive) {
 
+            for (const move of E.usableMoves(comActive)) {
 
-        state.playerTeam
-            .forEach(
-                pokemon => {
+                const d =
+                    E.damage(
+                        move,
+                        comActive,
+                        playerActive
+                    );
 
-                    if (
-                        E.alive(
-                            pokemon
-                        )
-                    ) {
-                        score -=
-                            E.hpRate(
-                                pokemon
-                            ) *
-                            E.config.hpWeight;
-                    }
-                }
-            );
+                score += d * 0.4;
+            }
 
+            for (const move of E.usableMoves(playerActive)) {
 
-        /*
-         * 現在の対面
-         */
-        const bestOpponentDamage =
-            bestDamage(
-                state,
-                "opponent"
-            );
+                const d =
+                    E.damage(
+                        move,
+                        playerActive,
+                        comActive
+                    );
 
-        const bestPlayerDamage =
-            bestDamage(
-                state,
-                "player"
-            );
-
-        score +=
-            bestOpponentDamage * 2;
-
-        score -=
-            bestPlayerDamage * 2;
-
-
-        /*
-         * 先手判定
-         */
-        const os =
-            E.alive(opponent)
-                ? Number(
-                    opponent.speed
-                ) || 0
-                : 0;
-
-        const ps =
-            E.alive(player)
-                ? Number(
-                    player.speed
-                ) || 0
-                : 0;
-
-        if (os > ps) {
-            score +=
-                E.config.speedWeight;
-        } else if (os < ps) {
-            score -=
-                E.config.speedWeight;
+                score -= d * 0.3;
+            }
         }
 
 
-        /*
-         * KO
-         */
-        if (
-            opponentAlive <= 0
-        ) {
-            score +=
-                E.config.koBonus;
+        /* 勝敗 */
+
+        if (aliveCount(state, "player") === 0) {
+            score += CONFIG.koBonus;
         }
 
-        if (
-            playerAlive <= 0
-        ) {
-            score -=
-                E.config.deathPenalty;
+        if (aliveCount(state, "opponent") === 0) {
+            score -= CONFIG.koBonus;
         }
-
 
         return score;
     }
 
 
-    function bestDamage(
-        state,
-        side
-    ) {
+    /* ---------------------------------------------------------
+       行動適用
+       --------------------------------------------------------- */
 
-        const attacker =
-            active(
-                state,
-                side
-            );
+    function applyMove(state, actorName, move) {
+
+        const next = E.clone(state);
+
+        const actor =
+            getActive(next, actorName);
+
+        const defenderName =
+            actorName === "opponent"
+                ? "player"
+                : "opponent";
 
         const defender =
-            active(
-                state,
-                side === "player"
-                    ? "opponent"
-                    : "player"
+            getActive(next, defenderName);
+
+        if (!actor || !defender || !move) {
+            return next;
+        }
+
+        const damage =
+            E.damage(
+                move,
+                actor,
+                defender
             );
 
+        if (damage > 0) {
+
+            const current =
+                E.hp(defender);
+
+            defender.currentHp =
+                Math.max(
+                    0,
+                    current - damage
+                );
+
+            /* ゲーム内で currentHP を使う場合にも対応 */
+
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    defender,
+                    "currentHP"
+                )
+            ) {
+                defender.currentHP =
+                    defender.currentHp;
+            }
+        }
+
+        return next;
+    }
+
+
+    /* ---------------------------------------------------------
+       仮想交代
+       --------------------------------------------------------- */
+
+    function applySwitch(state, actorName, index) {
+
+        const next = E.clone(state);
+
+        const s =
+            side(next, actorName);
+
         if (
-            !attacker ||
-            !defender
+            !s ||
+            !Array.isArray(s.team) ||
+            !s.team[index]
         ) {
-            return 0;
+            return next;
+        }
+
+        if (!isAlive(s.team[index])) {
+            return next;
+        }
+
+        s.active = index;
+
+        return next;
+    }
+
+
+    /* ---------------------------------------------------------
+       交代候補
+       --------------------------------------------------------- */
+
+    function switchCandidates(state, actorName) {
+
+        const s =
+            side(state, actorName);
+
+        if (!s || !Array.isArray(s.team)) {
+            return [];
+        }
+
+        const current =
+            s.active;
+
+        const result = [];
+
+        for (let i = 0; i < s.team.length; i++) {
+
+            if (i === current) continue;
+
+            const pokemon = s.team[i];
+
+            if (!isAlive(pokemon)) continue;
+
+            result.push(i);
+        }
+
+        return result
+            .slice(0, CONFIG.maxSwitches);
+    }
+
+
+    /* ---------------------------------------------------------
+       技候補
+       --------------------------------------------------------- */
+
+    function moveCandidates(state, actorName) {
+
+        const actor =
+            getActive(state, actorName);
+
+        const defender =
+            getActive(
+                state,
+                actorName === "opponent"
+                    ? "player"
+                    : "opponent"
+            );
+
+        if (!actor || !defender) {
+            return [];
+        }
+
+        const moves =
+            E.usableMoves(actor);
+
+        return moves
+            .map(function (move) {
+
+                return {
+                    move: move,
+
+                    score:
+                        E.basicMoveScore(
+                            move,
+                            actor,
+                            defender
+                        )
+                };
+
+            })
+            .sort(function (a, b) {
+                return b.score - a.score;
+            })
+            .slice(
+                0,
+                CONFIG.maxRootMoves
+            )
+            .map(function (x) {
+                return x.move;
+            });
+    }
+
+
+    /* ---------------------------------------------------------
+       行動一覧
+       --------------------------------------------------------- */
+
+    function getActions(state, actorName) {
+
+        const actions = [];
+
+        const moves =
+            moveCandidates(
+                state,
+                actorName
+            );
+
+        for (const move of moves) {
+
+            actions.push({
+                type: "move",
+                move: move
+            });
         }
 
 
-        let best = 0;
+        const switches =
+            switchCandidates(
+                state,
+                actorName
+            );
 
-        E.usableMoves(
-            attacker
-        ).forEach(
-            move => {
+        for (const index of switches) {
 
-                const d =
-                    virtualDamage(
-                        move,
-                        attacker,
-                        defender
-                    );
+            actions.push({
+                type: "switch",
+                index: index
+            });
+        }
 
-                if (
-                    d > best
-                ) {
-                    best = d;
-                }
+        return actions;
+    }
+
+
+    /* ---------------------------------------------------------
+       行動を仮想状態へ適用
+       --------------------------------------------------------- */
+
+    function applyAction(
+        state,
+        actorName,
+        action
+    ) {
+
+        if (!action) {
+            return E.clone(state);
+        }
+
+        if (action.type === "switch") {
+
+            return applySwitch(
+                state,
+                actorName,
+                action.index
+            );
+        }
+
+        if (action.type === "move") {
+
+            return applyMove(
+                state,
+                actorName,
+                action.move
+            );
+        }
+
+        return E.clone(state);
+    }
+
+
+    /* ---------------------------------------------------------
+       COMが選択する最善手
+       --------------------------------------------------------- */
+
+    function bestImmediateMove(state) {
+
+        const actor =
+            getActive(
+                state,
+                "opponent"
+            );
+
+        const defender =
+            getActive(
+                state,
+                "player"
+            );
+
+        if (!actor || !defender) {
+            return null;
+        }
+
+        const moves =
+            E.usableMoves(actor);
+
+        let best = null;
+        let bestScore = -Infinity;
+
+        for (const move of moves) {
+
+            const score =
+                E.basicMoveScore(
+                    move,
+                    actor,
+                    defender
+                );
+
+            if (score > bestScore) {
+
+                bestScore = score;
+                best = move;
             }
-        );
+        }
 
         return best;
     }
 
 
-    /* =========================================================
-       公開
-       ========================================================= */
+    /* ---------------------------------------------------------
+       ミニマックス
+       COM = 最大化
+       Player = 最小化
+       --------------------------------------------------------- */
 
-    window.AI_V11_TREE = {
+    function search(
+        state,
+        depth,
+        maximizing,
+        alpha,
+        beta
+    ) {
 
-        createState,
+        if (depth <= 0) {
+            return evaluateState(state);
+        }
 
-        active,
+        if (
+            aliveCount(state, "player") === 0 ||
+            aliveCount(state, "opponent") === 0
+        ) {
+            return evaluateState(state);
+        }
 
-        team,
 
-        applyMove,
+        const actorName =
+            maximizing
+                ? "opponent"
+                : "player";
 
-        applySwitch,
 
-        evaluateState,
+        let actions =
+            getActions(
+                state,
+                actorName
+            );
 
-        virtualDamage,
 
-        bestDamage,
+        if (!actions.length) {
+            return evaluateState(state);
+        }
 
-        clone
+
+        /*
+         * 即時評価の高い順に並べる。
+         * これによって alpha-beta pruning の効率を上げる。
+         */
+
+        actions.sort(function (a, b) {
+
+            function actionScore(action) {
+
+                if (action.type === "move") {
+
+                    const actor =
+                        getActive(
+                            state,
+                            actorName
+                        );
+
+                    const defender =
+                        getActive(
+                            state,
+                            actorName === "opponent"
+                                ? "player"
+                                : "opponent"
+                        );
+
+                    return E.basicMoveScore(
+                        action.move,
+                        actor,
+                        defender
+                    );
+                }
+
+                return CONFIG.switchBase;
+            }
+
+            return (
+                actionScore(b) -
+                actionScore(a)
+            );
+        });
+
+
+        if (maximizing) {
+
+            let value = -Infinity;
+
+            for (const action of actions) {
+
+                const next =
+                    applyAction(
+                        state,
+                        actorName,
+                        action
+                    );
+
+                const score =
+                    search(
+                        next,
+                        depth - 1,
+                        false,
+                        alpha,
+                        beta
+                    );
+
+                value =
+                    Math.max(
+                        value,
+                        score
+                    );
+
+                alpha =
+                    Math.max(
+                        alpha,
+                        value
+                    );
+
+                if (beta <= alpha) {
+                    break;
+                }
+            }
+
+            return value;
+
+        } else {
+
+            let value = Infinity;
+
+            for (const action of actions) {
+
+                const next =
+                    applyAction(
+                        state,
+                        actorName,
+                        action
+                    );
+
+                const score =
+                    search(
+                        next,
+                        depth - 1,
+                        true,
+                        alpha,
+                        beta
+                    );
+
+                value =
+                    Math.min(
+                        value,
+                        score
+                    );
+
+                beta =
+                    Math.min(
+                        beta,
+                        value
+                    );
+
+                if (beta <= alpha) {
+                    break;
+                }
+            }
+
+            return value;
+        }
+    }
+
+
+    /* ---------------------------------------------------------
+       COMの最善行動
+       --------------------------------------------------------- */
+
+    function chooseAction(state, difficulty) {
+
+        const depth =
+            difficulty === "hard"
+                ? CONFIG.hardDepth
+                : CONFIG.normalDepth;
+
+
+        const actions =
+            getActions(
+                state,
+                "opponent"
+            );
+
+
+        if (!actions.length) {
+            return null;
+        }
+
+
+        let bestAction = null;
+        let bestScore = -Infinity;
+
+        let alpha = -Infinity;
+        const beta = Infinity;
+
+
+        for (const action of actions) {
+
+            const next =
+                applyAction(
+                    state,
+                    "opponent",
+                    action
+                );
+
+            const score =
+                search(
+                    next,
+                    depth - 1,
+                    false,
+                    alpha,
+                    beta
+                );
+
+
+            if (
+                bestAction === null ||
+                score > bestScore
+            ) {
+
+                bestScore = score;
+                bestAction = action;
+            }
+
+
+            alpha =
+                Math.max(
+                    alpha,
+                    bestScore
+                );
+        }
+
+
+        return {
+            action: bestAction,
+            score: bestScore
+        };
+    }
+
+
+    /* ---------------------------------------------------------
+       外部公開
+       --------------------------------------------------------- */
+
+    window.AI_V11_SEARCH = {
+
+        version: VERSION,
+
+        CONFIG: CONFIG,
+
+        createState: createState,
+
+        evaluateState: evaluateState,
+
+        moveCandidates: moveCandidates,
+
+        switchCandidates: switchCandidates,
+
+        getActions: getActions,
+
+        applyAction: applyAction,
+
+        search: search,
+
+        chooseAction: chooseAction,
+
+        bestImmediateMove: bestImmediateMove,
+
+        getActive: getActive,
+
+        aliveCount: aliveCount
     };
 
 
     console.log(
-        "[AI V11] PART 2 REBUILT / BATTLE-AWARE"
+        "[AI V11 100] PART 2 LOADED / MINIMAX READY"
     );
 
 })();
 /* ============================================================
    ULTIMATE AI V11 FINAL
    PART 3
-   EXPECTIMINIMAX / GAME TREE
+   MOVE SELECTION / SEARCH RESULT / PREDICTION
    ============================================================ */
 
 (function () {
     "use strict";
 
-    if (window.__AI_V11_REBUILD_PART3__) return;
-    window.__AI_V11_REBUILD_PART3__ = true;
-
-    const E =
-        window.AI_V11_ENGINE;
-
-    const T =
-        window.AI_V11_TREE;
-
-    const V =
-        window.AI_V11;
-
-    if (!E || !T || !V) {
-        console.error(
-            "[AI V11] PART 1/2 NOT FOUND"
-        );
+    if (!window.AI_V11_ENGINE) {
+        console.error("[AI V11 100] PART 1 NOT FOUND");
         return;
+    }
+
+    if (!window.AI_V11_SEARCH) {
+        console.error("[AI V11 100] PART 2 NOT FOUND");
+        return;
+    }
+
+    if (window.__AI_V11_DECISION_100__) return;
+    window.__AI_V11_DECISION_100__ = true;
+
+    const E = window.AI_V11_ENGINE;
+    const S = window.AI_V11_SEARCH;
+
+    const VERSION = "11.0.100";
+
+
+    /* =========================================================
+       基本ユーティリティ
+       ========================================================= */
+
+    function getOpponent() {
+        return S.getActive(
+            S.createState(),
+            "opponent"
+        );
+    }
+
+    function getPlayer() {
+        return S.getActive(
+            S.createState(),
+            "player"
+        );
+    }
+
+
+    function moveName(move) {
+        return move && move.name
+            ? String(move.name)
+            : "";
+    }
+
+
+    function isDamagingMove(move) {
+        return (
+            move &&
+            Number(move.power || 0) > 0
+        );
     }
 
 
     /* =========================================================
-       候補技
+       技の詳細評価
        ========================================================= */
 
-    function moveCandidates(
+    function analyzeMove(
         state,
-        side
+        move
     ) {
 
         const attacker =
-            T.active(
+            S.getActive(
                 state,
-                side
+                "opponent"
             );
 
         const defender =
-            T.active(
+            S.getActive(
                 state,
-                side === "player"
-                    ? "opponent"
-                    : "player"
+                "player"
             );
+
+        if (!attacker || !defender || !move) {
+            return {
+                score: -Infinity,
+                damage: 0,
+                ko: false,
+                move: move
+            };
+        }
+
+
+        const damage =
+            E.damage(
+                move,
+                attacker,
+                defender
+            );
+
+
+        let score =
+            E.basicMoveScore(
+                move,
+                attacker,
+                defender
+            );
+
+
+        /* -----------------------------------------------------
+           KO最優先
+           ----------------------------------------------------- */
+
+        const ko =
+            damage >= E.hp(defender);
+
+
+        if (ko) {
+            score += 100000;
+        }
+
+
+        /* -----------------------------------------------------
+           相手の残りHP
+           ----------------------------------------------------- */
+
+        if (E.hp(defender) > 0) {
+
+            score +=
+                (
+                    damage /
+                    E.hp(defender)
+                ) * 2000;
+        }
+
+
+        /* -----------------------------------------------------
+           自分が倒されそうな場合
+           ----------------------------------------------------- */
+
+        let enemyBestDamage = 0;
+
+        for (
+            const enemyMove
+            of E.usableMoves(defender)
+        ) {
+
+            enemyBestDamage =
+                Math.max(
+                    enemyBestDamage,
+                    E.damage(
+                        enemyMove,
+                        defender,
+                        attacker
+                    )
+                );
+        }
+
+
+        if (
+            enemyBestDamage >=
+            E.hp(attacker)
+        ) {
+
+            /*
+             * 自分が次ターン確実に倒されるなら、
+             * 相手を大きく削る手を優先。
+             */
+
+            score +=
+                damage * 1.5;
+        }
+
+
+        /* -----------------------------------------------------
+           先制技
+           ----------------------------------------------------- */
+
+        if (
+            E.priority(move) > 0
+        ) {
+
+            score += 300;
+
+            if (
+                enemyBestDamage >=
+                E.hp(attacker)
+            ) {
+                score += 1200;
+            }
+        }
+
+
+        /* -----------------------------------------------------
+           状態異常
+           ----------------------------------------------------- */
+
+        const name =
+            moveName(move);
+
+
+        if (
+            name === "でんじは" &&
+            !defender.status
+        ) {
+
+            score +=
+                700;
+
+            if (
+                E.statValue(
+                    defender,
+                    "speed"
+                ) >
+                E.statValue(
+                    attacker,
+                    "speed"
+                )
+            ) {
+                score += 300;
+            }
+        }
+
+
+        if (
+            name === "おにび" &&
+            !defender.status
+        ) {
+
+            score += 600;
+        }
+
+
+        if (
+            (
+                name === "どくどく" ||
+                name === "どくのこな"
+            ) &&
+            !defender.status
+        ) {
+
+            score += 500;
+        }
+
+
+        /* -----------------------------------------------------
+           回復
+           ----------------------------------------------------- */
+
+        const recoveryMoves = new Set([
+            "じこさいせい",
+            "はねやすめ",
+            "なまける",
+            "ねむる",
+            "ミルクのみ",
+            "タマゴうみ",
+            "あさのひざし",
+            "こうごうせい",
+            "つきのひかり"
+        ]);
+
+
+        if (
+            recoveryMoves.has(name)
+        ) {
+
+            score +=
+                (
+                    1 -
+                    E.hpRate(attacker)
+                ) * 2500;
+        }
+
+
+        return {
+            score: score,
+            damage: damage,
+            ko: ko,
+            enemyBestDamage: enemyBestDamage,
+            move: move
+        };
+    }
+
+
+    /* =========================================================
+       ルート行動の探索
+       ========================================================= */
+
+    function evaluateRootMove(
+        state,
+        move,
+        depth
+    ) {
+
+        const next =
+            S.applyAction(
+                state,
+                "opponent",
+                {
+                    type: "move",
+                    move: move
+                }
+            );
+
+
+        const immediate =
+            analyzeMove(
+                state,
+                move
+            );
+
+
+        let future =
+            S.search(
+                next,
+                Math.max(
+                    0,
+                    depth - 1
+                ),
+                false,
+                -Infinity,
+                Infinity
+            );
+
+
+        /*
+         * 即時評価 + 将来評価
+         */
+
+        let score =
+            immediate.score +
+            future;
+
+
+        /*
+         * KOは絶対優先
+         */
+
+        if (immediate.ko) {
+            score += 100000;
+        }
+
+
+        return {
+            move: move,
+            score: score,
+            immediate: immediate,
+            future: future
+        };
+    }
+
+
+    /* =========================================================
+       COM最善技選択
+       ========================================================= */
+
+    function chooseMove(
+        difficulty
+    ) {
+
+        const state =
+            S.createState();
+
+
+        const attacker =
+            S.getActive(
+                state,
+                "opponent"
+            );
+
+        const defender =
+            S.getActive(
+                state,
+                "player"
+            );
+
 
         if (
             !attacker ||
             !defender
         ) {
-            return [];
+
+            return null;
         }
 
 
@@ -34735,687 +34599,97 @@ if (switched) {
             );
 
 
-        const scored =
-            moves.map(
-                move => ({
-                    move,
-                    score:
-                        E.basicMoveScore(
-                            move,
-                            attacker,
-                            defender
-                        )
-                })
-            );
-
-
-        scored.sort(
-            (a, b) =>
-                b.score -
-                a.score
-        );
-
-
-        /*
-         * 探索爆発防止。
-         *
-         * ただし4技しかないゲームなので
-         * 基本的に全技を見る。
-         */
-        return scored
-            .slice(
-                0,
-                V.maxRootMoves
-            )
-            .map(
-                x => x.move
-            );
-    }
-
-
-    /* =========================================================
-       交代候補
-       ========================================================= */
-
-    function switchCandidates(
-        state,
-        side
-    ) {
-
-        const t =
-            T.team(
-                state,
-                side
-            );
-
-        const current =
-            side === "player"
-                ? state.playerActiveIndex
-                : state.opponentActiveIndex;
-
-
-        const result = [];
-
-
-        for (
-            let i = 0;
-            i < t.length;
-            i++
-        ) {
-
-            if (
-                i === current
-            ) {
-                continue;
-            }
-
-            if (
-                !E.alive(
-                    t[i]
-                )
-            ) {
-                continue;
-            }
-
-            result.push({
-                index: i,
-                pokemon: t[i]
-            });
-        }
-
-
-        /*
-         * 現在対面に強い順
-         */
-        const enemy =
-            T.active(
-                state,
-                side === "player"
-                    ? "opponent"
-                    : "player"
-            );
-
-
-        result.sort(
-            (a, b) => {
-
-                const sa =
-                    switchScore(
-                        a.pokemon,
-                        enemy
-                    );
-
-                const sb =
-                    switchScore(
-                        b.pokemon,
-                        enemy
-                    );
-
-                return sb - sa;
-            }
-        );
-
-
-        return result
-            .slice(
-                0,
-                V.maxSwitches
-            );
-    }
-
-
-    function switchScore(
-        pokemon,
-        enemy
-    ) {
-
-        if (
-            !pokemon ||
-            !enemy
-        ) {
-            return -Infinity;
-        }
-
-
-        let score =
-            E.hpRate(
-                pokemon
-            ) * 500;
-
-
-        /*
-         * 相手の技に対する耐性
-         */
-        E.usableMoves(
-            enemy
-        ).forEach(
-            move => {
-
-                const eff =
-                    E.effectiveness(
-                        move,
-                        pokemon
-                    );
-
-                if (
-                    eff === 0
-                ) {
-                    score += 600;
-                } else if (
-                    eff < 1
-                ) {
-                    score += 250;
-                } else if (
-                    eff >= 4
-                ) {
-                    score -= 800;
-                } else if (
-                    eff >= 2
-                ) {
-                    score -= 350;
-                }
-            }
-        );
-
-
-        /*
-         * 自分が返せるダメージ
-         */
-        E.usableMoves(
-            pokemon
-        ).forEach(
-            move => {
-
-                const d =
-                    E.damage(
-                        move,
-                        pokemon,
-                        enemy
-                    );
-
-                score +=
-                    d * 2;
-            }
-        );
-
-
-        return score;
-    }
-
-
-    /* =========================================================
-       ターン後の状態
-       ========================================================= */
-
-    function childAfterMove(
-        state,
-        side,
-        move
-    ) {
-
-        const next =
-            T.clone(
-                state
-            );
-
-        T.applyMove(
-            next,
-            side,
-            move
-        );
-
-        return next;
-    }
-
-
-    /* =========================================================
-       端末評価
-       ========================================================= */
-
-    function terminal(
-        state
-    ) {
-
-        const p =
-            T.aliveCount(
-                state,
-                "player"
-            );
-
-        const o =
-            T.aliveCount(
-                state,
-                "opponent"
-            );
-
-        if (
-            o <= 0
-        ) {
-            return V.koBonus;
-        }
-
-        if (
-            p <= 0
-        ) {
-            return -V.deathPenalty;
-        }
-
-        return null;
-    }
-
-
-    /* =========================================================
-       相手最善応答
-       ========================================================= */
-
-    function opponentResponse(
-        state,
-        depth,
-        alpha,
-        beta
-    ) {
-
-        const end =
-            terminal(
-                state
-            );
-
-        if (
-            end !== null
-        ) {
-            return end;
-        }
-
-
-        if (
-            depth <= 0
-        ) {
-            return T.evaluateState(
-                state
-            );
-        }
-
-
-        const moves =
-            moveCandidates(
-                state,
-                "opponent"
-            );
-
-
-        if (
-            moves.length === 0
-        ) {
-            return T.evaluateState(
-                state
-            );
-        }
-
-
-        /*
-         * COMは最大化
-         */
-        let best =
-            -Infinity;
-
-
-        for (
-            const move of moves
-        ) {
-
-            const next =
-                childAfterMove(
-                    state,
-                    "opponent",
-                    move
-                );
-
-
-            /*
-             * プレイヤーの最善応答を
-             * 最小化として評価
-             */
-            const value =
-                playerResponse(
-                    next,
-                    depth - 1,
-                    alpha,
-                    beta
-                );
-
-
-            if (
-                value > best
-            ) {
-                best = value;
-            }
-
-
-            if (
-                best > alpha
-            ) {
-                alpha = best;
-            }
-
-
-            /*
-             * Alpha-Beta
-             */
-            if (
-                beta <= alpha
-            ) {
-                break;
-            }
-        }
-
-
-        return best;
-    }
-
-
-    /* =========================================================
-       プレイヤー最善応答
-       ========================================================= */
-
-    function playerResponse(
-        state,
-        depth,
-        alpha,
-        beta
-    ) {
-
-        const end =
-            terminal(
-                state
-            );
-
-        if (
-            end !== null
-        ) {
-            return end;
-        }
-
-
-        if (
-            depth <= 0
-        ) {
-            return T.evaluateState(
-                state
-            );
-        }
-
-
-        const moves =
-            moveCandidates(
-                state,
-                "player"
-            );
-
-
-        if (
-            moves.length === 0
-        ) {
-            return T.evaluateState(
-                state
-            );
-        }
-
-
-        /*
-         * プレイヤーはCOMにとって
-         * 最悪の手を選ぶ
-         */
-        let worst =
-            Infinity;
-
-
-        for (
-            const move of moves
-        ) {
-
-            const next =
-                childAfterMove(
-                    state,
-                    "player",
-                    move
-                );
-
-
-            const value =
-                opponentResponse(
-                    next,
-                    depth - 1,
-                    alpha,
-                    beta
-                );
-
-
-            if (
-                value < worst
-            ) {
-                worst = value;
-            }
-
-
-            if (
-                worst < beta
-            ) {
-                beta = worst;
-            }
-
-
-            if (
-                beta <= alpha
-            ) {
-                break;
-            }
-        }
-
-
-        return worst;
-    }
-
-
-    /* =========================================================
-       ルート技評価
-       ========================================================= */
-
-    function analyzeMove(
-        move,
-        depth
-    ) {
-
-        const state =
-            T.createState();
-
-
-        const next =
-            childAfterMove(
-                state,
-                "opponent",
-                move
-            );
-
-
-        const end =
-            terminal(
-                next
-            );
-
-        if (
-            end !== null
-        ) {
-            return {
-                move,
-                score: end
-            };
-        }
-
-
-        const score =
-            playerResponse(
-                next,
-                depth - 1,
-                -Infinity,
-                Infinity
-            );
-
-
-        /*
-         * V10の評価も少し混ぜる。
-         *
-         * V11がV10を捨てるのではなく、
-         * V10の実績ある評価を
-         * ゲームツリーの葉に加える。
-         */
-        let bonus = 0;
-
-
-        try {
-
-            const attacker =
-                T.active(
-                    state,
-                    "opponent"
-                );
-
-            const defender =
-                T.active(
-                    state,
-                    "player"
-                );
-
-            if (
-                V10 &&
-                typeof V10.evaluateMove ===
-                "function"
-            ) {
-
-                bonus =
-                    Number(
-                        V10.evaluateMove(
-                            move,
-                            attacker,
-                            defender
-                        )
-                    ) || 0;
-            }
-
-        } catch (e) {}
-
-
-        return {
-            move,
-            score:
-                score +
-                bonus * 0.35
-        };
-    }
-
-
-    /* =========================================================
-       最善技
-       ========================================================= */
-
-    function chooseMove() {
-
-        const state =
-            T.createState();
-
-
-        const attacker =
-            T.active(
-                state,
-                "opponent"
-            );
-
-        const defender =
-            T.active(
-                state,
-                "player"
-            );
-
-
-        if (
-            !attacker ||
-            !defender
-        ) {
-            return null;
-        }
-
-
-        const moves =
-            moveCandidates(
-                state,
-                "opponent"
-            );
-
-
-        if (
-            moves.length === 0
-        ) {
+        if (!moves.length) {
             return null;
         }
 
 
         let depth =
-            V.depthNormal;
-
-
-        if (
-            typeof difficulty !==
-            "undefined" &&
             difficulty === "hard"
-        ) {
-            depth =
-                V.depthHard;
-        }
+                ? S.CONFIG.hardDepth
+                : S.CONFIG.normalDepth;
 
 
         /*
-         * HARDでは3手探索。
-         * NORMALでは2手。
+         * 全技を評価
          */
+
         const results =
             moves.map(
-                move =>
-                    analyzeMove(
+                function (move) {
+
+                    return evaluateRootMove(
+                        state,
                         move,
                         depth
-                    )
+                    );
+
+                }
             );
 
 
+        /*
+         * スコア順
+         */
+
         results.sort(
-            (a, b) =>
-                b.score -
-                a.score
+            function (a, b) {
+                return b.score - a.score;
+            }
         );
 
 
+        /*
+         * 同点時はランダム性を少しだけ入れる。
+         *
+         * 完全ランダムではない。
+         * ほぼ同評価の技だけから選ぶ。
+         */
+
+        const bestScore =
+            results[0].score;
+
+
+        const nearBest =
+            results.filter(
+                function (result) {
+
+                    return (
+                        result.score >=
+                        bestScore - 80
+                    );
+
+                }
+            );
+
+
+        let selected =
+            results[0];
+
+
         if (
-            V.debug
+            nearBest.length > 1
         ) {
 
-            console.log(
-                "[AI V11] MOVE ANALYSIS",
-                results.map(
-                    x => ({
-                        move:
-                            x.move.name,
-                        score:
-                            Math.round(
-                                x.score
-                            )
-                    })
-                )
-            );
+            selected =
+                nearBest[
+                    Math.floor(
+                        Math.random() *
+                        nearBest.length
+                    )
+                ];
         }
 
 
-        return results[0]
-            ? results[0].move
-            : null;
+        console.log(
+            "[AI V11 100] MOVE",
+            selected.move.name,
+            "score=",
+            selected.score
+        );
+
+
+        return selected.move;
     }
 
 
@@ -35424,118 +34698,401 @@ if (switched) {
        ========================================================= */
 
     function analyzeSwitch(
+        state,
         index
     ) {
 
-        const state =
-            T.createState();
+        const team =
+            state.opponent.team;
 
+        const candidate =
+            team[index];
 
-        const current =
-            T.active(
+        const enemy =
+            S.getActive(
                 state,
-                "opponent"
+                "player"
             );
-
-
-        const target =
-            T.team(
-                state,
-                "opponent"
-            )[index];
 
 
         if (
-            !target ||
-            !E.alive(target)
+            !candidate ||
+            !E.alive(candidate) ||
+            !enemy
         ) {
-            return -Infinity;
+
+            return {
+                index: index,
+                score: -Infinity
+            };
         }
 
 
-        const before =
-            T.evaluateState(
-                state
+        let score = 0;
+
+
+        /* -----------------------------------------------------
+           HP
+           ----------------------------------------------------- */
+
+        score +=
+            E.hpRate(candidate) *
+            1500;
+
+
+        /* -----------------------------------------------------
+           相手から受ける最大ダメージ
+           ----------------------------------------------------- */
+
+        let incoming = 0;
+
+        for (
+            const move
+            of E.usableMoves(enemy)
+        ) {
+
+            incoming =
+                Math.max(
+                    incoming,
+                    E.damage(
+                        move,
+                        enemy,
+                        candidate
+                    )
+                );
+        }
+
+
+        score -=
+            incoming * 4;
+
+
+        /* -----------------------------------------------------
+           候補から相手への最大ダメージ
+           ----------------------------------------------------- */
+
+        let outgoing = 0;
+
+        for (
+            const move
+            of E.usableMoves(candidate)
+        ) {
+
+            outgoing =
+                Math.max(
+                    outgoing,
+                    E.damage(
+                        move,
+                        candidate,
+                        enemy
+                    )
+                );
+        }
+
+
+        score +=
+            outgoing * 3;
+
+
+        /* -----------------------------------------------------
+           交代先から一撃KOできるなら大幅加点
+           ----------------------------------------------------- */
+
+        if (
+            outgoing >= E.hp(enemy)
+        ) {
+
+            score += 50000;
+        }
+
+
+        /* -----------------------------------------------------
+           タイプ相性
+           ----------------------------------------------------- */
+
+        if (incoming === 0) {
+
+            score += 2500;
+        }
+
+
+        /* -----------------------------------------------------
+           現在のポケモンが危険なら交代価値UP
+           ----------------------------------------------------- */
+
+        const current =
+            S.getActive(
+                state,
+                "opponent"
             );
 
 
-        T.applySwitch(
-            state,
-            "opponent",
-            index
-        );
+        if (current) {
+
+            const currentHp =
+                E.hpRate(current);
 
 
-        const after =
-            T.evaluateState(
-                state
-            );
+            if (currentHp < 0.3) {
+                score += 1000;
+            }
+
+            if (currentHp < 0.15) {
+                score += 1800;
+            }
+        }
 
 
-        const matchup =
-            switchScore(
-                target,
-                T.active(
-                    state,
-                    "player"
-                )
-            );
-
-
-        return (
-            after -
-            before
-        ) +
-        matchup *
-        V.switchWeight;
+        return {
+            index: index,
+            score: score,
+            incoming: incoming,
+            outgoing: outgoing,
+            pokemon: candidate
+        };
     }
 
 
+    /* =========================================================
+       最善交代先
+       ========================================================= */
+
     function chooseSwitch() {
 
+        const state =
+            S.createState();
+
+
         const candidates =
-            switchCandidates(
-                T.createState(),
+            S.switchCandidates(
+                state,
                 "opponent"
             );
 
 
-        if (
-            candidates.length === 0
-        ) {
-            return -1;
+        if (!candidates.length) {
+            return null;
         }
 
 
-        let bestIndex = -1;
-        let bestScore =
-            -Infinity;
+        const results =
+            candidates.map(
+                function (index) {
 
-
-        candidates.forEach(
-            candidate => {
-
-                const score =
-                    analyzeSwitch(
-                        candidate.index
+                    return analyzeSwitch(
+                        state,
+                        index
                     );
 
-                if (
-                    score >
-                    bestScore
-                ) {
-
-                    bestScore =
-                        score;
-
-                    bestIndex =
-                        candidate.index;
                 }
+            );
+
+
+        results.sort(
+            function (a, b) {
+                return b.score - a.score;
             }
         );
 
 
-        return bestIndex;
+        const best =
+            results[0];
+
+
+        if (!best) {
+            return null;
+        }
+
+
+        console.log(
+            "[AI V11 100] SWITCH",
+            best.pokemon
+                ? best.pokemon.name
+                : best.index,
+            "score=",
+            best.score
+        );
+
+
+        return best.index;
+    }
+
+
+    /* =========================================================
+       「今のまま戦う」vs「交代」を比較
+       ========================================================= */
+
+    function shouldSwitch() {
+
+        const state =
+            S.createState();
+
+
+        const current =
+            S.getActive(
+                state,
+                "opponent"
+            );
+
+        const enemy =
+            S.getActive(
+                state,
+                "player"
+            );
+
+
+        if (!current || !enemy) {
+            return false;
+        }
+
+
+        const switches =
+            S.switchCandidates(
+                state,
+                "opponent"
+            );
+
+
+        if (!switches.length) {
+            return false;
+        }
+
+
+        /*
+         * 現在のHP
+         */
+
+        const currentHp =
+            E.hp(current);
+
+
+        /*
+         * 相手の最大打点
+         */
+
+        let incoming = 0;
+
+        for (
+            const move
+            of E.usableMoves(enemy)
+        ) {
+
+            incoming =
+                Math.max(
+                    incoming,
+                    E.damage(
+                        move,
+                        enemy,
+                        current
+                    )
+                );
+        }
+
+
+        /*
+         * 今のまま戦った場合の最大打点
+         */
+
+        let outgoing = 0;
+
+        for (
+            const move
+            of E.usableMoves(current)
+        ) {
+
+            outgoing =
+                Math.max(
+                    outgoing,
+                    E.damage(
+                        move,
+                        current,
+                        enemy
+                    )
+                );
+        }
+
+
+        /*
+         * 一撃で倒されるなら交代を強く検討
+         */
+
+        if (
+            incoming >= currentHp &&
+            outgoing < E.hp(enemy)
+        ) {
+
+            return true;
+        }
+
+
+        /*
+         * HP35%以下 + 大ダメージを受ける場合
+         */
+
+        if (
+            E.hpRate(current) <= 0.35 &&
+            incoming >=
+                currentHp * 0.45
+        ) {
+
+            return true;
+        }
+
+
+        /*
+         * 交代後の評価
+         */
+
+        let bestSwitch =
+            -Infinity;
+
+
+        for (
+            const index
+            of switches
+        ) {
+
+            const result =
+                analyzeSwitch(
+                    state,
+                    index
+                );
+
+            bestSwitch =
+                Math.max(
+                    bestSwitch,
+                    result.score
+                );
+        }
+
+
+        /*
+         * 現在ポケモンの戦闘価値
+         */
+
+        let currentScore =
+            outgoing * 3;
+
+
+        currentScore +=
+            E.hpRate(current) *
+            1200;
+
+
+        /*
+         * 交代先が明確に有利なら交代
+         */
+
+        if (
+            bestSwitch >
+            currentScore + 900
+        ) {
+
+            return true;
+        }
+
+
+        return false;
     }
 
 
@@ -35543,184 +35100,247 @@ if (switched) {
        公開
        ========================================================= */
 
-    window.AI_V11_SEARCH = {
+    window.AI_V11_DECISION = {
 
-        chooseMove,
+        version: VERSION,
 
-        chooseSwitch,
+        chooseMove:
+            chooseMove,
 
-        analyzeMove,
+        chooseSwitch:
+            chooseSwitch,
 
-        moveCandidates,
+        shouldSwitch:
+            shouldSwitch,
 
-        switchCandidates
-    };
+        analyzeMove:
+            analyzeMove,
 
+        analyzeSwitch:
+            analyzeSwitch,
 
-    window.AI_V11_DEBUG = {
-
-        version:
-            V.version,
-
-        chooseMove,
-
-        chooseSwitch,
-
-        analyzeMove,
-
-        evaluateState:
-            T.evaluateState
+        evaluateRootMove:
+            evaluateRootMove
     };
 
 
     console.log(
-        "[AI V11] PART 3 REBUILT / GAME TREE ACTIVE"
+        "[AI V11 100] PART 3 LOADED / DECISION AI READY"
     );
 
-})();    
+})();
 /* ============================================================
    ULTIMATE AI V11 FINAL
    PART 4
-   REAL BATTLE INTEGRATION
+   GAME INTEGRATION / FINAL CONNECTION
    ============================================================ */
 
 (function () {
     "use strict";
 
-    if (window.__AI_V11_REBUILD_PART4__) return;
-    window.__AI_V11_REBUILD_PART4__ = true;
+    if (window.__AI_V11_INTEGRATION_100__) return;
+    window.__AI_V11_INTEGRATION_100__ = true;
 
-    const E =
-        window.AI_V11_ENGINE;
+    const E = window.AI_V11_ENGINE;
+    const D = window.AI_V11_DECISION;
 
-    const T =
-        window.AI_V11_TREE;
-
-    const S =
-        window.AI_V11_SEARCH;
-
-    if (
-        !E ||
-        !T ||
-        !S
-    ) {
-
+    if (!E || !D) {
         console.error(
-            "[AI V11] ENGINE NOT READY"
+            "[AI V11 100] ENGINE / DECISION NOT FOUND"
         );
-
         return;
     }
 
 
     /* =========================================================
-       V10 / 旧AIを保存
+       難易度取得
        ========================================================= */
 
-    const oldGetOpponentMove =
-        typeof getOpponentMove ===
-        "function"
-            ? getOpponentMove
-            : null;
+    function getDifficultySafe() {
 
-    const oldShouldOpponentSwitch =
-        typeof shouldOpponentSwitch ===
-        "function"
-            ? shouldOpponentSwitch
-            : null;
+        try {
+            if (
+                typeof difficulty !== "undefined" &&
+                difficulty
+            ) {
+                return difficulty;
+            }
+        } catch (e) {}
 
-    const oldChooseBestOpponentSwitch =
-        typeof chooseBestOpponentSwitch ===
-        "function"
-            ? chooseBestOpponentSwitch
-            : null;
-
-
-    window.AI_V11_OLD = {
-
-        getOpponentMove:
-            oldGetOpponentMove,
-
-        shouldOpponentSwitch:
-            oldShouldOpponentSwitch,
-
-        chooseBestOpponentSwitch:
-            oldChooseBestOpponentSwitch
-    };
+        return window.difficulty || "normal";
+    }
 
 
     /* =========================================================
-       技選択
+       旧AIを安全に退避
+       ========================================================= */
+
+    const oldGetOpponentMove =
+        typeof window.getOpponentMove === "function"
+            ? window.getOpponentMove
+            : null;
+
+
+    const oldShouldOpponentSwitch =
+        typeof window.shouldOpponentSwitch === "function"
+            ? window.shouldOpponentSwitch
+            : null;
+
+
+    const oldChooseBestOpponentSwitch =
+        typeof window.chooseBestOpponentSwitch === "function"
+            ? window.chooseBestOpponentSwitch
+            : null;
+
+
+    /* =========================================================
+       V11 技選択
        ========================================================= */
 
     function v11GetOpponentMove() {
 
+        const diff =
+            getDifficultySafe();
+
+
         /*
-         * EASY
+         * Easyは従来AIのまま。
          *
-         * 今までのAIを使用。
+         * V11はNormal / Hardに使用。
          */
+
         if (
-            typeof difficulty !==
-            "undefined" &&
-            difficulty ===
-                "easy"
+            diff === "easy" ||
+            diff === "かんたん"
         ) {
 
-            if (
-                oldGetOpponentMove
-            ) {
-                return oldGetOpponentMove();
-            }
+            if (oldGetOpponentMove) {
 
-            return null;
+                try {
+                    const oldMove =
+                        oldGetOpponentMove();
+
+                    if (oldMove) {
+                        return oldMove;
+                    }
+                } catch (e) {
+
+                    console.warn(
+                        "[AI V11 100] OLD AI ERROR",
+                        e
+                    );
+                }
+            }
         }
 
 
-        /*
-         * V11
-         */
+        /* -----------------------------------------------------
+           V11
+           ----------------------------------------------------- */
+
         try {
 
-            const move =
-                S.chooseMove();
+            const selected =
+                D.chooseMove(
+                    diff
+                );
 
 
-            if (
-                move
-            ) {
+            if (selected) {
 
-                if (
-                    window.AI_V11 &&
-                    window.AI_V11.debug
-                ) {
+                console.log(
+                    "[AI V11 100] SELECTED:",
+                    selected.name
+                );
 
-                    console.log(
-                        "[AI V11] SELECTED:",
-                        move.name
-                    );
-                }
-
-                return move;
+                return selected;
             }
 
-        } catch (error) {
+        } catch (e) {
 
             console.error(
-                "[AI V11] MOVE ERROR:",
-                error
+                "[AI V11 100] MOVE ERROR",
+                e
             );
         }
 
 
+        /* -----------------------------------------------------
+           最終フォールバック
+           ----------------------------------------------------- */
+
+        if (oldGetOpponentMove) {
+
+            try {
+
+                const fallback =
+                    oldGetOpponentMove();
+
+                if (fallback) {
+                    return fallback;
+                }
+
+            } catch (e) {}
+        }
+
+
         /*
-         * V11で失敗した場合のみ
-         * V10へ戻す。
+         * 旧AIも失敗した場合、
+         * 現在のポケモンの使用可能技から選択。
          */
-        if (
-            oldGetOpponentMove
-        ) {
-            return oldGetOpponentMove();
+
+        try {
+
+            const state =
+                E.getTeam("opponent");
+
+            const activeIndex =
+                E.getActiveIndex(
+                    "opponent"
+                );
+
+            const pokemon =
+                state[activeIndex];
+
+
+            if (
+                pokemon &&
+                Array.isArray(pokemon.moves)
+            ) {
+
+                const usable =
+                    pokemon.moves.filter(
+                        function (move) {
+
+                            return (
+                                move &&
+                                (
+                                    move.pp === undefined ||
+                                    Number(move.pp) > 0
+                                )
+                            );
+
+                        }
+                    );
+
+
+                if (usable.length) {
+
+                    return usable[
+                        Math.floor(
+                            Math.random() *
+                            usable.length
+                        )
+                    ];
+                }
+            }
+
+        } catch (e) {
+
+            console.error(
+                "[AI V11 100] FALLBACK ERROR",
+                e
+            );
         }
 
 
@@ -35729,22 +35349,29 @@ if (switched) {
 
 
     /* =========================================================
-       交代判断
+       V11 交代判断
        ========================================================= */
 
-    function v11ShouldSwitch() {
+    function v11ShouldOpponentSwitch() {
+
+        const diff =
+            getDifficultySafe();
+
+
+        /*
+         * Easyは従来AI。
+         */
 
         if (
-            typeof difficulty !==
-            "undefined" &&
-            difficulty ===
-                "easy"
+            diff === "easy" ||
+            diff === "かんたん"
         ) {
 
-            if (
-                oldShouldOpponentSwitch
-            ) {
-                return oldShouldOpponentSwitch();
+            if (oldShouldOpponentSwitch) {
+
+                try {
+                    return !!oldShouldOpponentSwitch();
+                } catch (e) {}
             }
 
             return false;
@@ -35753,452 +35380,199 @@ if (switched) {
 
         try {
 
-            const state =
-                T.createState();
+            return !!D.shouldSwitch();
 
-
-            const current =
-                T.active(
-                    state,
-                    "opponent"
-                );
-
-            const player =
-                T.active(
-                    state,
-                    "player"
-                );
-
-
-            if (
-                !current ||
-                !player
-            ) {
-                return false;
-            }
-
-
-            /*
-             * 現在の対面が危険か
-             */
-            let incomingBest =
-                0;
-
-
-            E.usableMoves(
-                player
-            ).forEach(
-                move => {
-
-                    const d =
-                        E.damage(
-                            move,
-                            player,
-                            current
-                        );
-
-                    incomingBest =
-                        Math.max(
-                            incomingBest,
-                            d
-                        );
-                }
-            );
-
-
-            const currentHp =
-                E.hp(current);
-
-
-            const currentRate =
-                E.hpRate(current);
-
-
-            /*
-             * まずKO確定なら交代を検討
-             */
-            const immediateKO =
-                incomingBest >=
-                currentHp;
-
-
-            /*
-             * HP35%以下で
-             * 相手の最大打点がHP45%以上
-             */
-            const dangerous =
-                immediateKO ||
-                (
-                    currentRate <= 0.35 &&
-                    incomingBest >=
-                        currentHp * 0.45
-                );
-
-
-            if (!dangerous) {
-
-                /*
-                 * ただし、現在のV10が
-                 * 強く交代を要求している場合は
-                 * その判断も考慮。
-                 */
-                if (
-                    oldShouldOpponentSwitch
-                ) {
-
-                    try {
-
-                        return !!oldShouldOpponentSwitch();
-
-                    } catch (e) {}
-                }
-
-                return false;
-            }
-
-
-            const candidates =
-                S.switchCandidates(
-                    state,
-                    "opponent"
-                );
-
-
-            if (
-                candidates.length === 0
-            ) {
-                return false;
-            }
-
-
-            let bestIndex =
-                -1;
-
-            let bestScore =
-                -Infinity;
-
-
-            candidates.forEach(
-                candidate => {
-
-                    const score =
-                        switchScore(
-                            state,
-                            candidate.index
-                        );
-
-                    if (
-                        score >
-                        bestScore
-                    ) {
-
-                        bestScore =
-                            score;
-
-                        bestIndex =
-                            candidate.index;
-                    }
-                }
-            );
-
-
-            /*
-             * 現在位置の評価
-             */
-            const currentScore =
-                T.evaluateState(
-                    state
-                );
-
-
-            /*
-             * 交代先が明確に改善する場合
-             */
-            if (
-                bestIndex >= 0 &&
-                bestScore >
-                    currentScore +
-                    150
-            ) {
-
-                return true;
-            }
-
-
-        } catch (error) {
+        } catch (e) {
 
             console.error(
-                "[AI V11] SWITCH ERROR:",
-                error
+                "[AI V11 100] SWITCH CHECK ERROR",
+                e
             );
+
+            if (oldShouldOpponentSwitch) {
+
+                try {
+                    return !!oldShouldOpponentSwitch();
+                } catch (e2) {}
+            }
+
+            return false;
         }
-
-
-        return false;
-    }
-
-
-    function switchScore(
-        state,
-        index
-    ) {
-
-        const before =
-            T.evaluateState(
-                state
-            );
-
-
-        const next =
-            T.clone(
-                state
-            );
-
-
-        if (
-            !T.applySwitch(
-                next,
-                "opponent",
-                index
-            )
-        ) {
-            return -Infinity;
-        }
-
-
-        const after =
-            T.evaluateState(
-                next
-            );
-
-
-        /*
-         * 交代先から相手へ与える
-         * 返しダメージ
-         */
-        const attacker =
-            T.active(
-                next,
-                "opponent"
-            );
-
-        const defender =
-            T.active(
-                next,
-                "player"
-            );
-
-
-        let pressure = 0;
-
-
-        if (
-            attacker &&
-            defender
-        ) {
-
-            E.usableMoves(
-                attacker
-            ).forEach(
-                move => {
-
-                    pressure =
-                        Math.max(
-                            pressure,
-                            E.damage(
-                                move,
-                                attacker,
-                                defender
-                            )
-                        );
-                }
-            );
-        }
-
-
-        return (
-            after -
-            before
-        ) +
-        pressure * 3;
     }
 
 
     /* =========================================================
-       最善交代先
+       V11 最善交代先
        ========================================================= */
 
-    function v11ChooseBestSwitch() {
+    function v11ChooseBestOpponentSwitch() {
+
+        const diff =
+            getDifficultySafe();
+
 
         if (
-            typeof difficulty !==
-            "undefined" &&
-            difficulty ===
-                "easy"
+            diff === "easy" ||
+            diff === "かんたん"
         ) {
 
             if (
                 oldChooseBestOpponentSwitch
             ) {
-                return oldChooseBestOpponentSwitch();
+
+                try {
+                    return oldChooseBestOpponentSwitch();
+                } catch (e) {}
             }
 
-            return -1;
+            return null;
         }
 
 
         try {
 
-            const state =
-                T.createState();
+            const index =
+                D.chooseSwitch();
 
-
-            const candidates =
-                S.switchCandidates(
-                    state,
-                    "opponent"
-                );
-
-
-            let bestIndex =
-                -1;
-
-            let bestScore =
-                -Infinity;
-
-
-            candidates.forEach(
-                candidate => {
-
-                    const score =
-                        switchScore(
-                            state,
-                            candidate.index
-                        );
-
-                    if (
-                        score >
-                        bestScore
-                    ) {
-
-                        bestScore =
-                            score;
-
-                        bestIndex =
-                            candidate.index;
-                    }
-                }
-            );
-
-
-            return bestIndex;
-
-        } catch (error) {
-
-            console.error(
-                "[AI V11] SWITCH CHOICE ERROR:",
-                error
-            );
 
             if (
-                oldChooseBestOpponentSwitch
+                index !== null &&
+                index !== undefined
             ) {
-                return oldChooseBestOpponentSwitch();
+
+                console.log(
+                    "[AI V11 100] SWITCH TO INDEX:",
+                    index
+                );
+
+                return index;
             }
 
-            return -1;
+        } catch (e) {
+
+            console.error(
+                "[AI V11 100] SWITCH ERROR",
+                e
+            );
         }
+
+
+        /*
+         * 旧AIへフォールバック
+         */
+
+        if (
+            oldChooseBestOpponentSwitch
+        ) {
+
+            try {
+                return oldChooseBestOpponentSwitch();
+            } catch (e) {}
+        }
+
+
+        return null;
     }
 
 
     /* =========================================================
-       グローバル関数をV11へ接続
+       本体へ接続
        ========================================================= */
 
     window.getOpponentMove =
         v11GetOpponentMove;
 
     window.shouldOpponentSwitch =
-        v11ShouldSwitch;
+        v11ShouldOpponentSwitch;
 
     window.chooseBestOpponentSwitch =
-        v11ChooseBestSwitch;
+        v11ChooseBestOpponentSwitch;
 
 
     /* =========================================================
-       デバッグ
+       デバッグ用
        ========================================================= */
 
-    window.AI_V11_DEBUG = {
+    window.AI_V11 = {
 
-        version:
-            "11.0 FINAL REBUILD",
+        version: "11.0.100",
 
-        chooseMove:
-            S.chooseMove,
+        engine:
+            E,
+
+        decision:
+            D,
+
+        getOpponentMove:
+            v11GetOpponentMove,
+
+        shouldSwitch:
+            v11ShouldOpponentSwitch,
 
         chooseSwitch:
-            S.chooseSwitch,
+            v11ChooseBestOpponentSwitch,
 
-        analyzeMove:
-            S.analyzeMove,
+        test: function () {
 
-        evaluateState:
-            T.evaluateState,
+            try {
 
-        snapshot:
-            E.createBattleSnapshot,
+                const state =
+                    E.getTeam("opponent");
 
-        getActive:
-            E.getActive,
+                console.log(
+                    "[AI V11 100] OPPONENT TEAM",
+                    state
+                );
 
-        aliveCount:
-            E.aliveCount
+                console.log(
+                    "[AI V11 100] ACTIVE",
+                    E.getActive(
+                        "opponent"
+                    )
+                );
+
+                console.log(
+                    "[AI V11 100] MOVE",
+                    v11GetOpponentMove()
+                );
+
+                console.log(
+                    "[AI V11 100] SHOULD SWITCH",
+                    v11ShouldOpponentSwitch()
+                );
+
+            } catch (e) {
+
+                console.error(
+                    "[AI V11 100] TEST ERROR",
+                    e
+                );
+            }
+        }
     };
 
 
     console.log(
-        "========================================"
+        "=========================================="
     );
 
     console.log(
-        "[AI V11] FINAL REBUILD LOADED"
+        "[AI V11 100] PART 4 LOADED"
     );
 
     console.log(
-        "[AI V11] REAL GAME-TREE AI ACTIVE"
+        "[AI V11 100] GAME INTEGRATION COMPLETE"
     );
 
     console.log(
-        "[AI V11] V10 + BATTLE STATE + SEARCH"
+        "[AI V11 100] VERSION 11.0.100"
     );
 
     console.log(
-        "========================================"
+        "=========================================="
     );
 
 })();
-
-// ============================================================
-// 対戦中にページを更新したら敗北扱い
-// ============================================================
-window.addEventListener("beforeunload", function () {
-    if (isBattleInProgress) {
-        sessionStorage.setItem("battle_reload_loss", "true");
-    }
-});
-
-// ページ再読み込み後、前回が対戦中だった場合は敗北扱い
-window.addEventListener("load", function () {
-    if (sessionStorage.getItem("battle_reload_loss") === "true") {
-        sessionStorage.removeItem("battle_reload_loss");
-
-        // 少し待ってから敗北画面を表示
-        setTimeout(() => {
-            endGame(false);
-        }, 100);
-    }
-});
 
 </script>
 

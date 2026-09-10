@@ -3630,21 +3630,44 @@ if (opponentSwitched) {
 
     // ====================================================
     // 相手が交代した場合
-    // 交代は攻撃より先なので、
-    // プレイヤーの技は新しく出てきたポケモンに当たる
     // ====================================================
 
-    gameOver =
-        await handleAttack(
-            playerPokemon,
-            opponentPokemon,
-            playerMove,
-            true
+    // ふいうちは「相手が攻撃技を使うとき」だけ成功する。
+    // 相手が交代した場合は失敗する。
+    if (playerMove.name === "ふいうち") {
+
+        await showMessage(
+            `${playerPokemon.name} の ふいうち！`
         );
 
-    if (gameOver) {
-        isBattleInProgress = false;
-        return;
+        await new Promise(
+            resolve => setTimeout(resolve, 500)
+        );
+
+        await showMessage(
+            `しかし うまく きまらなかった！`
+        );
+
+        await new Promise(
+            resolve => setTimeout(resolve, 700)
+        );
+
+    } else {
+
+        // ふいうち以外の技は、
+        // 交代後に出てきたポケモンへ命中する
+        gameOver =
+            await handleAttack(
+                playerPokemon,
+                opponentPokemon,
+                playerMove,
+                true
+            );
+
+        if (gameOver) {
+            isBattleInProgress = false;
+            return;
+        }
     }
 
 } else {

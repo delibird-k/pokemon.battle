@@ -436,53 +436,7 @@ let field = { type: 'none', turns: 0 };
 let playerStealthRock = false;
 let opponentStealthRock = false;
 
-// 対戦が開始されたか
-// 一度 true になったら、勝敗画面になっても true のまま
-let isBattleStarted = false;
-
-    // ============================================================
-// 更新・再読み込みによる敗北処理
-// ============================================================
-
-window.addEventListener("beforeunload", function () {
-
-    if (isBattleStarted) {
-        sessionStorage.setItem(
-            BATTLE_RELOAD_LOSS_KEY,
-            "true"
-        );
-    }
-
-});
-
-
-window.addEventListener("load", function () {
-
-    const reloadLoss =
-        sessionStorage.getItem(
-            BATTLE_RELOAD_LOSS_KEY
-        );
-
-    if (reloadLoss === "true") {
-
-        // フラグを消す
-        sessionStorage.removeItem(
-            BATTLE_RELOAD_LOSS_KEY
-        );
-
-        // 今回の読み込みは更新による敗北
-        isBattleStarted = false;
-
-        setTimeout(function () {
-            endGame(false);
-        }, 100);
-
-    }
-
-});
-
-// 更新された場合の敗北フラグ
-const BATTLE_RELOAD_LOSS_KEY = "battle_reload_loss";
+let isBattleInProgress = false;
     let forcedSwitchPending = false;
     let opponentSwitchedLastTurn = false;
 
@@ -2281,11 +2235,7 @@ function determineOpponentItem(pokemon) {
 }
     
     async function startBattleSequence() {
-
-    // 対戦開始
-    isBattleStarted = true;
-
-    disableMoves();
+        disableMoves();
         await handleAbilityEffectsOnEntry("both");
         await showMessage(
     `${getShownName(playerPokemon)} は どうする？`,
@@ -3749,47 +3699,23 @@ if (opponentSwitched) {
 
 let secondDefender;
 
-// ========================================================
-// 2回目の攻撃の対象を「現在場にいるポケモン」にする
-// ========================================================
-//
-// 相手がとんぼがえり・ボルトチェンジ・クイックターンで
-// 交代した場合は、プレイヤーの攻撃は「新しく出てきた相手」に当たる。
-//
-// プレイヤー側が交代技で交代した場合も同様に、
-// 相手の攻撃は「新しく出てきたプレイヤー」に当たる。
-// ========================================================
+if (second.pokemon === opponentPokemonAtStart) {
 
-if (second.pokemon === playerPokemonAtStart) {
-
-    // プレイヤーが交代した
-    if (playerPokemon !== playerPokemonAtStart) {
-        secondDefender = playerPokemon;
-
-    // プレイヤーが交代していない
-    } else {
-        secondDefender = opponentPokemon;
-    }
-
-} else if (second.pokemon === opponentPokemonAtStart) {
-
-    // 相手が交代した
+    // COMがとんぼがえり等で交代した場合
     if (opponentPokemon !== opponentPokemonAtStart) {
         secondDefender = opponentPokemon;
 
-    // 相手が交代していない
-    } else {
+    // プレイヤーが交代した場合
+    } else if (playerPokemon !== playerPokemonAtStart) {
         secondDefender = playerPokemon;
+
+    // 通常
+    } else {
+        secondDefender = first.pokemon;
     }
 
 } else {
-
-    // 念のため、攻撃側の所属から現在の相手を決定
-    if (second.pokemon === playerPokemon) {
-        secondDefender = opponentPokemon;
-    } else {
-        secondDefender = playerPokemon;
-    }
+    secondDefender = first.pokemon;
 }
 
 gameOver =
@@ -7428,92 +7354,11 @@ if (move.self && move.self.stats) {
         await new Promise(resolve => setTimeout(resolve, 1200));
         
         if (defender.currentHp <= 0) {
-            // ========================================================
-            // 瀕死処理
-            // ========================================================
-            // 交代技で相手を倒した場合でも、
-            // 「相手の後続を出す」→「交代技を使った側が交代する」
-            // という順番にする。
+            // 瀕死処理の結果をそのまま返す。
+            // 相手が倒れた場合は checkFainted が2体目を出して
+            // falseを返すので、ここでバトルを止めない。
             const isPlayerDefender = defender === playerPokemon;
-
-            const gameOver =
-                await checkFainted(
-                    defender,
-                    isPlayerDefender,
-                    attacker
-                );
-
-            if (gameOver) {
-                return true;
-            }
-
-            // ========================================================
-            // 交代技でKOした場合
-            // ========================================================
-            const isPivotMove =
-                move.name === "とんぼがえり" ||
-                move.name === "ボルトチェンジ" ||
-                move.name === "クイックターン";
-
-            if (
-                isPivotMove &&
-                attacker.currentHp > 0
-            ) {
-
-                // ----------------------------------------------------
-                // プレイヤー側
-                // ----------------------------------------------------
-                if (attacker === playerPokemon) {
-
-                    const canSwitch =
-                        playerTeam.some(
-                            (pokemon, index) =>
-                                index !== playerActiveIndex &&
-                                pokemon.currentHp > 0
-                        );
-
-                    if (canSwitch) {
-                        await showMessage(
-                            `${attacker.name} は お前の元へ 戻っていく！`
-                        );
-
-                        uTurnSwitched = true;
-
-                        await showUTurnSwitchSelection();
-                    }
-
-                // ----------------------------------------------------
-                // COM側
-                // ----------------------------------------------------
-                } else if (attacker === opponentPokemon) {
-
-                    const canSwitch =
-                        opponentTeam.some(
-                            (pokemon, index) =>
-                                index !== opponentActiveIndex &&
-                                pokemon.currentHp > 0
-                        );
-
-                    if (canSwitch) {
-                        await showMessage(
-                            `あいて の ${attacker.name} は 戻っていく！`
-                        );
-
-                        const nextIndex =
-                            chooseBestOpponentSwitch();
-
-                        if (nextIndex !== -1) {
-                            uTurnSwitched = true;
-
-                            await executeOpponentAISwitch(
-                                nextIndex
-                            );
-                        }
-                    }
-                }
-            }
-
-            return false;
+            return await checkFainted(defender, isPlayerDefender);
         }
         
         const berryHealed = await checkAndUseItem(defender);
@@ -10360,7 +10205,6 @@ document.getElementById("opponent-max-hp").textContent = "";
     }
 }
 function endGame(playerWon) {
-
     disableMoves();
 
     menu.style.display = "none";
@@ -10436,9 +10280,6 @@ function endGame(playerWon) {
 
     function resetGame() {
     gameId++;
-
-    isBattleStarted = false;
-sessionStorage.removeItem(BATTLE_RELOAD_LOSS_KEY);
 
     messageText.textContent = '';
     messageText.style.display = '';
@@ -36277,6 +36118,27 @@ if (switched) {
     );
 
 })();
+
+// ============================================================
+// 対戦中にページを更新したら敗北扱い
+// ============================================================
+window.addEventListener("beforeunload", function () {
+    if (isBattleInProgress) {
+        sessionStorage.setItem("battle_reload_loss", "true");
+    }
+});
+
+// ページ再読み込み後、前回が対戦中だった場合は敗北扱い
+window.addEventListener("load", function () {
+    if (sessionStorage.getItem("battle_reload_loss") === "true") {
+        sessionStorage.removeItem("battle_reload_loss");
+
+        // 少し待ってから敗北画面を表示
+        setTimeout(() => {
+            endGame(false);
+        }, 100);
+    }
+});
 
 </script>
 

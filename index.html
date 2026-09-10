@@ -440,6 +440,47 @@ let opponentStealthRock = false;
 // 一度 true になったら、勝敗画面になっても true のまま
 let isBattleStarted = false;
 
+    // ============================================================
+// 更新・再読み込みによる敗北処理
+// ============================================================
+
+window.addEventListener("beforeunload", function () {
+
+    if (isBattleStarted) {
+        sessionStorage.setItem(
+            BATTLE_RELOAD_LOSS_KEY,
+            "true"
+        );
+    }
+
+});
+
+
+window.addEventListener("load", function () {
+
+    const reloadLoss =
+        sessionStorage.getItem(
+            BATTLE_RELOAD_LOSS_KEY
+        );
+
+    if (reloadLoss === "true") {
+
+        // フラグを消す
+        sessionStorage.removeItem(
+            BATTLE_RELOAD_LOSS_KEY
+        );
+
+        // 今回の読み込みは更新による敗北
+        isBattleStarted = false;
+
+        setTimeout(function () {
+            endGame(false);
+        }, 100);
+
+    }
+
+});
+
 // 更新された場合の敗北フラグ
 const BATTLE_RELOAD_LOSS_KEY = "battle_reload_loss";
     let forcedSwitchPending = false;
@@ -36236,64 +36277,6 @@ if (switched) {
     );
 
 })();
-
-    // ============================================================
-// 対戦中にページを更新したら敗北扱い
-// ============================================================
-window.addEventListener("beforeunload", function () {
-    if (isBattleInProgress) {
-        sessionStorage.setItem("battle_reload_loss", "true");
-    }
-});
-
-// ページ再読み込み後、前回が対戦中だった場合は敗北扱い
-window.addEventListener("load", function () {
-    if (sessionStorage.getItem("battle_reload_loss") === "true") {
-        sessionStorage.removeItem("battle_reload_loss");
-
-        // 少し待ってから敗北画面を表示
-        setTimeout(() => {
-            endGame(false);
-        }, 100);
-    }
-});
-
-// ============================================================
-// 更新・再読み込みによる敗北処理
-// ============================================================
-
-// ページを離れる直前に、対戦開始済みなら更新フラグを保存
-window.addEventListener("beforeunload", function () {
-
-    if (isBattleStarted) {
-        sessionStorage.setItem(BATTLE_RELOAD_LOSS_KEY, "true");
-    }
-
-});
-
-
-// ページ読み込み後に、前回の更新が対戦中だったか確認
-window.addEventListener("load", function () {
-
-    const reloadLoss =
-        sessionStorage.getItem(BATTLE_RELOAD_LOSS_KEY);
-
-    if (reloadLoss === "true") {
-
-        // フラグをすぐ消す
-        // → この読み込みで何度も敗北処理されないようにする
-        sessionStorage.removeItem(BATTLE_RELOAD_LOSS_KEY);
-
-        // 今回のページはすでに「更新による敗北」として処理済み
-        isBattleStarted = false;
-
-        setTimeout(function () {
-            endGame(false);
-        }, 100);
-
-    }
-
-});
 
 </script>
 

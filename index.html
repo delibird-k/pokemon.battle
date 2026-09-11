@@ -1019,6 +1019,7 @@ function useZMove(pokemon){
         instance.lastDamageCategory = null; // 'physical' or 'special'
         instance.moves = JSON.parse(JSON.stringify(pokemonData.moves)); // Deep copy moves
         instance.moves.forEach(m => m.currentPp = m.pp);
+        instance.bloodMoonBlocked = false;
         return instance;
     }
 
@@ -2397,7 +2398,9 @@ if (!playerPokemon.pendingMega) {
         const button = document.createElement('button');
         button.textContent = move.name;
 
-        const isDisabled = move.currentPp === 0;
+        const isDisabled =
+    move.currentPp === 0 ||
+    (move.isBloodMoon && playerPokemon.bloodMoonBlocked);
 
 let displayType = Array.isArray(move.type)
     ? move.type[0]
@@ -3471,6 +3474,14 @@ await handleAbilityEffectsOnEntry(
     return true;
 }
     async function startBattleRound(playerMove) {
+        // ブラッドムーンの連続使用禁止を解除
+if (playerPokemon.bloodMoonBlocked) {
+    playerPokemon.bloodMoonBlocked = false;
+}
+
+if (opponentPokemon.bloodMoonBlocked) {
+    opponentPokemon.bloodMoonBlocked = false;
+}
       battleMenu.style.display = "none";
 movesContainer.style.display = "none";
       playerPokemon.hasMoved = false;
@@ -3980,6 +3991,12 @@ function getAIAccuracy(move) {
 // ============================================================
 
 function getAIDamage(move, attacker, defender) {
+    if (
+    move.isBloodMoon &&
+    attacker.bloodMoonBlocked
+) {
+    return 0;
+}
 
     if (
         !move ||
@@ -4410,13 +4427,14 @@ function getAIBestAttack(
         return null;
     }
 
-    const usableMoves =
-        attacker.moves.filter(
-            move =>
-                (move.currentPp ?? 0) > 0 &&
-                move.category !== "status" &&
-                move.power
-        );
+const usableMoves =
+    attacker.moves.filter(
+        move =>
+            (move.currentPp ?? 0) > 0 &&
+            move.category !== "status" &&
+            move.power &&
+            !(move.isBloodMoon && attacker.bloodMoonBlocked)
+    );
 
     let best = null;
 
@@ -6087,6 +6105,11 @@ if (move.isDynamicType) {
 
     updateStatusMarkers();
 }
+
+    if (move.isBloodMoon) {
+    attacker.bloodMoonBlocked = true;
+}
+    
        if (
     move.name !== "まもる" &&
     move.name !== "キングシールド"

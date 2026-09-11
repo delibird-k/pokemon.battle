@@ -7692,6 +7692,7 @@ defender.lastAttacker = attacker;
     if (defender.currentHp <= 0) {
         return { hit: true, fainted: true };
     }
+    updateHpBars();
 
         // ⭐ ここが今回の本質
         if (attacker.currentHp <= 0) {

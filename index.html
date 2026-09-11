@@ -7311,6 +7311,68 @@ for(let hit = 0; hit < hitCount; hit++){
 
     updateHpBars();
 
+    // ========================================================
+// 反動技：相手に与えたダメージの1/3を自分が受ける
+// 相手を倒した場合も必ず反動を受ける
+// ========================================================
+const recoilMoves = [
+    "フレアドライブ",
+    "ワイルドボルト",
+    "ブレイブバード",
+    "もろはのずつき",
+    "すてみタックル",
+    "ボルテッカー",
+    "ウェーブタックル"
+];
+
+if (
+    recoilMoves.includes(move.name) &&
+    attacker.ability !== "マジックガード"
+) {
+    const recoilDamage = Math.floor(currentDamage / 3);
+
+    if (recoilDamage > 0) {
+        await showMessage(
+            `${attacker.name} は はんどうで ダメージを うけた！`
+        );
+
+        attacker.currentHp = Math.max(
+            0,
+            attacker.currentHp - recoilDamage
+        );
+
+        updateHpBars();
+
+        if (await checkAndUseItem(attacker)) {
+            await new Promise(
+                resolve => setTimeout(resolve, 1000)
+            );
+        }
+
+        if (
+            attacker.currentHp <= 0 &&
+            await checkFainted(
+                attacker,
+                attacker === playerPokemon
+            )
+        ) {
+            return true;
+        }
+    }
+}
+
+await handlePostAttackEffects(
+    attacker,
+    defender,
+    move,
+    isFirstAttacker,
+    currentDamage
+);
+
+if(defender.currentHp <= 0){
+    break;
+}
+
         await handlePostAttackEffects(
         attacker,
         defender,
@@ -7890,19 +7952,6 @@ if (move.name === "ミイラしばり" && defender.currentHp > 0) {
 
     await showMessage(`${defender.name} は ミイラに しばりつけられた！`);
 }
-
-        
-        const recoilMoves = ["フレアドライブ", "ワイルドボルト", "ブレイブバード", "もろはのずつき","すてみタックル","ボルテッカー","ウェーブタックル"];
-        if (recoilMoves.includes(move.name)) {
-            const recoilDamage = Math.floor(finalDamage / 3);
-            if (recoilDamage > 0 && attacker.ability !== 'マジックガード') {
-                 await showMessage(`${attacker.name} は はんどうで ダメージを うけた！`);
-                 attacker.currentHp = Math.max(0, attacker.currentHp - recoilDamage);
-                 updateHpBars();
-                 if(await checkAndUseItem(attacker)) await new Promise(resolve => setTimeout(resolve, 1000));
-                 if (await checkFainted(attacker, isPlayerAttacking)) return true;
-            }
-        }
         
         if (move.isContact && defender.ability === 'さめはだ' && attacker.ability !== 'マジックガード' && !defender.hasSubstitute) {
             await new Promise(resolve => setTimeout(resolve, 1000));

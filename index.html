@@ -13738,6 +13738,159 @@ function aiV2EvaluateStatus(
     const name =
         move.name || "";
 
+        // ========================================================
+    // 【追加】無意味な補助技を使わない判定
+    // ========================================================
+
+    // --------------------------------------------------------
+    // おにび
+    // すでに状態異常なら基本的に使う価値なし
+    // ほのおタイプにも無効
+    // --------------------------------------------------------
+    if (name === "おにび") {
+
+        if (defender.status) {
+            score -= 30000;
+        }
+
+        if (
+            defender.types &&
+            defender.types.includes("ほのお")
+        ) {
+            score -= 30000;
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // どくどく・でんじは・ねむり系
+    // すでに状態異常なら再使用しない
+    // --------------------------------------------------------
+    if (
+        name === "どくどく" ||
+        name === "でんじは" ||
+        name === "キノコのほうし" ||
+        name === "ねむりごな" ||
+        name === "さいみんじゅつ"
+    ) {
+
+        if (defender.status) {
+            score -= 30000;
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // 積み技
+    // 能力が+6なら、それ以上使う意味がない
+    // --------------------------------------------------------
+    const stage =
+        attacker.statStages || {};
+
+    if (name === "こうそくいどう") {
+
+        const speedStage =
+            Number(stage.speed ?? 0);
+
+        if (speedStage >= 6) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "つるぎのまい") {
+
+        const attackStage =
+            Number(stage.attack ?? 0);
+
+        if (attackStage >= 6) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "わるだくみ") {
+
+        const spAttackStage =
+            Number(stage.spAttack ?? 0);
+
+        if (spAttackStage >= 6) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "めいそう") {
+
+        const spAttackStage =
+            Number(stage.spAttack ?? 0);
+
+        const spDefenseStage =
+            Number(stage.spDefense ?? 0);
+
+        if (
+            spAttackStage >= 6 &&
+            spDefenseStage >= 6
+        ) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "りゅうのまい") {
+
+        const attackStage =
+            Number(stage.attack ?? 0);
+
+        const speedStage =
+            Number(stage.speed ?? 0);
+
+        if (
+            attackStage >= 6 &&
+            speedStage >= 6
+        ) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "てっぺき") {
+
+        const defenseStage =
+            Number(stage.defense ?? 0);
+
+        if (defenseStage >= 6) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "ドわすれ") {
+
+        const spDefenseStage =
+            Number(stage.spDefense ?? 0);
+
+        if (spDefenseStage >= 6) {
+            score -= 30000;
+        }
+    }
+
+
+    if (name === "ビルドアップ") {
+
+        const attackStage =
+            Number(stage.attack ?? 0);
+
+        const defenseStage =
+            Number(stage.defense ?? 0);
+
+        if (
+            attackStage >= 6 &&
+            defenseStage >= 6
+        ) {
+            score -= 30000;
+        }
+    }
 
     // --------------------------------------------------------
     // まもる

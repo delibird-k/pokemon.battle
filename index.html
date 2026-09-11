@@ -7691,8 +7691,16 @@ defender.lastAttacker = attacker;
     // その後の処理と二重進行してしまう。
     if (defender.currentHp <= 0) {
         return { hit: true, fainted: true };
-    }
-    updateHpBars();
+    } 
+        // ⭐ 接触ダメージ
+    if (move.isContact) {
+        if (defender.item?.name === 'ゴツゴツメット') {
+            const recoil = Math.floor(attacker.maxHp / 6);
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
+            await showMessage(`${attacker.name} は ゴツゴツメットで ダメージをうけた！`);
+        }
+
+        updateHpBars();
 
         // ⭐ ここが今回の本質
         if (attacker.currentHp <= 0) {

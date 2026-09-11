@@ -3730,25 +3730,22 @@ if (opponentSwitched) {
                 setTimeout(resolve, 1000)
         );
 
+// ====================================================
+// 2番目に行動するポケモンの攻撃対象を決定
+// 交代技で相手が交代した場合は、
+// 必ず「交代後のポケモン」を攻撃対象にする
+// ====================================================
+
 let secondDefender;
 
-if (second.pokemon === opponentPokemonAtStart) {
-
-    // COMがとんぼがえり等で交代した場合
-    if (opponentPokemon !== opponentPokemonAtStart) {
-        secondDefender = opponentPokemon;
-
-    // プレイヤーが交代した場合
-    } else if (playerPokemon !== playerPokemonAtStart) {
-        secondDefender = playerPokemon;
-
-    // 通常
-    } else {
-        secondDefender = first.pokemon;
-    }
-
+if (second.pokemon === playerPokemonAtStart) {
+    // プレイヤーが2番目に攻撃
+    // → 現在場にいる相手を攻撃
+    secondDefender = opponentPokemon;
 } else {
-    secondDefender = first.pokemon;
+    // COMが2番目に攻撃
+    // → 現在場にいるプレイヤーを攻撃
+    secondDefender = playerPokemon;
 }
 
 gameOver =

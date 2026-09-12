@@ -48,96 +48,57 @@
        実際のゲーム側の変数を安全に取得する。
        ========================================================= */
 
-    function getRealTeam(side) {
+function getRealTeam(side) {
 
-        if (side === "player") {
-
-            if (
-                typeof playerTeam !== "undefined" &&
-                Array.isArray(playerTeam)
-            ) {
-                return playerTeam;
-            }
-
-            if (
-                typeof window.playerTeam !== "undefined" &&
-                Array.isArray(window.playerTeam)
-            ) {
-                return window.playerTeam;
-            }
-
-            if (
-                typeof playerPokemon !== "undefined" &&
-                playerPokemon
-            ) {
-                return [playerPokemon];
-            }
-
-            return [];
-        }
+    if (side === "player") {
 
         if (
-            typeof opponentTeam !== "undefined" &&
-            Array.isArray(opponentTeam)
+            window.GAME_STATE &&
+            Array.isArray(
+                window.GAME_STATE.getPlayerTeam()
+            )
         ) {
-            return opponentTeam;
-        }
-
-        if (
-            typeof window.opponentTeam !== "undefined" &&
-            Array.isArray(window.opponentTeam)
-        ) {
-            return window.opponentTeam;
-        }
-
-        if (
-            typeof opponentPokemon !== "undefined" &&
-            opponentPokemon
-        ) {
-            return [opponentPokemon];
+            return window.GAME_STATE.getPlayerTeam();
         }
 
         return [];
     }
 
-    function getRealActiveIndex(side) {
+    if (
+        window.GAME_STATE &&
+        Array.isArray(
+            window.GAME_STATE.getOpponentTeam()
+        )
+    ) {
+        return window.GAME_STATE.getOpponentTeam();
+    }
 
-        if (side === "player") {
+    return [];
+}
 
-            if (
-                typeof playerActiveIndex !== "undefined"
-            ) {
-                return num(playerActiveIndex, 0);
-            }
+function getRealActiveIndex(side) {
 
-            return num(
-                window.playerActiveIndex,
-                0
-            );
-        }
-
-        if (
-            typeof opponentActiveIndex !== "undefined"
-        ) {
-            return num(opponentActiveIndex, 0);
-        }
-
-        return num(
-            window.opponentActiveIndex,
-            0
+    if (side === "player") {
+        return Number(
+            window.GAME_STATE?.getPlayerActiveIndex?.() ?? 0
         );
     }
 
-    function getDifficulty() {
+    return Number(
+        window.GAME_STATE?.getOpponentActiveIndex?.() ?? 0
+    );
+}
 
-        if (
-            typeof difficulty !== "undefined"
-        ) {
-            return difficulty;
-        }
-
-        return window.difficulty || "normal";
+function getDifficulty() {
+    if (
+        window.GAME_STATE &&
+        typeof window.GAME_STATE.getDifficulty === "function"
+    ) {
+        return window.GAME_STATE.getDifficulty();
     }
+
+    return "normal";
+}
 
     /* =========================================================
        HP

@@ -8410,45 +8410,45 @@ if (opponentPokemon.ability === 'ムラッけ') {
         // フィールドの効果
 if (field.type === 'psyco' || field.type === 'grass') {
 
-    // グラスフィールドの回復
-    if (field.type === 'grass') {
+  // グラスフィールドの回復
+if (field.type === 'grass') {
 
-        // プレイヤー側
-        if (
-            playerPokemon.hp > 0 &&
-            !playerPokemon.types.includes('ひこう') &&
-            playerPokemon.ability !== 'ふゆう'
-        ) {
-            const healAmount = Math.max(
-                1,
-                Math.floor(playerPokemon.maxHp / 16)
-            );
+    // プレイヤー側
+    if (
+        playerPokemon.currentHp > 0 &&
+        !playerPokemon.types.includes('ひこう') &&
+        playerPokemon.ability !== 'ふゆう'
+    ) {
+        const healAmount = Math.max(
+            1,
+            Math.floor(playerPokemon.maxHp / 16)
+        );
 
-            playerPokemon.hp = Math.min(
-                playerPokemon.maxHp,
-                playerPokemon.hp + healAmount
-            );
-        }
-
-        // 相手側
-        if (
-            opponentPokemon.hp > 0 &&
-            !opponentPokemon.types.includes('ひこう') &&
-            opponentPokemon.ability !== 'ふゆう'
-        ) {
-            const healAmount = Math.max(
-                1,
-                Math.floor(opponentPokemon.maxHp / 16)
-            );
-
-            opponentPokemon.hp = Math.min(
-                opponentPokemon.maxHp,
-                opponentPokemon.hp + healAmount
-            );
-        }
-
-        updateHPBars();
+        playerPokemon.currentHp = Math.min(
+            playerPokemon.maxHp,
+            playerPokemon.currentHp + healAmount
+        );
     }
+
+    // 相手側
+    if (
+        opponentPokemon.currentHp > 0 &&
+        !opponentPokemon.types.includes('ひこう') &&
+        opponentPokemon.ability !== 'ふゆう'
+    ) {
+        const healAmount = Math.max(
+            1,
+            Math.floor(opponentPokemon.maxHp / 16)
+        );
+
+        opponentPokemon.currentHp = Math.min(
+            opponentPokemon.maxHp,
+            opponentPokemon.currentHp + healAmount
+        );
+    }
+
+    updateHpBars();
+}
 
     field.turns--;
 

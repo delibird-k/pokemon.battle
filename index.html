@@ -3511,12 +3511,40 @@ opponentPokemon.hasMoved = false;
         playerPokemon.isFlinched = false;
         opponentPokemon.isFlinched = false;
         
-        if (playerPokemon.isRampaging) {
-            playerPokemon.rampageTurns--;
-           playerMove = playerPokemon.moves.find(m => m.name === "げきりん");
-        } else {
-             playerMove.currentPp--;
-        }
+        // ========================================================
+// げきりん：連続使用処理
+// ========================================================
+
+if (playerPokemon.isRampaging) {
+
+    // げきりん中は必ずげきりんを使う
+    playerMove = playerPokemon.moves.find(
+        m => m.name === "げきりん"
+    );
+
+    // 残り回数を1減らす
+    playerPokemon.rampageTurns--;
+
+} else {
+
+    // 通常時は選択した技のPPを減らす
+    if (playerMove && playerMove.name !== "わるあがき") {
+        playerMove.currentPp--;
+    }
+
+    // 今回げきりんを選んだ場合、
+    // この攻撃から連続使用状態に入る
+    if (playerMove && playerMove.name === "げきりん") {
+
+        playerPokemon.isRampaging = true;
+
+        // 追加で1～2回げきりんを使う
+        playerPokemon.rampageTurns =
+            Math.floor(Math.random() * 2) + 1;
+    }
+}
+
+playerPokemon.selectedMove = playerMove;
 
 playerPokemon.selectedMove = playerMove;
 
@@ -7578,11 +7606,7 @@ if (move.self && move.self.stats) {
         
         const berryHealed = await checkAndUseItem(defender);
         if(berryHealed) await new Promise(resolve => setTimeout(resolve, 1000));
-        
-       if (move.name === 'げきりん' && !attacker.isRampaging) {
-    attacker.isRampaging = true;
-    attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
-}
+    
 
 // ========================================================
 // とんぼがえり・ボルトチェンジ・クイックターン

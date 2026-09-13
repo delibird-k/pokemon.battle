@@ -486,7 +486,7 @@ let isBattleInProgress = false;
     
     // Base stats and moves for all Pokémon
     const pokemonBaseData = {
-        Venusaur: { name: "フシギバナ", id: "venusaur" , types: ["くさ","どく"],baseHp: 80, baseAttack: 82, baseDefense: 83, baseSpAttack: 100, baseSpDefense: 100, baseSpeed: 80, ability: "しんりょく",evs: { hp: 252, atk: 0, def: 4, spa: 188, spd: 44, spe: 20 },ai:"aggressive",nature: "ひかえめ",  moves:[{ name: "ギガドレイン", power: 75, pp: 10, type: "くさ", category: "special", accuracy: 100 }, { name: "ヘドロばくだん", power: 90, pp: 10, type: "どく", category: "special", accuracy: 100, secondary: { chance: 30, effect: 'status', status: 'poison' } },{ name: "だいちのちから", power: 90, pp: 10, type: "じめん", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }]},
+       Venusaur: { name: "フシギバナ", id: "venusaur" , types: ["くさ","どく"],baseHp: 80, baseAttack: 82, baseDefense: 83, baseSpAttack: 100, baseSpDefense: 100, baseSpeed: 80, ability: "しんりょく",evs: { hp: 252, atk: 0, def: 4, spa: 188, spd: 44, spe: 20 },ai:"aggressive",nature: "ひかえめ",  moves:[{ name: "ギガドレイン", power: 75, pp: 10, type: "くさ", category: "special", accuracy: 100 }, { name: "ヘドロばくだん", power: 90, pp: 10, type: "どく", category: "special", accuracy: 100, secondary: { chance: 30, effect: 'status', status: 'poison' } },{ name: "だいちのちから", power: 90, pp: 10, type: "じめん", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }]},
         charizard: { name: "リザードン", id: "charizard", types: ["ほのお", "ひこう"], baseHp: 78, baseAttack: 84, baseDefense: 78, baseSpAttack: 109, baseSpDefense: 85, baseSpeed: 100, ability: "もうか",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "フレアドライブ", power: 120, pp: 15, type: "ほのお", category: "physical", accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'burn' } }, { name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "りゅうのまい",pp: 20, type: "ドラゴン", category: "status", accuracy: 101 }] },
         Ninetales: { name: "キュウコン", id: "ninetales-alola" , types: ["こおり","フェアリー"],baseHp: 73, baseAttack: 67, baseDefense: 75, baseSpAttack: 81, baseSpDefense: 109, baseSpeed: 116, ability: "ゆきふらし",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 }, ai:"defensive",nature: "ひかえめ", moves:[{ name: "ムーンフォース", power: 95, pp: 10, type: "フェアリー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 }  },{ name: "れいとうビーム", power: 80, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }},{ name: "オーロラベール", pp: 20, type: "こおり", category: "status", accuracy: 101 },{ name: "わるだくみ", type: "あく", pp: 20, category: "status", accuracy: 101 }]},
         slowbro: { name: "ガラルヤドラン", id: "slowbro-galar", types: ["どく","エスパー"], baseHp: 95, baseAttack: 100, baseDefense: 95, baseSpAttack: 100, baseSpDefense: 70, baseSpeed: 30, ability: "クイックドロウ", evs: { hp: 252, atk: 0, def: 4, spa: 252, spd: 0, spe: 0 },ai: "aggressive", nature: "ひかえめ", moves: [{ name: "シェルアームズ", power: 100, pp: 10, type: "どく", category: "special", accuracy: 100,secondary: { chance: 40, effect: 'status', status: 'poison' }  }, { name: "サイコキネシス", power: 90, pp: 10, type: "エスパー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 }  }, { name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }}, {name: "かえんほうしゃ", power: 90, pp: 15, type: "ほのお", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'burn' }}] },
@@ -516,7 +516,7 @@ let isBattleInProgress = false;
         Hippowdon: { name: "カバルドン", id: "hippowdon", types: ["じめん"], baseHp: 108, baseAttack: 112, baseDefense: 118, baseSpAttack: 68, baseSpDefense: 72, baseSpeed: 48, ability: "すなおこし",evs: { hp: 228, atk: 0, def: 140, spa: 0, spd: 140, spe: 0 },ai:"aggressive",nature: "わんぱく", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name:"ステルスロック", type:"いわ", category:"status", pp:10, accuracy:101},{ name:"なまける", type:"ノーマル", category:"status", pp:10, accuracy:101},{ name:"あくび", type:"ノーマル", category:"status", pp:10, accuracy:101},] },
         togekiss: { name: "トゲキッス", id: "togekiss", types: ["フェアリー", "ひこう"], baseHp: 85, baseAttack: 50, baseDefense: 95, baseSpAttack: 120, baseSpDefense: 115, baseSpeed: 80, ability: "てんのめぐみ",evs: { hp: 252, atk: 0, def: 0, spa: 4, spd: 0, spe: 252 },  ai: "aggressive",nature: "ひかえめ", moves: [{ name: "エアスラッシュ", power: 75, pp: 15, type: "ひこう", category: "special", accuracy: 95, secondary: { chance: 30, effect: 'flinch' } }, { name: "マジカルシャイン", power: 80, pp: 10, type: "フェアリー", category: "special", accuracy: 100 }, { name: "かえんほうしゃ", power: 90, pp: 15, type: "ほのお", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'burn' } }, { name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
         Rotom: { name: "水ロトム", id: "rotom-wash", types: ["でんき", "みず"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 220, spa: 36, spd: 4, spe: 0},ai:"aggressive",nature: "ずぶとい", moves: [{ name: "ハイドロポンプ", power: 120, pp: 5, type: "みず", category: "special", accuracy: 80 },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
-        rotom2: { name: "ヒートロトム", id: "rotom-heat", types: ["でんき", "ほのお"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 130, spa: 130, spd: 0, spe: 0 },  ai: "aggressive",nature: "ひかえめ", moves: [{ name: "オーバーヒート", power: 120, pp: 5, type: "ほのお", category: "special", accuracy: 80, self: { stats: [{stat: 'spAttack', stage: -2}]} }, { name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 }, { name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
+        rotom2: { name: "ヒートロトム", id: "rotom-h", types: ["でんき", "ほのお"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 130, spa: 130, spd: 0, spe: 0 },  ai: "aggressive",nature: "ひかえめ", moves: [{ name: "オーバーヒート", power: 120, pp: 5, type: "ほのお", category: "special", accuracy: 80, self: { stats: [{stat: 'spAttack', stage: -2}]} }, { name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 }, { name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
         Heatran: { name: "ヒードラン", id: "heatran" , types: ["ほのお","はがね"],baseHp: 91, baseAttack: 90, baseDefense: 106, baseSpAttack: 130, baseSpDefense: 106, baseSpeed: 77, ability: "ほのおのからだ", evs: { hp: 212, atk: 0, def: 76, spa: 60, spd: 156, spe: 4 },ai:"aggressive", nature: "ずぶとい", moves:[{ name: "マグマストーム", power: 110, pp: 5, type: "ほのお", category: "special", accuracy: 75,isTrapMove: true},{ name: "パワージェム", power: 80, pp: 10, type: "いわ", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }]},
         Cresselia: { name: "クレセリア", id: "cresselia" , types: ["エスパー"],baseHp: 120, baseAttack: 70, baseDefense: 120, baseSpAttack: 75, baseSpDefense: 130, baseSpeed: 85, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 252, spa: 0, spd: 4, spe: 0 }, ai:"defensive",nature: "ずぶとい", moves:[{ name: "ムーンフォース", power: 95, pp: 15, type: "フェアリー", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 } },{ name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 },{ name: "つきのひかり", type: "フェアリー", pp: 8, category: "status", accuracy: 101 },{ name: "どくどく", type: "どく", pp: 20, category: "status", accuracy: 90 }]},
         Serperior: { name: "ジャローダ", id: "serperior", types: ["くさ"], baseHp: 75, baseAttack: 75, baseDefense: 95, baseSpAttack: 75, baseSpDefense: 95, baseSpeed: 113, ability: "あまのじゃく", evs: { hp: 86, atk: 0, def: 0, spa: 172, spd: 0, spe: 252 },ai: "aggressive",nature: "ひかえめ", moves: [{ name: "リーフストーム", power: 120, pp: 5, type: "くさ", category: "special", accuracy: 80, secondary: { chance: 100, effect: 'stat', stat: 'spAttack', stage: 2, self: true } }, { name: "めざめるパワー氷", power: 60, pp: 15, type: "こおり", category: "special", accuracy: 100 }, { name: "みがわり", pp: 15, type: "ノーマル", category: "status", accuracy: 101 }, { name: "へびにらみ", type: "ノーマル", pp: 20, category: "status", accuracy: 101 }] },
@@ -535,7 +535,7 @@ let isBattleInProgress = false;
         Pheromosa: { name: "フェローチェ", id: "pheromosa", types: ["むし", "かくとう"], baseHp: 71, baseAttack: 137, baseDefense: 37, baseSpAttack: 137, baseSpDefense: 37, baseSpeed: 151, ability: "ビーストブースト",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} }, { name: "とびかかる", power: 80, pp: 15, type: "むし", category: "physical", accuracy: 100,secondary: { chance: 100, effect: 'stat', stat: 'attack', stage: -1 } },{ name: "ギガインパクト", power: 150, pp: 5, type: "ノーマル", category: "physical", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'attack', stage: -3 }]} }, { name: "フェイント", power: 30, pp: 30, type: "ノーマル", category: "physical", accuracy: 100, priority: 2, isContact: true }]}, 
         Celesteela: { name: "テッカグヤ",id: "celesteela",types: ["はがね","ひこう"],baseHp: 97,baseAttack: 101,baseDefense: 103,baseSpAttack: 107,baseSpDefense: 101,baseSpeed: 61,ability: "ビーストブースト",nature: "ようき",evs: {hp: 252,atk: 0,def: 0 ,spa: 0, spd: 4,spe: 252 },ai:"defensive",moves: [{ name: "ヘビーボンバー", power: 100, pp: 10, type: "はがね", category: "physical", accuracy: 100, isContact: true },{ name: "やどりぎのたね",pp: 20, type: "くさ", category: "status", accuracy: 101 },{ name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 },{ name: "みがわり",pp: 20, type: "ノーマル", category: "status", accuracy: 101 }]},
         kartana: { name: "カミツルギ", id: "kartana" , types: ["くさ","はがね"],baseHp: 59, baseAttack: 181, baseDefense: 131, baseSpAttack: 59, baseSpDefense: 31, baseSpeed: 109, ability: "ビーストブースト",evs: { hp: 0, atk: 252, def: 4, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり",moves:[{ name: "ギガインパクト", power: 150, pp: 5, type: "ノーマル", category: "physical", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'attack', stage: -3 }]} },{ name: "スマートホーン", power: 70, pp: 20, type: "はがね", category: "physical", accuracy: 101 },{ name: "リーフブレード", power: 90, pp: 15, type: "くさ", category: "physical", accuracy: 100, critPriority:1 }, { name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }]},
-        Rillaboom: { name: "ゴリランダー", id: "rillaboom", types: ["くさ"], baseHp: 100, baseAttack: 125, baseDefense: 90, baseSpAttack: 60, baseSpDefense: 70, baseSpeed: 85, ability: "グラスメイカー", evs: { hp: 252, atk: 252, def: 4, spa: 0, spd: 0, spe: 0 }, ai: "aggressive", nature: "いじっぱり", moves: [{ name: "グラススライダー", power: 55, pp: 10, type: "くさ", category: "physical", accuracy: 100, isContact: true },  { name: "ウッドハンマー", power: 120, pp: 15, type: "くさ", category: "physical", accuracy: 100 }, { name: "とんぼがえり", power: 70, pp: 15, type: "むし", category: "physical", accuracy: 100, isContact: true },  { name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
+        Melmetal: { name: "メルメタル", id: "melmetal", types: ["はがね"], baseHp: 135, baseAttack: 143, baseDefense: 143, baseSpAttack: 80, baseSpDefense: 65, baseSpeed: 34, ability: "てつのこぶし",evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 4, spe: 0 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "ダブルパンツァー", power: 60, pp: 5 , type: "はがね", category: "physical", accuracy: 100, isContact: true, isPunch: true },{ name: "かみなりパンチ", power: 75, pp: 15 , type: "でんき", category: "physical", accuracy: 100, isContact: true, isPunch: true, secondary: { chance: 10, effect: 'status', status: 'paralyze' }}, {name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true, isPunch:true, secondary: { chance: 10, effect: 'status', status: 'freeze' }},{ name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },] },
         Corviknight: { name: "アーマーガア", id: "corviknight" , types: ["はがね","ひこう"],baseHp: 98, baseAttack: 87, baseDefense: 105, baseSpAttack: 53, baseSpDefense: 85, baseSpeed: 67, ability: "プレッシャー", evs: { hp: 252, atk: 0, def: 252, spa: 0, spd: 4, spe: 0 },  ai: "aggressive",nature:"わんぱく",moves:[{ name: "ボディプレス", power: 80, pp: 10, type: "かくとう", category: "physical", accuracy: 100, isContact:true },{ name: "とんぼがえり", power: 70, pp: 15, type: "むし", category: "physical", accuracy: 100, isContact: true },{ name: "てっぺき", type: "はがね", pp: 20, category: "status", accuracy: 101 },{ name: "はねやすめ", type: "ひこう", pp: 8, category: "status", accuracy: 101 }]},
         Dragapult: { name: "ドラパルト", id: "dragapult", types: ["ドラゴン", "ゴースト"], baseHp: 88, baseAttack: 120, baseDefense: 75, baseSpAttack: 100, baseSpDefense: 75, baseSpeed: 142, ability: "クリアボディ", evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 }, ai:"aggressive", nature: "いじっぱり",moves: [{ name: "ドラゴンアロー", power: 50, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100  }, { name: "ポルターガイスト", power: 110, pp: 10, type: "ゴースト", category: "physical", accuracy: 90 }, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}, { name: "りゅうのまい", type: "ドラゴン", pp: 20, category: "status", accuracy: 101 }] },
         Urshifu: { name: "水ウーラオス", id: "urshifu-rapidstrike", types: ["かくとう", "みず"], baseHp: 100, baseAttack: 130, baseDefense: 100, baseSpAttack: 60, baseSpDefense: 63, baseSpeed: 97, ability: "ふかしのこぶし",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "すいりゅうれんだ", power: 25, pp: 5, type: "みず", category: "physical", accuracy: 100,critPriority:3 }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name: "アイススピナー", type: "こおり", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true }, { name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true }] },
@@ -552,6 +552,7 @@ let isBattleInProgress = false;
         Archaludon: { name: "ブリジュラス", id: "archaludon", types: ["はがね", "ドラゴン"], baseHp: 90, baseAttack: 105, baseDefense: 130, baseSpAttack: 125, baseSpDefense: 65, baseSpeed: 85, ability: "がんじょう",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} }, { name: "ラスターカノン", power: 80, pp: 10, type: "はがね", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } }, { name: "はどうだん", power: 80, pp: 20, type: "かくとう", category: "special", accuracy: 101}] },
         RagingBolt: { name: "タケルライコ", id: "ragingbolt", types: ["でんき", "ドラゴン"], baseHp: 125, baseAttack: 73, baseDefense: 91, baseSpAttack: 137, baseSpDefense: 89, baseSpeed: 75, ability: "こだいかっせい",evs: { hp: 228, atk: 0, def: 36, spa: 236, spd: 4, spe: 0},ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 }, { name: "じんらい", power: 70, pp: 5, type: "でんき", category: "special", accuracy: 100, priority: 1 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
         トレーニング: { name: "トレーニング", id: "substitute" , types: ["トレーニング"],baseHp: 100, baseAttack: 1, baseDefense: 100, baseSpAttack: 1, baseSpDefense: 100, baseSpeed: 1, ability: "トレーニング", evs: { hp: 252, atk: 252, def: 252, spa: 252, spd: 252, spe: 252 },  ai: "aggressive",nature: "がんばりや",moves:[{name: "ぜんかいふく", type: "ノーマル", pp: 1000, category: "status", accuracy: 100,priority: -1 }]},
+
     };
 
     const typeChart = { ノーマル: { いわ: 0.5, ゴースト: 0, はがね: 0.5 }, ほのお: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 2, Icc: 2, むし: 2, いわ: 0.5, ドラゴン: 0.5, はがね: 2 }, みず: { ほのお: 2, みず: 0.5, くさ: 0.5, じめん: 2, いわ: 2, ドラゴン: 0.5 }, でんき: { みず: 2, でんき: 0.5, くさ: 0.5, じめん: 0, ひこう: 2, ドラゴン: 0.5 }, くさ: { ほのお: 0.5, みず: 2, くさ: 0.5, どく: 0.5, じめん: 2, ひこう: 0.5, むし: 0.5, いわ: 2, ドラゴン: 0.5, はがね: 0.5 }, こおり: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 0.5, Icc: 0.5,じめん: 2, ひこう: 2, ドラゴン: 2, はがね: 0.5 }, かくとう: { ノーマル: 2, Norma1:2, こおり: 2, Icc: 2, どく: 0.5, ひこう: 0.5, エスパー: 0.5, むし: 0.5, いわ: 2, ゴースト: 0, あく: 2, はがね: 2, フェアリー: 0.5 }, どく: { くさ: 2, どく: 0.5, じめん: 0.5, いわ: 0.5, ゴースト: 0.5, はがね: 0, フェアリー: 2 }, じめん: { ほのお: 2, でんき: 2, くさ: 0.5, どく: 2, ひこう: 0, むし: 0.5, いわ: 2, はがね: 2 }, ひこう: { でんき: 0.5, くさ: 2, かくとう: 2, むし: 2, いわ: 0.5, はがね: 0.5 }, エスパー: { かくとう: 2, どく: 2, エスパー: 0.5, あく: 0, はがね: 0.5 }, むし: { ほのお: 0.5, くさ: 2, かくとう: 0.5, どく: 0.5, ひこう: 0.5, エスパー: 2, ゴースト: 0.5, あく: 2, はがね: 0.5, フェアリー: 0.5 }, いわ: { ほのお: 2, こおり: 2, Icc: 2, かくとう: 0.5, じめん: 0.5, ひこう: 2, むし: 2, はがね: 0.5 }, ゴースト: { ノーマル: 0, Norma1:0, エスパー: 2, ゴースト: 2, あく: 0.5 }, ドラゴン: { ドラゴン: 2, はがね: 0.5, フェアリー: 0 }, あく: { かくとう: 0.5, エスパー: 2, ゴースト: 2, あく: 0.5, フェアリー: 0.5 }, はがね: { ほのお: 0.5, みず: 0.5, でんき: 0.5, こおり: 2, Icc: 2, いわ: 2, はがね: 0.5, フェアリー: 2 }, フェアリー: { ほのお: 0.5, かくとう: 2, どく: 0.5, ドラゴン: 2, あく: 2, はがね: 0.5 }, 神: {ノーマル: 2, ほのお: 2, みず: 2, でんき: 2, くさ: 2, こおり: 2, Icc: 2, かくとう: 2, どく: 2, じめん: 2, ひこう: 2, エスパー: 2, むし: 2, いわ: 2, ゴースト: 2, ドラゴン: 2, あく: 2, はがね: 2, フェアリー: 2, 神: 2 }, Z: {ノーマル: 0, ほのお: 0, みず: 0, でんき: 0, くさ: 0, こおり: 0, Icc: 0, かくとう: 0, どく: 0, じめん: 0, ひこう: 0, エスパー: 0, むし: 0, いわ: 0, ゴースト: 0, ドラゴン: 0, あく: 0, はがね: 0, フェアリー: 0, 神: 0 }};
@@ -2704,7 +2705,6 @@ const effectiveness =
         case 'ドラゴンアロー': return '2回 攻撃する。';
         case 'みずしゅりけん': return '2〜5回 攻撃する。';
         case 'おはかまいり': return 'こんな技 あってはいけない。';
-        case 'グラススライダー': return 'グラスフィールド中は せんせいわざになる。';
         case 'ドゲザン': return '情けない技';
         case 'ミイラしばり': return 'ゴーストタイプも含む。バインドわざ';
         case 'ポイズンキラー': return 'いわタイプも含む。';
@@ -3512,40 +3512,12 @@ opponentPokemon.hasMoved = false;
         playerPokemon.isFlinched = false;
         opponentPokemon.isFlinched = false;
         
-        // ========================================================
-// げきりん：連続使用処理
-// ========================================================
-
-if (playerPokemon.isRampaging) {
-
-    // げきりん中は必ずげきりんを使う
-    playerMove = playerPokemon.moves.find(
-        m => m.name === "げきりん"
-    );
-
-    // 残り回数を1減らす
-    playerPokemon.rampageTurns--;
-
-} else {
-
-    // 通常時は選択した技のPPを減らす
-    if (playerMove && playerMove.name !== "わるあがき") {
-        playerMove.currentPp--;
-    }
-
-    // 今回げきりんを選んだ場合、
-    // この攻撃から連続使用状態に入る
-    if (playerMove && playerMove.name === "げきりん") {
-
-        playerPokemon.isRampaging = true;
-
-        // 追加で1～2回げきりんを使う
-        playerPokemon.rampageTurns =
-            Math.floor(Math.random() * 2) + 1;
-    }
-}
-
-playerPokemon.selectedMove = playerMove;
+        if (playerPokemon.isRampaging) {
+            playerPokemon.rampageTurns--;
+           playerMove = playerPokemon.moves.find(m => m.name === "げきりん");
+        } else {
+             playerMove.currentPp--;
+        }
 
 playerPokemon.selectedMove = playerMove;
 
@@ -3643,22 +3615,8 @@ if (
         `${opponentPokemon.name} の クイックドロウが はつどうした！`
     );
 }
-        const getEffectiveMovePriority = (move) => {
-    let priority = move?.priority || 0;
-
-    // グラスフィールド中のグラススライダー
-    if (
-        move?.name === 'グラススライダー' &&
-        field.type === 'grass'
-    ) {
-        priority += 1;
-    }
-
-    return priority;
-};
-
-const playerMovePriority = getEffectiveMovePriority(playerMove);
-const opponentMovePriority = getEffectiveMovePriority(opponentMove);
+        const playerMovePriority = playerMove.priority || 0;
+        const opponentMovePriority = opponentMove?.priority || 0;
         
         let playerGoesFirst;
 
@@ -7621,7 +7579,11 @@ if (move.self && move.self.stats) {
         
         const berryHealed = await checkAndUseItem(defender);
         if(berryHealed) await new Promise(resolve => setTimeout(resolve, 1000));
-    
+        
+       if (move.name === 'げきりん' && !attacker.isRampaging) {
+    attacker.isRampaging = true;
+    attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
+}
 
 // ========================================================
 // とんぼがえり・ボルトチェンジ・クイックターン
@@ -8202,14 +8164,6 @@ if (
         let message = '';
         
         switch(move.name) {
-          case 'グラスフィールド':
-    field.type = 'grass';
-    field.turns = 5;
-
-    message = 'グラスフィールドに なった！';
-
-    updateFieldIndicator();
-    break;
                 case 'ステルスロック':
 
     if (attacker === playerPokemon) {
@@ -8439,57 +8393,11 @@ if (opponentPokemon.ability === 'ムラッけ') {
 }
         if (playerPokemon.isProtected) playerPokemon.isProtected = false;
         if (opponentPokemon.isProtected) opponentPokemon.isProtected = false;
-        // フィールドの効果
-if (field.type === 'psyco' || field.type === 'grass') {
-
-    // グラスフィールドの回復
-    if (field.type === 'grass') {
-
-        // プレイヤー側
-        if (
-            playerPokemon.hp > 0 &&
-            !playerPokemon.types.includes('ひこう') &&
-            playerPokemon.ability !== 'ふゆう'
-        ) {
-            const healAmount = Math.max(
-                1,
-                Math.floor(playerPokemon.maxHp / 16)
-            );
-
-            playerPokemon.hp = Math.min(
-                playerPokemon.maxHp,
-                playerPokemon.hp + healAmount
-            );
-        }
-
-        // 相手側
-        if (
-            opponentPokemon.hp > 0 &&
-            !opponentPokemon.types.includes('ひこう') &&
-            opponentPokemon.ability !== 'ふゆう'
-        ) {
-            const healAmount = Math.max(
-                1,
-                Math.floor(opponentPokemon.maxHp / 16)
-            );
-
-            opponentPokemon.hp = Math.min(
-                opponentPokemon.maxHp,
-                opponentPokemon.hp + healAmount
-            );
-        }
-
-        updateHPBars();
-    }
-
-    field.turns--;
-
-    if (field.turns <= 0) {
+        if(field.type === 'psyco') {
+             field.turns--;
+    if (field.turns === 0) {
         field.type = 'none';
-        field.turns = 0;
-
         await showMessage('あしもとは もとに もどった！');
-
         updateFieldIndicator();
     }
 }
@@ -10286,24 +10194,6 @@ if (field.type === 'psyco') {
     }
 }
 
-// グラスフィールド
-if (field.type === 'grass') {
-
-    // くさ技の威力アップ
-    if (attackTypes.includes('くさ')) {
-        movePower *= 1.5;
-    }
-
-    // じしん・じならし・マグニチュードの威力半減
-    if (
-        move.name === 'じしん' ||
-        move.name === 'じならし' ||
-        move.name === 'マグニチュード'
-    ) {
-        movePower *= 0.5;
-    }
-}
-
         let damage = Math.floor(Math.floor(Math.floor(2 * level / 5 + 2) * movePower * attackStat / defenseStat) / 50) + 2;
 
         if (attackTypes.some(type => attacker.types.includes(type))) {
@@ -10604,12 +10494,6 @@ isBattleInProgress = false;
         await showMessage('あしもとが ふしぎなかんじに なった！');
     }
 
-    if (playerEntered && playerPokemon.ability === "グラスメイカー" || opponentEntered && opponentPokemon.ability === "グラスメイカー") {
-        field.type = 'grass';
-        field.turns = 5;
-        await showMessage('あしもとに くさが おいしげった！');
-    }
-
     // いかく：場に出たとき相手のこうげきを1段階下げる
     if (
         playerEntered &&
@@ -10721,23 +10605,12 @@ isBattleInProgress = false;
         weatherIndicator.style.display = 'none';
     }
 }
-
 function updateFieldIndicator() {
-
-    if (field.type === 'psyco') {
-
+  if (field.type === 'psyco') {
         fieldIndicator.textContent = '状態: サイコフィールド';
         fieldIndicator.style.display = 'block';
-
-    } else if (field.type === 'grass') {
-
-        fieldIndicator.textContent = '状態: グラスフィールド';
-        fieldIndicator.style.display = 'block';
-
-    } else {
-
+  } else {    
         fieldIndicator.style.display = 'none';
-
     }
 }
 

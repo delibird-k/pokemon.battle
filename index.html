@@ -7434,18 +7434,6 @@ if(defender.currentHp <= 0){
     break;
 }
 
-        await handlePostAttackEffects(
-        attacker,
-        defender,
-        move,
-        isFirstAttacker,
-        currentDamage
-    );
-
-    if(defender.currentHp <= 0){
-        break;
-    }
-
     if(hit === 0 && hitCount === 2){
         await new Promise(resolve =>
             setTimeout(resolve, 300)

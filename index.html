@@ -1630,6 +1630,10 @@ function startGame(difficultyLevel) {
 
     difficultySelectionScreen.style.display = 'none';
     battleScreen.style.display = 'block';
+    sessionStorage.setItem(
+    'pokemonBattleInProgress',
+    'true'
+);
 
     // ============================================================
 // リロード対策：バトル開始済みとして記録
@@ -10834,34 +10838,17 @@ winRestartButton.onclick = resetGame;
 // ============================================================
 
 const battleWasInProgress =
-    sessionStorage.getItem(
-        'pokemonBattleInProgress'
-    ) === 'true';
-
-if (battleWasInProgress) {
-
-    // 一度だけ判定する
-    sessionStorage.removeItem(
-        'pokemonBattleInProgress'
-    );
-
-    // 「対戦中にリロードした」として敗北
-    endGame(false);
-
-} else {
-
-    // 通常起動
-    // ポケモン選出画面から開始
-const battleWasInProgress =
     sessionStorage.getItem('pokemonBattleInProgress') === 'true';
 
 if (battleWasInProgress) {
+
+    // 更新による敗北を1回だけ記録
     handleRefreshLoss();
+
 }
 
+// 更新後も必ずポケモン選出画面から開始
 showPlayerSelection();
-
-}
 });
 
 </script>

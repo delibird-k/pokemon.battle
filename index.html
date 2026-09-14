@@ -125,7 +125,15 @@
         <div id="selection-screen" class="p-4">
             <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline ">せんとうに だす ポケモンを えらんでくれ！</h2>
             <div id="pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            </div>
+</div>
+
+<div class="text-center mt-4">
+    <button
+        id="random-player-button"
+        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
+        ランダムにえらぶ
+    </button>
+</div>
         </div>
         
        <div id="item-selection-screen" class="hidden p-4">
@@ -303,7 +311,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const selectionScreen = document.getElementById('selection-screen');
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
+    const randomPlayerButton = document.getElementById('random-player-button');
     const itemSelectionScreen = document.getElementById('item-selection-screen');
+    randomPlayerButton.onclick = () => {
+    selectRandomPlayerPokemon();
+};
     const itemSelectionGrid = document.getElementById('item-selection-grid');
     const itemSelectionTitle = document.getElementById('item-selection-title');
     const opponentSelectionScreen = document.getElementById('opponent-selection-screen');
@@ -1286,6 +1298,34 @@ function handlePlayerPokemonSelect(key) {
     }
 
     // 3体選び終わった
+    showItemSelection();
+}
+
+function selectRandomPlayerPokemon() {
+
+    const playerKeys = Object.keys(pokemonBaseData);
+
+    selectedPlayerKeys = [];
+
+    // 3匹を重複なしでランダム選出
+    while (selectedPlayerKeys.length < 3) {
+
+        const key =
+            playerKeys[
+                Math.floor(
+                    Math.random() * playerKeys.length
+                )
+            ];
+
+        if (!selectedPlayerKeys.includes(key)) {
+            selectedPlayerKeys.push(key);
+        }
+    }
+
+    // 持ち物選択を最初から開始
+    currentPlayerItemIndex = 0;
+    selectedPlayerItemNames = [];
+
     showItemSelection();
 }
     

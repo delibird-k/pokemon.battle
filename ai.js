@@ -24857,7 +24857,36 @@ function getDifficulty() {
         /* -----------------------------------------------------
            V11
            ----------------------------------------------------- */
+        /*
+         * ========================================================
+         * げきりん中は絶対に技を再選択しない
+         * ========================================================
+         */
+        if (
+            opponentPokemon &&
+            opponentPokemon.isRampaging
+        ) {
 
+            const rampageMove =
+                opponentPokemon.moves.find(
+                    move =>
+                        move.name === "げきりん"
+                );
+
+            if (rampageMove) {
+
+                opponentPokemon.rampageTurns--;
+
+                console.log(
+                    "[AI V11] げきりん継続:",
+                    opponentPokemon.rampageTurns
+                );
+
+                return rampageMove;
+            }
+        }
+
+        
         try {
 
             const selected =

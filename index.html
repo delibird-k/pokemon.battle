@@ -2843,24 +2843,71 @@ const effectiveness =
         }
     }
     
-    function setupTooltips() {
+function setupTooltips() {
 
-    const bind = (spriteObj, pokemonGetter) => {
-        const container = spriteObj.sprite.parentElement;
+    // ========================================
+    // プレイヤー側
+    // もちもの・技まで表示
+    // ========================================
+    const playerContainer = player.sprite.parentElement;
 
-        container.onmouseover = () => {
-            spriteObj.tooltip.innerHTML =
-                getTooltipContent(pokemonGetter());
-            spriteObj.tooltip.classList.remove("hidden");
-        };
+    playerContainer.onmouseover = () => {
 
-        container.onmouseout = () => {
-            spriteObj.tooltip.classList.add("hidden");
-        };
+        player.tooltip.innerHTML =
+            getTooltipContent(playerPokemon);
+
+        player.tooltip.classList.remove("hidden");
     };
 
-    bind(player, () => playerPokemon);
-    bind(opponent, () => opponentPokemon);
+    playerContainer.onmouseout = () => {
+        player.tooltip.classList.add("hidden");
+    };
+
+
+    // ========================================
+    // 相手側
+    // もちもの・技は表示しない
+    // ========================================
+    const opponentContainer = opponent.sprite.parentElement;
+
+    opponentContainer.onmouseover = () => {
+
+        const pokemon = opponentPokemon;
+        const shownPokemon =
+            pokemon.disguiseData || pokemon;
+
+        opponent.tooltip.innerHTML = `
+            <p class="font-bold text-xs">
+                ${shownPokemon.name}
+            </p>
+
+            <p class="text-xs">
+                タイプ: ${shownPokemon.types.join(' / ')}
+            </p>
+
+            <p class="text-xs">
+                とくせい: ${shownPokemon.ability}
+            </p>
+
+            <p class="mt-1 text-xs">
+                H:${shownPokemon.baseHp}
+                A:${shownPokemon.baseAttack}
+                B:${shownPokemon.baseDefense}
+            </p>
+
+            <p class="text-xs">
+                C:${shownPokemon.baseSpAttack}
+                D:${shownPokemon.baseSpDefense}
+                S:${shownPokemon.baseSpeed}
+            </p>
+        `;
+
+        opponent.tooltip.classList.remove("hidden");
+    };
+
+    opponentContainer.onmouseout = () => {
+        opponent.tooltip.classList.add("hidden");
+    };
 }
 
 function getTooltipContent(pokemon) {
@@ -2888,6 +2935,7 @@ function getTooltipContent(pokemon) {
         <p class="text-xs">タイプ: ${shownPokemon.types.join(' / ')}</p>
         <p class="text-xs">とくせい: ${shownPokemon.ability}</p>
         <p class="text-xs">せいかく: ${shownPokemon.nature}</p>
+        <p class="text-xs">もちもの: ${shownPokemon.item?.name || 'なし'}</p>
 
         <p class="mt-1 text-xs">
             H:${shownPokemon.baseHp}

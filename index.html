@@ -1606,6 +1606,14 @@ function startGame(difficultyLevel) {
     difficultySelectionScreen.style.display = 'none';
     battleScreen.style.display = 'block';
 
+    // ============================================================
+// リロード対策：バトル開始済みとして記録
+// ============================================================
+sessionStorage.setItem(
+    'pokemonBattleInProgress',
+    'true'
+);
+
     const bg =
         backgroundImages[
             Math.floor(
@@ -1671,7 +1679,7 @@ function startGame(difficultyLevel) {
 function determineOpponentItem(pokemon) {
 
     // ===== ポケモンごとの固定・候補 =====
-        const pokemonItems = {
+    const pokemonItems = {
         "カビゴン": [
             "オボンの実",
             "たべのこし",
@@ -10487,6 +10495,14 @@ document.getElementById("opponent-max-hp").textContent = "";
     }
 }
 function endGame(playerWon) {
+
+    // ============================================================
+    // 対戦終了：リロードしても「途中離脱」扱いにしない
+    // ============================================================
+    sessionStorage.removeItem(
+        'pokemonBattleInProgress'
+    );
+
     disableMoves();
 
     menu.style.display = "none";
@@ -10785,9 +10801,35 @@ function updateFieldIndicator() {
 }
 
     restartButton.onclick = resetGame;
-    winRestartButton.onclick = resetGame;
+winRestartButton.onclick = resetGame;
 
+
+// ============================================================
+// リロードによる途中離脱判定
+// ============================================================
+
+const battleWasInProgress =
+    sessionStorage.getItem(
+        'pokemonBattleInProgress'
+    ) === 'true';
+
+if (battleWasInProgress) {
+
+    // 一度だけ判定する
+    sessionStorage.removeItem(
+        'pokemonBattleInProgress'
+    );
+
+    // 「対戦中にリロードした」として敗北
+    endGame(false);
+
+} else {
+
+    // 通常起動
+    // ポケモン選出画面から開始
     showPlayerSelection();
+
+}
 });
 
 </script>

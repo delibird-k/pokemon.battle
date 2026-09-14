@@ -25192,4 +25192,226 @@ function getDifficulty() {
         "=========================================="
     );
 
+    /* ============================================================
+   AI Z技対応
+   V11で選んだ通常技とZ技を比較して決定
+   ============================================================ */
+
+function aiChooseZMoveV11(normalMove) {
+
+    // 必要なポケモンがいなければ通常技
+    if (
+        !opponentPokemon ||
+        !playerPokemon ||
+        !normalMove
+    ) {
+        return normalMove;
+    }
+
+    // Z技を使えないなら通常技
+    if (
+        typeof canUseZMove !== "function" ||
+        !canUseZMove(opponentPokemon)
+    ) {
+        return normalMove;
+    }
+
+    // Z技生成機能がない場合
+    if (
+        typeof createZMove !== "function"
+    ) {
+        return normalMove;
+    }
+
+    // AIのZ技候補
+    const zCandidates = [];
+
+    if (
+        Array.isArray(opponentPokemon.moves)
+    ) {
+
+        for (
+            const baseMove
+            of opponentPokemon.moves
+        ) {
+
+            if (!baseMove) {
+                continue;
+            }
+
+            // PP切れ
+            if (
+                baseMove.currentPp !== undefined &&
+                Number(baseMove.currentPp) <= 0
+            ) {
+                continue;
+            }
+
+            // 威力のある技だけZ技候補にする
+            // ※現在のゲームのZ技の状態技は
+            //   AIが効果を数値評価できないため、
+            //   いったん候補から除外
+            if (
+                baseMove.category !== "physical" &&
+                baseMove.category !== "special"
+            ) {
+                continue;
+            }
+
+            const zMove =
+                createZMove(baseMove);
+
+            if (!zMove) {
+                continue;
+            }
+
+            let damage = 0;
+
+            try {
+
+                if (
+                    typeof getAIDamage ===
+                    "function"
+                ) {
+                    damage =
+                        Number(
+                            getAIDamage(
+                                zMove,
+                                opponentPokemon,
+                                playerPokemon
+                            )
+                        ) || 0;
+                }
+
+            } catch (e) {
+                damage = 0;
+            }
+
+            zCandidates.push({
+                baseMove: baseMove,
+                zMove: zMove,
+                damage: damage
+            });
+        }
+    }
+
+    if (
+        zCandidates.length === 0
+    ) {
+        return normalMove;
+    }
+
+    // 最もダメージの高いZ技
+    zCandidates.sort(
+        (a, b) =>
+            b.damage - a.damage
+    );
+
+    const bestZ =
+        zCandidates[0];
+
+    let normalDamage = 0;
+
+    try {
+
+        if (
+            typeof getAIDamage ===
+            "function"
+        ) {
+            normalDamage =
+                Number(
+                    getAIDamage(
+                        normalMove,
+                        opponentPokemon,
+                        playerPokemon
+                    )
+                ) || 0;
+        }
+
+    } catch (e) {
+        normalDamage = 0;
+    }
+
+    const enemyHp =
+        Number(
+            playerPokemon.currentHp
+        ) || 0;
+
+    const normalKO =
+        normalDamage >= enemyHp;
+
+    const zKO =
+        bestZ.damage >= enemyHp;
+
+    /* ========================================================
+       Z技を使う判断
+       ======================================================== */
+
+    // ① 通常技では倒せないがZ技なら確定KO
+    if (
+        zKO &&
+        !normalKO
+    ) {
+
+        opponentPokemon.selectedZMove =
+            bestZ.baseMove;
+
+        opponentPokemon.usedZMove =
+            true;
+
+        console.log(
+            "[AI Z] 確定KO Z技:",
+            bestZ.zMove.name
+        );
+
+        return bestZ.zMove;
+    }
+
+    // ② 通常技では半分程度しか削れず、
+    //    Z技なら大幅にダメージを伸ばせる
+    if (
+        !normalKO &&
+        bestZ.damage >= enemyHp * 0.55 &&
+        bestZ.damage >= normalDamage * 1.45
+    ) {
+
+        opponentPokemon.selectedZMove =
+            bestZ.baseMove;
+
+        opponentPokemon.usedZMove =
+            true;
+
+        console.log(
+            "[AI Z] 大ダメージ Z技:",
+            bestZ.zMove.name
+        );
+
+        return bestZ.zMove;
+    }
+
+    // ③ 通常技のダメージがほぼ通らず、
+    //    Z技なら大きく削れる
+    if (
+        normalDamage <= 0 &&
+        bestZ.damage >= enemyHp * 0.50
+    ) {
+
+        opponentPokemon.selectedZMove =
+            bestZ.baseMove;
+
+        opponentPokemon.usedZMove =
+            true;
+
+        console.log(
+            "[AI Z] 通常技が通らないためZ技:",
+            bestZ.zMove.name
+        );
+
+        return bestZ.zMove;
+    }
+
+    // ④ それ以外はZ技を温存
+    return normalMove;
+}
+
 })();

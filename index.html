@@ -1066,6 +1066,31 @@ function useZMove(pokemon){
     return "⚪ ビギナー4";
 }
 
+function handleRefreshLoss() {
+
+    // 連敗管理
+    loseStreak++;
+    winStreak = 0;
+
+    // 通常の敗北と同じレート計算
+    const loss = Math.floor(Math.random() * 11) + 10;
+    const streakPenalty = loseStreak * 2;
+
+    rating = Math.max(
+        1,
+        rating - loss - streakPenalty
+    );
+
+    // 敗北数を増やす
+    loseCount++;
+
+    // 対戦中フラグを消す
+    sessionStorage.removeItem('pokemonBattleInProgress');
+
+    // レート・勝敗数を保存
+    updateRating();
+}
+
 function updateRating() {
 
     ratingDisplay.innerHTML = `
@@ -10827,7 +10852,14 @@ if (battleWasInProgress) {
 
     // 通常起動
     // ポケモン選出画面から開始
-    showPlayerSelection();
+const battleWasInProgress =
+    sessionStorage.getItem('pokemonBattleInProgress') === 'true';
+
+if (battleWasInProgress) {
+    handleRefreshLoss();
+}
+
+showPlayerSelection();
 
 }
 });

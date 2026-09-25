@@ -7085,16 +7085,40 @@ if (defender.currentHp <= 0) {
     return false;
 }
 
-if (attacker.status === 'sleep') {
-    attacker.statusTurns--;
+if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
 
-    if (attacker.statusTurns <= 0) {
-        attacker.status = null;
-        await showMessage(`${attacker.name} は めをさました！`);
-        updateStatusMarkers();
+    // まだ眠っているターン
+    if (attacker.statusTurns > 1) {
+
+        attacker.statusTurns--;
+
+        // ねごとなら、このまま下の「ねごと」処理へ進む
+        if (move.name !== "ねごと") {
+            await showMessage(
+                `${attacker.name} は ぐうぐう ねむっている！`
+            );
+            return false;
+        }
+
     } else {
-        await showMessage(`${attacker.name} は ぐうぐう ねむっている！`);
-        return false;
+
+        // 起きるターン
+        attacker.statusTurns = 0;
+        attacker.status = null;
+
+        await showMessage(
+            `${attacker.name} は めをさました！`
+        );
+
+        updateStatusMarkers();
+
+        // 起きたターンにねごとは使えない
+        if (move.name === "ねごと") {
+            await showMessage(
+                "しかし うまくきまらなかった！"
+            );
+            return false;
+        }
     }
 }
         if (attacker.status === 'freeze') {
@@ -7160,6 +7184,16 @@ if (move.name === "ねごと") {
 }
 // ねむる
 if (move.name === "ねむる") {
+
+    // ねごとで「ねむる」が選ばれた場合は、
+    // ねむるの効果を発動させない
+    if (attacker.isUsingSleepTalk) {
+        await showMessage(
+            "しかし うまくきまらなかった！"
+        );
+        return false;
+    }
+
     attacker.currentHp = attacker.maxHp;
     attacker.status = "sleep";
     attacker.statusTurns = 3;
@@ -7173,7 +7207,6 @@ if (move.name === "ねむる") {
 
     return false;
 }
-
 if (move.name === "メタルバースト") {
 
     /*

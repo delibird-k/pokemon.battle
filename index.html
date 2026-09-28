@@ -647,7 +647,7 @@ document.getElementById("reset-no-button");
 
             return `
                 <div class="history-row ${isWin ? 'history-win' : 'history-lose'}">
-                    <div class="history-number">${matchHistory.length - index}戦</div>
+                    <div class="history-number">${matchHistory.length - index}戦前</div>
                     <div class="history-result">
                         <strong>${isWin ? '勝利' : '敗北'}</strong>
                         <div class="history-teams">
@@ -720,7 +720,7 @@ document.getElementById("reset-no-button");
     }
 
     function resetAllRecords() {
-        rating = 1;
+        rating = 1000;
         winCount = 0;
         loseCount = 0;
         winStreak = 0;
@@ -918,6 +918,7 @@ function onlineApplyState(data) {
 
     const phase = data.phase || 'event';
     const isInputPhase = phase === 'input';
+    const isSwitchPhase = phase === 'switch';
 
     onlineShowOnly('battle');
 
@@ -1353,7 +1354,7 @@ let selectedPlayerItemName;
 let selectedOpponentKey;
 let selectedOpponentItemName;
     let difficulty;
-    let rating = Number(localStorage.getItem("rating")) || 1;
+    let rating = Number(localStorage.getItem("rating")) || 1000;
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
@@ -10482,8 +10483,12 @@ if (
 
         opponentActiveIndex = nextIndex;
         opponentPokemon = opponentTeam[opponentActiveIndex];
+
         // ゲスト側にも「選んだポケモンが場に出た」状態を即時反映。
-        onlineSendState('event', `あいて は ${getShownName(opponentPokemon)} を くりだした！`);
+        // ここではメッセージだけでなく、交代後の activeIndex / HP / 状態も
+        // state として送る。これを先に送らないと、ゲスト側が
+        // 「○○をくりだした！」の表示だけで古い状態のまま止まることがある。
+        onlineSendState('switch', `あいて は ${getShownName(opponentPokemon)} を くりだした！`);
     } else {
         let nextIndex = chooseBestOpponentSwitch();
         if (nextIndex === -1) nextIndex = remainingOpponentIndexes[0].index;
@@ -10544,6 +10549,13 @@ updateStatDisplay(
     updateHpBars();
     updateStatusMarkers();
     updateSubstituteMarkers();
+
+    // オンライン対戦では、交代後の完全な状態をもう一度送る。
+    // 特にゲストが先に倒されて交代した場合、この同期を入れることで
+    // 「○○をくりだした！」のところで両端の処理がずれるのを防ぐ。
+    if (difficulty === 'online' && onlineRole === 'host') {
+        onlineSendState('switch', `あいて は ${getShownName(opponentPokemon)} を くりだした！`);
+    }
 
     return false;
 }

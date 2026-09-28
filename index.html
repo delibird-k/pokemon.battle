@@ -114,15 +114,174 @@
         background-size: cover;
         background-position: center;
     }
+
+        /* ============================================================
+           オープニング・対戦履歴
+           ============================================================ */
+        #opening-screen,
+        #history-screen {
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .opening-panel {
+            background: rgba(255,255,255,0.94);
+            border: 4px solid #000;
+            border-radius: 10px;
+            box-shadow: 0 8px 0 #000;
+            padding: 28px 20px;
+        }
+
+        .opening-title {
+            font-size: clamp(1.1rem, 4vw, 1.8rem);
+            line-height: 1.8;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .opening-subtitle {
+            text-align: center;
+            font-size: 0.65rem;
+            line-height: 2;
+            margin-bottom: 24px;
+        }
+
+        .opening-stats {
+            border: 3px solid #111;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 18px;
+            background: rgba(245,245,245,0.95);
+            line-height: 2;
+            font-size: 0.72rem;
+            text-align: center;
+        }
+
+        .opening-button {
+            width: 100%;
+            border: 3px solid #111;
+            border-radius: 8px;
+            padding: 13px 10px;
+            margin-top: 10px;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #111;
+            transition: transform .1s, box-shadow .1s;
+        }
+
+        .opening-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #111;
+        }
+
+        .opening-battle-button { background: #fbbf24; }
+        .opening-history-button { background: #93c5fd; }
+        .opening-reset-button { background: #fca5a5; }
+        .opening-back-button { background: #d1d5db; }
+
+        .history-list {
+            max-height: 55vh;
+            overflow-y: auto;
+            border: 3px solid #111;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.96);
+        }
+
+        .history-row {
+            display: grid;
+            grid-template-columns: 52px minmax(0, 1fr) 105px;
+            gap: 8px;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #aaa;
+            font-size: 0.65rem;
+        }
+
+        .history-result > strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .history-teams {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            line-height: 1.6;
+        }
+
+        .history-team-label {
+            display: inline-block;
+            margin-bottom: 2px;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .history-row:last-child { border-bottom: none; }
+        .history-win { background: rgba(134,239,172,0.35); }
+        .history-lose { background: rgba(252,165,165,0.35); }
+
+        @media (max-width: 480px) {
+            .opening-panel { padding: 22px 14px; }
+            .opening-button { font-size: 0.72rem; }
+            .history-row {
+                grid-template-columns: 42px minmax(0, 1fr) 88px;
+                font-size: 0.58rem;
+            }
+            .history-teams { gap: 5px; }
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 <div id="selection-tooltip" class="fixed hidden nes-container bg-white/95 p-2 text-xs z-[100] w-auto pointer-events-none"></div>
     <div id="move-tooltip" class="absolute hidden nes-container bg-white/95 p-2 text-xs z-50 w-auto pointer-events-none"></div>
 
-    <div id="game-container" class="w-full max-w-4xl p-4">
+
+    <!-- ==================== オープニング画面 ==================== -->
+    <div id="opening-screen" style="display:block;">
+        <div class="opening-panel">
+            <h1 class="opening-title text-outline" style="color:#111;text-shadow:none;">
+                ポケモンバトル 3v3
+            </h1>
+            <p class="opening-subtitle">
+                どうする？
+            </p>
+
+            <div id="opening-stats" class="opening-stats"></div>
+
+            <button id="start-battle-button"
+                    class="opening-button opening-battle-button">
+                ⚔ バトルをする
+            </button>
+
+            <button id="history-button"
+                    class="opening-button opening-history-button">
+                📜 履歴を見る
+            </button>
+
+            <button id="opening-reset-button"
+                    class="opening-button opening-reset-button">
+                戦績とレートをリセット
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 履歴画面 ==================== -->
+    <div id="history-screen" class="hidden" style="display:none;">
+        <div class="opening-panel">
+            <h2 class="opening-title" style="color:#111;">対戦履歴</h2>
+            <div id="history-summary" class="opening-stats"></div>
+            <div id="history-list" class="history-list"></div>
+
+            <button id="history-back-button"
+                    class="opening-button opening-back-button">
+                ← オープニングへ戻る
+            </button>
+        </div>
+    </div>
+
+    <div id="game-container" class="w-full max-w-4xl p-4" style="display:none;">
         
-        <div id="selection-screen" class="p-4">
+        <div id="selection-screen" class="hidden p-4">
             <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline ">せんとうに だす ポケモンを えらんでくれ！</h2>
             <div id="pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
 </div>
@@ -309,6 +468,17 @@ class="border-2 border-gray-800 rounded p-1 bg-gray-300 hover:bg-gray-400">
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
+    const gameContainer = document.getElementById('game-container');
+    const openingScreen = document.getElementById('opening-screen');
+    const historyScreen = document.getElementById('history-screen');
+    const openingStats = document.getElementById('opening-stats');
+    const historySummary = document.getElementById('history-summary');
+    const historyList = document.getElementById('history-list');
+    const startBattleButton = document.getElementById('start-battle-button');
+    const historyButton = document.getElementById('history-button');
+    const openingResetButton = document.getElementById('opening-reset-button');
+    const historyBackButton = document.getElementById('history-back-button');
+
     const selectionScreen = document.getElementById('selection-screen');
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
     const randomPlayerButton = document.getElementById('random-player-button');
@@ -349,6 +519,169 @@ document.getElementById("reset-yes-button");
 const resetNoButton =
 document.getElementById("reset-no-button");
 
+
+    function hideGameScreens() {
+        selectionScreen.style.display = 'none';
+        itemSelectionScreen.style.display = 'none';
+        opponentSelectionScreen.style.display = 'none';
+        opponentItemSelectionScreen.style.display = 'none';
+        difficultySelectionScreen.style.display = 'none';
+        battleScreen.style.display = 'none';
+        if (typeof screenOverlay !== 'undefined') screenOverlay.classList.remove('active');
+        if (typeof gameOverScreen !== 'undefined') gameOverScreen.style.display = 'none';
+        if (typeof winScreen !== 'undefined') winScreen.style.display = 'none';
+    }
+
+    function updateOpeningStats() {
+        openingStats.innerHTML = `
+            <div>レート：<strong>${rating}</strong></div>
+            <div>戦績：${winCount}勝 ${loseCount}敗</div>
+            <div>連勝：${winStreak}　連敗：${loseStreak}</div>
+        `;
+    }
+
+    function saveMatchHistory(result, playerTeamForHistory = playerTeam, opponentTeamForHistory = opponentTeam) {
+        const playerPokemonNames = Array.isArray(playerTeamForHistory)
+            ? playerTeamForHistory.map(p => getShownName(p))
+            : [];
+        const opponentPokemonNames = Array.isArray(opponentTeamForHistory)
+            ? opponentTeamForHistory.map(p => getShownName(p))
+            : [];
+
+        matchHistory.push({
+            result,
+            rating,
+            playerPokemonNames,
+            opponentPokemonNames,
+            date: new Date().toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+        });
+
+        // 常に直近30戦だけ保存
+        matchHistory = matchHistory.slice(-30);
+        localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
+    }
+
+    function renderHistory() {
+        historySummary.innerHTML = `
+            <div>現在のレート：<strong>${rating}</strong></div>
+            <div>通算戦績：${winCount}勝 ${loseCount}敗</div>
+            <div>表示：直近${matchHistory.length}戦</div>
+        `;
+
+        if (matchHistory.length === 0) {
+            historyList.innerHTML = `
+                <div class="p-6 text-center text-sm">
+                    まだ対戦履歴がありません。
+                </div>
+            `;
+            return;
+        }
+
+        const rows = [...matchHistory].reverse().map((match, index) => {
+            const isWin = match.result === 'win';
+            const playerNames = Array.isArray(match.playerPokemonNames) && match.playerPokemonNames.length
+                ? match.playerPokemonNames
+                : ['不明', '不明', '不明'];
+            const opponentNames = Array.isArray(match.opponentPokemonNames) && match.opponentPokemonNames.length
+                ? match.opponentPokemonNames
+                : ['不明', '不明', '不明'];
+
+            return `
+                <div class="history-row ${isWin ? 'history-win' : 'history-lose'}">
+                    <div class="history-number">${matchHistory.length - index}戦前</div>
+                    <div class="history-result">
+                        <strong>${isWin ? '勝利' : '敗北'}</strong>
+                        <div class="history-teams">
+                            <div><span class="history-team-label">自分</span>${playerNames.map(name => `<div>${name}</div>`).join('')}</div>
+                            <div><span class="history-team-label">相手</span>${opponentNames.map(name => `<div>${name}</div>`).join('')}</div>
+                        </div>
+                    </div>
+                    <div>レート ${match.rating}<br>${match.date}</div>
+                </div>
+            `;
+        }).join('');
+
+        historyList.innerHTML = rows;
+    }
+
+    function showOpeningScreen() {
+        hideGameScreens();
+
+        // 初回起動でも確実にオープニングを表示
+        openingScreen.classList.remove('hidden');
+        openingScreen.style.display = 'block';
+
+        historyScreen.classList.add('hidden');
+        historyScreen.style.display = 'none';
+
+        gameContainer.style.display = 'none';
+
+        updateOpeningStats();
+    }
+
+    function showHistoryScreen() {
+        hideGameScreens();
+
+        openingScreen.classList.add('hidden');
+        openingScreen.style.display = 'none';
+
+        historyScreen.classList.remove('hidden');
+        historyScreen.style.display = 'block';
+
+        gameContainer.style.display = 'none';
+
+        renderHistory();
+    }
+
+    function startBattleFromOpening() {
+        openingScreen.classList.add('hidden');
+        openingScreen.style.display = 'none';
+
+        historyScreen.classList.add('hidden');
+        historyScreen.style.display = 'none';
+
+        gameContainer.style.display = 'block';
+
+        showPlayerSelection();
+    }
+
+    function resetAllRecords() {
+        rating = 1;
+        winCount = 0;
+        loseCount = 0;
+        winStreak = 0;
+        loseStreak = 0;
+        matchHistory = [];
+
+        localStorage.setItem("rating", rating);
+        localStorage.setItem("wins", winCount);
+        localStorage.setItem("losses", loseCount);
+        localStorage.setItem("winStreak", winStreak);
+        localStorage.setItem("loseStreak", loseStreak);
+        localStorage.removeItem("matchHistory");
+
+        updateRating();
+        updateOpeningStats();
+    }
+
+    startBattleButton.onclick = startBattleFromOpening;
+    historyButton.onclick = showHistoryScreen;
+    historyBackButton.onclick = showOpeningScreen;
+
+    openingResetButton.onclick = () => {
+        if (window.confirm("戦績・レート・対戦履歴（直近30戦）をすべてリセットしますか？")) {
+            resetAllRecords();
+            renderHistory();
+            showOpeningScreen();
+        }
+    };
+
 settingButton.onclick = () => {
 
     screenOverlay.classList.add("active");
@@ -357,25 +690,12 @@ settingButton.onclick = () => {
 
 };
 resetYesButton.onclick = () => {
-
-    rating = 1;
-    winCount = 0;
-    loseCount = 0;
-    winStreak = 0;
-    loseStreak = 0;
-
-    localStorage.setItem("rating", rating);
-    localStorage.setItem("wins", winCount);
-    localStorage.setItem("losses", loseCount);
-    localStorage.setItem("winStreak", winStreak);
-    localStorage.setItem("loseStreak", loseStreak);
-
-    updateRating();
+    resetAllRecords();
 
     resetConfirmScreen.style.display = "none";
     screenOverlay.classList.remove("active");
 
-    showMessage("リセットしました！");
+    showOpeningScreen();
 };
 resetNoButton.onclick = () => {
 
@@ -440,6 +760,14 @@ let selectedOpponentItemName;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
     let loseStreak = Number(localStorage.getItem("loseStreak")) || 0;
+    let matchHistory = (() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem("matchHistory") || "[]");
+            return Array.isArray(saved) ? saved.slice(-30) : [];
+        } catch (e) {
+            return [];
+        }
+    })();
     let gameId = 0;
     let currentTurn = 1;
 let weather = { type: 'none', turns: 0 };
@@ -1120,6 +1448,9 @@ function handleRefreshLoss() {
 
     // レート・勝敗数を保存
     updateRating();
+
+    // リロードによる敗北も履歴に1戦として記録
+    saveMatchHistory('lose', playerTeam, opponentTeam);
 }
 
 function updateRating() {
@@ -1201,6 +1532,17 @@ function getShownName(pokemon){
     );
 }
     function showPlayerSelection() {
+        gameContainer.style.display = 'block';
+        openingScreen.classList.add('hidden');
+        historyScreen.classList.add('hidden');
+
+        itemSelectionScreen.style.display = 'none';
+        opponentSelectionScreen.style.display = 'none';
+        opponentItemSelectionScreen.style.display = 'none';
+        difficultySelectionScreen.style.display = 'none';
+        battleScreen.style.display = 'none';
+        screenOverlay.classList.remove('active');
+
         if(document.getElementById('mode-selection-screen')) document.getElementById('mode-selection-screen').style.display = 'none';
         selectionScreen.style.display = 'block';
 
@@ -10924,6 +11266,14 @@ function endGame(playerWon) {
     }
 
     updateRating();
+
+    // 試合結果を直近30戦の履歴へ保存
+    saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
+
+    // 結果を少し表示してから、必ずオープニング画面へ戻る
+    setTimeout(() => {
+        showOpeningScreen();
+    }, 1800);
 }
 
     function showMessage(text, duration = 1500) {
@@ -10986,8 +11336,7 @@ isBattleInProgress = false;
     weather = { type: 'none', turns: 0 };
     field = { type: 'none', turns: 0 };
 
-    showPlayerSelection();
-    showMessage('どうする？', 500);
+    showOpeningScreen();
 }
     async function handleAbilityEffectsOnEntry(side = "both") {
     // 「場に出たとき」の特性は、実際に今回出てきた側だけ発動する。
@@ -11182,8 +11531,12 @@ if (battleWasInProgress) {
 
 }
 
-// 更新後も必ずポケモン選出画面から開始
-showPlayerSelection();
+// 起動時は必ずオープニング画面から開始
+// ここでも明示的に表示状態を指定して、初回起動時の表示漏れを防ぐ
+openingScreen.style.display = 'block';
+historyScreen.style.display = 'none';
+gameContainer.style.display = 'none';
+showOpeningScreen();
 });
 
 </script>

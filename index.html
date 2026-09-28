@@ -309,7 +309,7 @@
             <button id="online-create-button" class="opening-button opening-battle-button" style="width:100%;">ルームを作る</button>
         </div>
         <div id="online-join-area" style="margin-top:12px;">
-            <input id="online-room-input" class="online-input" maxlength="24" placeholder="相手のルームコードを入力">
+            <input id="online-room-input" class="online-input" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="6桁のルームIDを入力">
             <button id="online-join-button" class="opening-button opening-history-button" style="width:100%;margin-top:10px;">ルームに参加</button>
         </div>
         <div id="online-room-code-area" style="display:none;">
@@ -1095,7 +1095,7 @@ function onlineCreateRoom() {
     onlineMode = true;
     onlineLocalReady = false;
     onlineRemoteReady = false;
-    const code = 'p3v3-' + Math.random().toString(36).slice(2, 8);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
     onlineRoomCodeValue = code;
     onlinePeer = new Peer(code);
     onlineLobbyStatus.textContent = 'ルームを作成しています…';
@@ -1122,7 +1122,10 @@ function onlineJoinRoom() {
         return;
     }
     const code = onlineRoomInput.value.trim();
-    if (!code) { onlineLobbyStatus.textContent = 'ルームコードを入力してください。'; return; }
+    if (!/^[0-9]{6}$/.test(code)) {
+        onlineLobbyStatus.textContent = 'ルームIDは6桁の数字で入力してください。';
+        return;
+    }
     onlineRole = 'guest';
     onlineMode = true;
     onlinePeer = new Peer();
@@ -1189,11 +1192,11 @@ function handleOnlineData(data) {
             selectedOpponentItemNames = [...data.team.items];
             if (onlineLocalReady) {
                 // 両者の選出が完了。ホストだけがバトルを生成し、ゲストへ開始通知を送る。
-                onlineShowWaiting('両者の選出が完了しました。対戦を開始します…');
+                onlineShowWaiting('あなたと相手の両方の選出が完了しました。対戦を開始します…');
                 onlineSend({type:'battle-start', team: onlineTeamPayload()});
                 startGame('online');
             } else {
-                onlineShowWaiting('相手の選出が完了しました。自分の3匹を選んでください。');
+                onlineShowWaiting('相手側の選出が完了しました。あなたの選出を待っています。');
             }
         }
         return;
@@ -1257,7 +1260,7 @@ function onlineSubmitLocalTeam() {
     onlineSend({type:'team', team: onlineTeamPayload()});
 
     // 選出送信後は、ロビーではなく「待機画面」だけを表示する。
-    onlineShowWaiting('自分の選出を送信しました。相手の選出を待っています…');
+    onlineShowWaiting('あなたの選出は完了しました。相手の選出を待っています…');
 }
 
 function onlineStartGuestBattle(hostTeam) {

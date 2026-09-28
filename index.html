@@ -532,6 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const onlineRoomCode = document.getElementById('online-room-code');
 
     const selectionScreen = document.getElementById('selection-screen');
+    const selectionTitle = document.getElementById('selection-title');
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
     const randomPlayerButton = document.getElementById('random-player-button');
     const itemSelectionScreen = document.getElementById('item-selection-screen');
@@ -1196,7 +1197,10 @@ function handleOnlineData(data) {
                 onlineSend({type:'battle-start', team: onlineTeamPayload()});
                 startGame('online');
             } else {
-                onlineShowWaiting('相手側の選出が完了しました。あなたの選出を待っています。');
+                // 相手だけが先に選出完了しても、オーナー側の選出画面はそのまま残す。
+                // 待機画面へ切り替えると「オーナー自身も選出完了した」ように見えてしまうため。
+                showPlayerSelection();
+                selectionTitle.textContent = '相手の選出が完了しました。あなたの3匹を選んでください。';
             }
         }
         return;

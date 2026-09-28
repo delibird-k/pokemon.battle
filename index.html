@@ -1156,7 +1156,10 @@ function setupOnlineConnection(conn, role) {
         selectedOpponentKey = undefined;
         selectedOpponentItemName = undefined;
 
-        onlineShowOnly('selection');
+        // オンラインでも1人用と同じポケモン選択画面を生成する。
+        // onlineShowOnly('selection') だけではカード一覧を生成しないため、
+        // 「ランダムにえらぶ」だけが表示される状態になっていた。
+        showPlayerSelection();
         if (role === 'guest') onlineSend({type:'hello'});
     });
     conn.on('data', data => handleOnlineData(data));

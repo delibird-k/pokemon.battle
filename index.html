@@ -948,7 +948,14 @@ function onlineApplyState(data) {
     const activeFainted = playerPokemon && playerPokemon.currentHp <= 0;
     const hasSwitch = playerTeam.some((p, i) => i !== playerActiveIndex && p.currentHp > 0);
     if (activeFainted && hasSwitch) {
-        onlineWaitingForRemote = true;
+        // 瀕死後は「相手の行動待ち」ではなく、
+        // この端末のプレイヤー自身が次のポケモンを選ぶ状態。
+        // true のままだと onlineGuestSendSwitch() が弾かれてしまい、
+        // ホスト側が永遠に交代を待つ状態になる。
+        onlineWaitingForRemote = false;
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+        disableMoves();
         showForcedSwitchSelection();
         return;
     }
@@ -976,10 +983,18 @@ function onlineGuestSendMove(moveIndex) {
 }
 
 function onlineGuestSendSwitch(index) {
-    if (onlineRole !== 'guest' || onlineWaitingForRemote) return;
+    if (onlineRole !== 'guest') return;
+    if (!playerTeam[index] || index === playerActiveIndex || playerTeam[index].currentHp <= 0) return;
+    // 通常ターン中は相手の行動待ちなら送信不可。
+    // ただし瀕死後の強制交代では、この端末が選択権を持つので送信可能。
+    const forcedSwitch = !!document.getElementById('switch-selection-container');
+    if (onlineWaitingForRemote && !forcedSwitch) return;
+
     onlineWaitingForRemote = true;
     disableMoves();
     onlineSend({type:'action', actionType:'switch', index});
+    const container = document.getElementById('switch-selection-container');
+    if (container) container.remove();
     messageText.textContent = 'あいての こうどうを まっています…';
 }
 
@@ -10320,7 +10335,9 @@ if (
 
     // 相手が人間の場合は、相手自身に交代先を選ばせる
     if (difficulty === "online" && onlineRole === "host") {
-        onlineSendState('event', `${getShownName(playerPokemon)} は どうする？`);
+        // 相手側（ゲスト）が次のポケモンを選ぶ時間。
+        // 「○○はどうする？」ではなく、交代待ちであることを明示する。
+        onlineSendState('switch', 'あいてが 次のポケモンを えらんでいます…');
         const remoteAction = await onlineWaitForAction();
         let nextIndex = remoteAction.actionType === 'switch' ? remoteAction.index : -1;
         if (!remainingOpponentIndexes.some(x => x.index === nextIndex)) {
@@ -10329,6 +10346,8 @@ if (
 
         opponentActiveIndex = nextIndex;
         opponentPokemon = opponentTeam[opponentActiveIndex];
+        // ゲスト側にも「選んだポケモンが場に出た」状態を即時反映。
+        onlineSendState('event', `あいて は ${getShownName(opponentPokemon)} を くりだした！`);
     } else {
         let nextIndex = chooseBestOpponentSwitch();
         if (nextIndex === -1) nextIndex = remainingOpponentIndexes[0].index;
@@ -10437,6 +10456,8 @@ async function showForcedSwitchSelection() {
         'grid grid-cols-1 sm:grid-cols-3 gap-4';
 
     if (onlineMode && onlineRole === 'guest') {
+        // 強制交代中は選択権がこの端末にある。
+        onlineWaitingForRemote = false;
         playerTeam.forEach((pokemon, index) => {
             if (index === playerActiveIndex || pokemon.currentHp <= 0) return;
             const button = document.createElement('button');

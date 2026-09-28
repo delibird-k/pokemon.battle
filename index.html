@@ -366,7 +366,7 @@
 <div id="battle-screen"
      class="hidden nes-container relative aspect-[4/3] w-full p-2">
     <div id="turn-counter" class="absolute top-4 left-4 text-sm bg-black/50 text-white p-1 rounded">ターン: 1</div>
-    <div id="rating-display" class="absolute top-12 left-4 text-sm bg-black/50 text-white p-1 rounded">レート:1000</div>
+    <div id="rating-display" class="absolute top-12 left-4 text-sm bg-black/50 text-white p-1 rounded"></div>
             <div id="weather-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
             <div id="field-indicator" class="absolute top-12 left-1/2 -translate-x-1/2 text-sm bg-black/50 text-white p-1 rounded hidden"></div>
             <div id="screen-overlay">
@@ -720,7 +720,7 @@ document.getElementById("reset-no-button");
     }
 
     function resetAllRecords() {
-        rating = 1;
+        rating = 1000;
         winCount = 0;
         loseCount = 0;
         winStreak = 0;
@@ -1306,6 +1306,9 @@ function onlineStartGuestBattle(hostTeam) {
     playerPokemon=playerTeam[0]; opponentPokemon=opponentTeam[0];
     difficulty='online';
 
+    // 参加側も対戦開始時点の自分のレート情報を最新表示にする。
+    updateRating();
+
     // ゲスト側もオープニング・選出・待機画面を完全に隠してバトルだけ表示。
     onlineShowOnly('battle');
     sessionStorage.setItem('pokemonBattleInProgress','true');
@@ -1350,7 +1353,7 @@ let selectedPlayerItemName;
 let selectedOpponentKey;
 let selectedOpponentItemName;
     let difficulty;
-    let rating = Number(localStorage.getItem("rating")) || 1;
+    let rating = Number(localStorage.getItem("rating")) || 1000;
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
@@ -2063,6 +2066,11 @@ function updateRating() {
     localStorage.setItem("winStreak", winStreak);
     localStorage.setItem("loseStreak", loseStreak);
 }
+
+// 起動時にも保存されているレート情報を表示する。
+// 固定の「レート:1000」を表示したままにせず、ランク・勝敗・連勝/連敗まで反映する。
+updateRating();
+
     function calculateStats(basePokemon) {
         const level = 50;
         const pokemon = { ...basePokemon };

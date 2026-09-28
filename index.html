@@ -876,10 +876,11 @@ function onlineReceiveAction(action) {
     }
 }
 
-function onlineSendState() {
+function onlineSendState(phase = 'event', messageOverride = null) {
     if (onlineRole !== 'host' || !onlineConn || !playerTeam.length) return;
     onlineSend({
         type: 'state',
+        phase,
         playerTeam: playerTeam.map(onlineSanitizePokemon),
         opponentTeam: opponentTeam.map(onlineSanitizePokemon),
         playerActiveIndex,
@@ -887,7 +888,7 @@ function onlineSendState() {
         currentTurn,
         weather,
         field,
-        message: messageText.textContent || ''
+        message: messageOverride !== null ? messageOverride : (messageText.textContent || '')
     });
 }
 
@@ -903,13 +904,14 @@ function onlineApplyState(data) {
     weather = data.weather || {type:'none', turns:0};
     field = data.field || {type:'none', turns:0};
 
+    const phase = data.phase || 'event';
+    const isInputPhase = phase === 'input';
+
     onlineShowOnly('battle');
 
-    initBattleUI();
+    // 毎回 initBattleUI() を呼ぶと、ネット対戦中の演出や入力状態まで
+    // リセットされるため、オンラインの状態受信では直接表示だけ更新する。
     turnCounter.textContent = `ターン: ${currentTurn}`;
-    updateHpBars();
-    updateStatusMarkers();
-    updateSubstituteMarkers();
 
     if (playerPokemon) {
         const ps = playerPokemon.disguiseData || playerPokemon;
@@ -928,19 +930,41 @@ function onlineApplyState(data) {
         updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
     }
 
-    if (data.message) messageText.textContent = data.message;
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+
+    if (data.message) {
+        // ホスト側の「〇〇は どうする？」をそのまま送ると、
+        // ゲスト画面に「相手のポケモン名は どうする？」と表示される。
+        // ゲストでは必ず自分のポケモン名に置き換える。
+        if (/は どうする[？?]?$/.test(data.message.trim()) && playerPokemon) {
+            messageText.textContent = `${getShownName(playerPokemon)} は どうする？`;
+        } else {
+            messageText.textContent = data.message;
+        }
+    }
 
     const activeFainted = playerPokemon && playerPokemon.currentHp <= 0;
     const hasSwitch = playerTeam.some((p, i) => i !== playerActiveIndex && p.currentHp > 0);
     if (activeFainted && hasSwitch) {
+        onlineWaitingForRemote = true;
         showForcedSwitchSelection();
         return;
     }
 
-    battleMenu.style.display = 'grid';
-    movesContainer.style.display = 'none';
-    updateMoves();
-    enableMoves();
+    if (isInputPhase) {
+        onlineWaitingForRemote = false;
+        battleMenu.style.display = 'grid';
+        movesContainer.style.display = 'none';
+        updateMoves();
+        enableMoves();
+    } else {
+        onlineWaitingForRemote = true;
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+        disableMoves();
+    }
 }
 
 function onlineGuestSendMove(moveIndex) {
@@ -1120,15 +1144,24 @@ function handleOnlineData(data) {
         return;
     }
     if (data.type === 'battle-ready' && onlineRole === 'host') {
-        onlineSendState();
+        // startGame() の開始処理完了後に、ホスト側から input 状態を送る。
         return;
     }
     if (data.type === 'action' && onlineRole === 'host') {
         onlineReceiveAction(data);
         return;
     }
+    if (data.type === 'animation' && onlineRole === 'guest') {
+        const target = data.side === 'player' ? opponent.sprite : player.sprite;
+        if (target) {
+            target.classList.remove('sprite-shake');
+            void target.offsetWidth;
+            target.classList.add('sprite-shake');
+            setTimeout(() => target.classList.remove('sprite-shake'), 500);
+        }
+        return;
+    }
     if (data.type === 'state' && onlineRole === 'guest') {
-        onlineWaitingForRemote = false;
         onlineApplyState(data);
         return;
     }
@@ -2541,7 +2574,14 @@ sessionStorage.setItem(
 
     updateSubstituteMarkers();
 
-    startBattleSequence();
+    const startupSequence = startBattleSequence();
+    if (difficulty === 'online' && onlineRole === 'host') {
+        startupSequence.then(() => {
+            if (onlineMode && onlineConn && onlineConn.open) {
+                onlineSendState('input');
+            }
+        });
+    }
 
     updateRating();
 
@@ -2549,7 +2589,6 @@ sessionStorage.setItem(
 
     if (difficulty === "online" && onlineRole === "host") {
         onlineLobby.style.display = 'none';
-        onlineSendState();
     }
 }
 
@@ -4949,7 +4988,7 @@ turnCounter.textContent = `ターン: ${currentTurn}`;
     500
 );
             isBattleInProgress = false;
-            if (difficulty === "online" && onlineRole === "host") onlineSendState();
+            if (difficulty === "online" && onlineRole === "host") onlineSendState('input');
             enableMoves();
             updateMoves();
         }
@@ -7218,6 +7257,16 @@ function getOpponentMove() {
     async function handleAttack(attacker, defender, move, isFirstAttacker) {
         const isPlayerAttacking = attacker === playerPokemon;
         const defenderUI = isPlayerAttacking ? opponent : player;
+
+        // ネット対戦では攻撃側の演出開始を相手にも通知する。
+        if (onlineMode && onlineRole === 'host' && onlineConn && onlineConn.open) {
+            onlineSend({
+                type: 'animation',
+                side: isPlayerAttacking ? 'player' : 'opponent',
+                moveName: move?.name || ''
+            });
+        }
+
         const hpBeforeDamage = defender.currentHp;
 if (move.isDynamicType) {
 
@@ -10271,7 +10320,7 @@ if (
 
     // 相手が人間の場合は、相手自身に交代先を選ばせる
     if (difficulty === "online" && onlineRole === "host") {
-        onlineSendState();
+        onlineSendState('event', `${getShownName(playerPokemon)} は どうする？`);
         const remoteAction = await onlineWaitForAction();
         let nextIndex = remoteAction.actionType === 'switch' ? remoteAction.index : -1;
         if (!remainingOpponentIndexes.some(x => x.index === nextIndex)) {
@@ -11839,6 +11888,13 @@ function endGame(playerWon) {
     return new Promise(resolve => {
         messageText.style.display = '';
         messageText.textContent = text;
+
+        // ホストは演出途中のメッセージとHP状態を逐次ゲストへ送る。
+        // これによりゲスト側が「試合が終わるまで何も起きない」状態になるのを防ぐ。
+        if (onlineMode && onlineRole === 'host' && onlineConn && onlineConn.open && playerTeam.length) {
+            onlineSendState('event', text);
+        }
+
         setTimeout(resolve, duration);
     });
 }

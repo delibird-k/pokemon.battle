@@ -1022,6 +1022,22 @@ function setupOnlineConnection(conn, role) {
     onlineRole = role;
     conn.on('open', () => {
         onlineLobbyStatus.textContent = role === 'host' ? '相手が接続しました。自分の3匹を選んでください。' : '接続しました。自分の3匹を選んでください。';
+
+        // 接続成功後は、ルーム画面に留まらずポケモン選択へ進む
+        selectedPlayerKeys = [];
+        selectedPlayerItemNames = [];
+        selectedOpponentKeys = [];
+        selectedOpponentItemNames = [];
+        currentPlayerItemIndex = 0;
+        currentOpponentItemIndex = 0;
+        selectedPlayerKey = undefined;
+        selectedPlayerItemName = undefined;
+        selectedOpponentKey = undefined;
+        selectedOpponentItemName = undefined;
+
+        onlineLobby.style.display = 'none';
+        showPlayerSelection();
+
         if (role === 'guest') onlineSend({type:'hello'});
     });
     conn.on('data', data => handleOnlineData(data));

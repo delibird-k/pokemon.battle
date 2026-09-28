@@ -6,6 +6,7 @@
       <link rel="icon" type="image/png" href="master-ball.png">
     <title>ポケモンバトル3v3</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -219,6 +220,22 @@
         .history-win { background: rgba(134,239,172,0.35); }
         .history-lose { background: rgba(252,165,165,0.35); }
 
+        #online-lobby {
+            position: fixed; inset: 0; z-index: 200; display: none;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,.72); padding: 16px;
+        }
+        .online-lobby-panel {
+            width: min(92vw, 520px); background: #fff; border: 4px solid #111;
+            border-radius: 10px; padding: 24px; box-shadow: 0 14px 40px rgba(0,0,0,.35);
+        }
+        .online-code {
+            font-size: clamp(1.5rem, 7vw, 2.4rem); font-weight: 900; letter-spacing: .18em;
+            text-align:center; padding: 12px; background:#f3f3f3; border:2px dashed #333;
+            margin: 12px 0; word-break: break-all;
+        }
+        .online-status { min-height: 2.8em; text-align:center; margin:12px 0; line-height:1.7; }
+        .online-input { width:100%; border:2px solid #111; border-radius:6px; padding:12px; font-size:1rem; box-sizing:border-box; }
         @media (max-width: 480px) {
             .opening-panel { padding: 22px 14px; }
             .opening-button { font-size: 0.72rem; }
@@ -258,6 +275,11 @@
                 📜 履歴を見る
             </button>
 
+            <button id="online-battle-button"
+                    class="opening-button" style="background:#7c3aed;color:white;">
+                👥 対人戦
+            </button>
+
             <button id="opening-reset-button"
                     class="opening-button opening-reset-button">
                 戦績とレートをリセット
@@ -279,7 +301,26 @@
         </div>
     </div>
 
-    <div id="game-container" class="w-full max-w-4xl p-4" style="display:none;">
+    <div id="online-lobby" aria-hidden="true">
+    <div class="online-lobby-panel">
+        <h2 style="font-size:1.35rem;font-weight:900;text-align:center;">👥 対人戦</h2>
+        <div id="online-lobby-status" class="online-status">同じルームコードを使って、別の端末から参加できます。</div>
+        <div id="online-create-area">
+            <button id="online-create-button" class="opening-button opening-battle-button" style="width:100%;">ルームを作る</button>
+        </div>
+        <div id="online-join-area" style="margin-top:12px;">
+            <input id="online-room-input" class="online-input" maxlength="24" placeholder="相手のルームコードを入力">
+            <button id="online-join-button" class="opening-button opening-history-button" style="width:100%;margin-top:10px;">ルームに参加</button>
+        </div>
+        <div id="online-room-code-area" style="display:none;">
+            <div>このコードを相手に伝えてください</div>
+            <div id="online-room-code" class="online-code"></div>
+        </div>
+        <button id="online-cancel-button" class="opening-button opening-back-button" style="width:100%;margin-top:10px;">← 戻る</button>
+    </div>
+</div>
+
+<div id="game-container" class="w-full max-w-4xl p-4" style="display:none;">
         
         <div id="selection-screen" class="hidden p-4">
             <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline ">せんとうに だす ポケモンを えらんでくれ！</h2>
@@ -478,6 +519,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyButton = document.getElementById('history-button');
     const openingResetButton = document.getElementById('opening-reset-button');
     const historyBackButton = document.getElementById('history-back-button');
+    const onlineBattleButton = document.getElementById('online-battle-button');
+    const onlineLobby = document.getElementById('online-lobby');
+    const onlineLobbyStatus = document.getElementById('online-lobby-status');
+    const onlineCreateButton = document.getElementById('online-create-button');
+    const onlineJoinButton = document.getElementById('online-join-button');
+    const onlineCancelButton = document.getElementById('online-cancel-button');
+    const onlineRoomInput = document.getElementById('online-room-input');
+    const onlineRoomCodeArea = document.getElementById('online-room-code-area');
+    const onlineRoomCode = document.getElementById('online-room-code');
 
     const selectionScreen = document.getElementById('selection-screen');
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
@@ -648,6 +698,19 @@ document.getElementById("reset-no-button");
 
         gameContainer.style.display = 'block';
 
+        // 新しい対戦を始めるたびに、前回の選出状態を完全にリセット
+        // （前回と同じポケモンを選んだときに、4匹目まで選べてしまう原因を防止）
+        selectedPlayerKeys = [];
+        selectedPlayerItemNames = [];
+        selectedOpponentKeys = [];
+        selectedOpponentItemNames = [];
+        currentPlayerItemIndex = 0;
+        currentOpponentItemIndex = 0;
+        selectedPlayerKey = undefined;
+        selectedPlayerItemName = undefined;
+        selectedOpponentKey = undefined;
+        selectedOpponentItemName = undefined;
+
         showPlayerSelection();
     }
 
@@ -749,6 +812,339 @@ let selectedOpponentKeys = [];
 let selectedOpponentItemNames = [];
 let currentPlayerItemIndex = 0;
 let currentOpponentItemIndex = 0;
+
+
+// ==================== 対人戦 ====================
+let onlineMode = false;
+let onlineRole = null;
+let onlinePeer = null;
+let onlineConn = null;
+let onlineRoomCodeValue = '';
+let onlineLocalReady = false;
+let onlineRemoteReady = false;
+let onlineRemoteTeamData = null;
+let onlineActionResolver = null;
+let onlineQueuedAction = null;
+let onlineWaitingForRemote = false;
+
+function onlineSend(message) {
+    if (onlineConn && onlineConn.open) onlineConn.send(message);
+}
+
+function onlineSanitizePokemon(pokemon) {
+    return JSON.parse(JSON.stringify(pokemon, (key, value) => {
+        if (key === 'lastAttacker' || key === 'selectedMove') return undefined;
+        return value;
+    }));
+}
+
+function onlineMakeTeam(keys, itemNames) {
+    return keys.map((key, index) => {
+        const pokemon = createPokemonInstance(pokemonBaseData[key]);
+        pokemon.item = { name: itemNames[index], used: false };
+        pokemon.usedZMove = false;
+        pokemon.pendingMega = false;
+        pokemon.megaEvolved = false;
+        applyIllusion(pokemon);
+        initZData(pokemon);
+        return pokemon;
+    });
+}
+
+function onlineTeamPayload() {
+    return { keys: [...selectedPlayerKeys], items: [...selectedPlayerItemNames] };
+}
+
+function onlineWaitForAction() {
+    if (onlineQueuedAction) {
+        const a = onlineQueuedAction;
+        onlineQueuedAction = null;
+        return Promise.resolve(a);
+    }
+    return new Promise(resolve => { onlineActionResolver = resolve; });
+}
+
+function onlineReceiveAction(action) {
+    if (onlineActionResolver) {
+        const resolve = onlineActionResolver;
+        onlineActionResolver = null;
+        resolve(action);
+    } else {
+        onlineQueuedAction = action;
+    }
+}
+
+function onlineSendState() {
+    if (onlineRole !== 'host' || !onlineConn || !playerTeam.length) return;
+    onlineSend({
+        type: 'state',
+        playerTeam: playerTeam.map(onlineSanitizePokemon),
+        opponentTeam: opponentTeam.map(onlineSanitizePokemon),
+        playerActiveIndex,
+        opponentActiveIndex,
+        currentTurn,
+        weather,
+        field,
+        message: messageText.textContent || ''
+    });
+}
+
+function onlineApplyState(data) {
+    // ゲスト視点では、ホストの opponent が自分、host の player が相手。
+    playerTeam = data.opponentTeam || [];
+    opponentTeam = data.playerTeam || [];
+    playerActiveIndex = data.opponentActiveIndex ?? 0;
+    opponentActiveIndex = data.playerActiveIndex ?? 0;
+    playerPokemon = playerTeam[playerActiveIndex];
+    opponentPokemon = opponentTeam[opponentActiveIndex];
+    currentTurn = data.currentTurn || 1;
+    weather = data.weather || {type:'none', turns:0};
+    field = data.field || {type:'none', turns:0};
+
+    battleScreen.style.display = 'block';
+    gameContainer.style.display = 'block';
+    openingScreen.style.display = 'none';
+    historyScreen.style.display = 'none';
+    selectionScreen.style.display = 'none';
+    itemSelectionScreen.style.display = 'none';
+    opponentSelectionScreen.style.display = 'none';
+    opponentItemSelectionScreen.style.display = 'none';
+    difficultySelectionScreen.style.display = 'none';
+
+    initBattleUI();
+    turnCounter.textContent = `ターン: ${currentTurn}`;
+    updateHpBars();
+    updateStatusMarkers();
+    updateSubstituteMarkers();
+
+    if (playerPokemon) {
+        const ps = playerPokemon.disguiseData || playerPokemon;
+        player.nameEl.textContent = ps.name;
+        player.maxHpEl.textContent = playerPokemon.maxHp;
+        player.sprite.src = getSpriteUrl(ps, true);
+        player.sprite.classList.remove('sprite-faint');
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+    }
+    if (opponentPokemon) {
+        const os = opponentPokemon.disguiseData || opponentPokemon;
+        opponent.nameEl.textContent = os.name;
+        document.getElementById('opponent-max-hp').textContent = opponentPokemon.maxHp;
+        opponent.sprite.src = getSpriteUrl(os);
+        opponent.sprite.classList.remove('sprite-faint');
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+
+    if (data.message) messageText.textContent = data.message;
+
+    const activeFainted = playerPokemon && playerPokemon.currentHp <= 0;
+    const hasSwitch = playerTeam.some((p, i) => i !== playerActiveIndex && p.currentHp > 0);
+    if (activeFainted && hasSwitch) {
+        showForcedSwitchSelection();
+        return;
+    }
+
+    battleMenu.style.display = 'grid';
+    movesContainer.style.display = 'none';
+    updateMoves();
+    enableMoves();
+}
+
+function onlineGuestSendMove(moveIndex) {
+    if (onlineRole !== 'guest' || onlineWaitingForRemote || !playerPokemon) return;
+    onlineWaitingForRemote = true;
+    disableMoves();
+    onlineSend({type:'action', actionType:'move', moveIndex});
+    messageText.textContent = 'あいての こうどうを まっています…';
+}
+
+function onlineGuestSendSwitch(index) {
+    if (onlineRole !== 'guest' || onlineWaitingForRemote) return;
+    onlineWaitingForRemote = true;
+    disableMoves();
+    onlineSend({type:'action', actionType:'switch', index});
+    messageText.textContent = 'あいての こうどうを まっています…';
+}
+
+function onlineCreateRoom() {
+    if (typeof Peer === 'undefined') {
+        onlineLobbyStatus.textContent = '対人戦ライブラリの読み込みに失敗しました。ページを再読み込みしてください。';
+        return;
+    }
+    onlineRole = 'host';
+    onlineMode = true;
+    onlineLocalReady = false;
+    onlineRemoteReady = false;
+    const code = 'p3v3-' + Math.random().toString(36).slice(2, 8);
+    onlineRoomCodeValue = code;
+    onlinePeer = new Peer(code);
+    onlineLobbyStatus.textContent = 'ルームを作成しています…';
+    onlineRoomCodeArea.style.display = 'block';
+    onlineRoomCode.textContent = code;
+    onlineCreateButton.disabled = true;
+    onlineJoinButton.disabled = true;
+
+    onlinePeer.on('open', id => {
+        onlineLobbyStatus.textContent = '相手の参加を待っています。';
+    });
+    onlinePeer.on('connection', conn => {
+        if (onlineConn) { conn.close(); return; }
+        setupOnlineConnection(conn, 'host');
+    });
+    onlinePeer.on('error', err => {
+        onlineLobbyStatus.textContent = '接続エラー：' + (err.type || 'unknown');
+    });
+}
+
+function onlineJoinRoom() {
+    if (typeof Peer === 'undefined') {
+        onlineLobbyStatus.textContent = '対人戦ライブラリの読み込みに失敗しました。ページを再読み込みしてください。';
+        return;
+    }
+    const code = onlineRoomInput.value.trim();
+    if (!code) { onlineLobbyStatus.textContent = 'ルームコードを入力してください。'; return; }
+    onlineRole = 'guest';
+    onlineMode = true;
+    onlinePeer = new Peer();
+    onlineLobbyStatus.textContent = 'ルームに接続しています…';
+    onlineCreateButton.disabled = true;
+    onlineJoinButton.disabled = true;
+    onlinePeer.on('open', () => {
+        const conn = onlinePeer.connect(code, {reliable:true, serialization:'json'});
+        setupOnlineConnection(conn, 'guest');
+    });
+    onlinePeer.on('error', err => {
+        onlineLobbyStatus.textContent = '接続エラー：' + (err.type || 'unknown');
+    });
+}
+
+function setupOnlineConnection(conn, role) {
+    onlineConn = conn;
+    onlineRole = role;
+    conn.on('open', () => {
+        onlineLobbyStatus.textContent = role === 'host' ? '相手が接続しました。自分の3匹を選んでください。' : '接続しました。自分の3匹を選んでください。';
+        if (role === 'guest') onlineSend({type:'hello'});
+    });
+    conn.on('data', data => handleOnlineData(data));
+    conn.on('close', () => {
+        onlineWaitingForRemote = false;
+        if (onlineMode) {
+            alert('相手との接続が切れました。');
+            showOpeningScreen();
+        }
+    });
+    conn.on('error', () => {
+        onlineLobbyStatus.textContent = '対戦相手との接続でエラーが発生しました。';
+    });
+}
+
+function handleOnlineData(data) {
+    if (!data || !data.type) return;
+    if (data.type === 'hello') {
+        onlineLobbyStatus.textContent = '相手が接続しました。自分の3匹を選んでください。';
+        return;
+    }
+    if (data.type === 'team') {
+        onlineRemoteTeamData = data.team;
+        onlineRemoteReady = true;
+        if (onlineRole === 'host') {
+            selectedOpponentKeys = [...data.team.keys];
+            selectedOpponentItemNames = [...data.team.items];
+            if (onlineLocalReady) {
+                onlineSend({type:'battle-start', team: onlineTeamPayload()});
+                startGame('online');
+            } else {
+                onlineLobbyStatus.textContent = '相手の選出が完了しました。自分の3匹を選んでください。';
+            }
+        }
+        return;
+    }
+    if (data.type === 'battle-start' && onlineRole === 'guest') {
+        selectedOpponentKeys = [...data.team.keys];
+        selectedOpponentItemNames = [...data.team.items];
+        onlineStartGuestBattle(data.team);
+        return;
+    }
+    if (data.type === 'action' && onlineRole === 'host') {
+        onlineReceiveAction(data);
+        return;
+    }
+    if (data.type === 'state' && onlineRole === 'guest') {
+        onlineWaitingForRemote = false;
+        onlineApplyState(data);
+        return;
+    }
+    if (data.type === 'result' && onlineRole === 'guest') {
+        onlineWaitingForRemote = false;
+        const guestWon = !!data.guestWon;
+        sessionStorage.removeItem('pokemonBattleInProgress');
+        if (guestWon) {
+            winStreak++; loseStreak=0; winCount++;
+            rating += data.ratingDelta || 0;
+        } else {
+            loseStreak++; winStreak=0; loseCount++;
+            rating = Math.max(1, rating + (data.ratingDelta || 0));
+        }
+        updateRating();
+        saveMatchHistory(guestWon ? 'win' : 'lose', playerTeam, opponentTeam);
+        messageText.textContent = guestWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…';
+        setTimeout(() => { onlineCleanup(); showOpeningScreen(); }, 1800);
+    }
+}
+
+function onlineSubmitLocalTeam() {
+    if (!onlineConn || !onlineConn.open) {
+        alert('対戦相手との接続がまだできていません。');
+        return;
+    }
+    onlineLocalReady = true;
+    onlineSend({type:'team', team: onlineTeamPayload()});
+    selectionScreen.style.display='none';
+    itemSelectionScreen.style.display='none';
+    opponentSelectionScreen.style.display='none';
+    opponentItemSelectionScreen.style.display='none';
+    difficultySelectionScreen.style.display='none';
+    onlineLobby.style.display='flex';
+    onlineLobbyStatus.textContent = onlineRole === 'host' ? '自分の選出を送信しました。相手を待っています。' : '自分の選出を送信しました。相手を待っています。';
+}
+
+function onlineStartGuestBattle(hostTeam) {
+    playerTeam = onlineMakeTeam(selectedPlayerKeys, selectedPlayerItemNames);
+    opponentTeam = onlineMakeTeam(hostTeam.keys, hostTeam.items);
+    playerActiveIndex=0; opponentActiveIndex=0;
+    playerPokemon=playerTeam[0]; opponentPokemon=opponentTeam[0];
+    difficulty='online';
+    onlineLobby.style.display='none';
+    gameContainer.style.display='block';
+    openingScreen.style.display='none';
+    battleScreen.style.display='block';
+    sessionStorage.setItem('pokemonBattleInProgress','true');
+    initBattleUI();
+    messageText.textContent='対戦相手の準備が完了しました。';
+    battleMenu.style.display='none';
+    movesContainer.style.display='none';
+    onlineWaitingForRemote=true;
+}
+
+function onlineCleanup() {
+    sessionStorage.removeItem('pokemonBattleInProgress');
+    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineRemoteTeamData=null; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false;
+    if (onlineConn) { try { onlineConn.close(); } catch(e){} }
+    if (onlinePeer) { try { onlinePeer.destroy(); } catch(e){} }
+    onlineConn=null; onlinePeer=null;
+    onlineLobby.style.display='none';
+    onlineCreateButton.disabled=false; onlineJoinButton.disabled=false;
+    onlineRoomCodeArea.style.display='none';
+    onlineRoomInput.value='';
+}
+
+onlineBattleButton.onclick = () => {
+    onlineLobby.style.display='flex';
+    onlineLobby.setAttribute('aria-hidden','false');
+    onlineLobbyStatus.textContent='ルームを作るか、相手のコードで参加してください。';
+};
+onlineCreateButton.onclick = onlineCreateRoom;
+onlineJoinButton.onclick = onlineJoinRoom;
+onlineCancelButton.onclick = () => { onlineCleanup(); showOpeningScreen(); };
 
 let selectedPlayerKey;
 let selectedPlayerItemName;
@@ -1718,13 +2114,16 @@ function handlePlayerItemSelect(itemName) {
 
     currentPlayerItemIndex++;
 
-    // まだ3匹分の持ち物を選んでいない
     if (currentPlayerItemIndex < 3) {
         showItemSelection();
         return;
     }
 
-    // 3匹分選び終わった
+    if (onlineMode) {
+        onlineSubmitLocalTeam();
+        return;
+    }
+
     showOpponentSelection();
 }
     
@@ -1812,6 +2211,11 @@ card.addEventListener('mousemove', (e) => {
         randomOpponentButton.onclick = selectRandomOpponentAndItem;
     }
     function handleOpponentPokemonSelect(key) {
+
+    // すでに3匹選び終わっていたら、追加選択を受け付けない
+    if (selectedOpponentKeys.length >= 3) {
+        return;
+    }
 
     // 同じポケモンは2回選べない
     if (selectedOpponentKeys.includes(key)) {
@@ -2071,6 +2475,11 @@ sessionStorage.setItem(
     updateRating();
 
     updateRatingDisplay();
+
+    if (difficulty === "online" && onlineRole === "host") {
+        onlineLobby.style.display = 'none';
+        onlineSendState();
+    }
 }
 
     function applyIllusion(pokemon) {
@@ -2978,7 +3387,14 @@ button.className =
     ${isDisabled ? 'opacity-50' : ''}`;
 
         button.disabled = isDisabled;
-        button.onclick = () => startBattleRound(move);
+        button.onclick = () => {
+            if (onlineMode && onlineRole === 'guest') {
+                const moveIndex = playerPokemon.moves.findIndex(m => m === move);
+                onlineGuestSendMove(moveIndex);
+            } else {
+                startBattleRound(move);
+            }
+        };
 
         button.onmouseover = (e) => {
     moveTooltip.innerHTML = getMoveTooltipContent(move);
@@ -3559,6 +3975,23 @@ function showSwitchSelection() {
 
     movesContainer.innerHTML = "";
 
+    if (onlineMode && onlineRole === 'guest') {
+        playerTeam.forEach((pokemon, index) => {
+            if (index === playerActiveIndex || pokemon.currentHp <= 0) return;
+            const button = document.createElement('button');
+            button.className = "border-2 border-gray-800 rounded p-2 bg-green-200 hover:bg-green-300";
+            button.innerHTML = `<div class="font-bold">${pokemon.name}</div><div class="text-xs mt-1">HP ${pokemon.currentHp} / ${pokemon.maxHp}</div>`;
+            button.onclick = () => onlineGuestSendSwitch(index);
+            movesContainer.appendChild(button);
+        });
+        const backButton = document.createElement('button');
+        backButton.className = "border-2 border-gray-800 rounded p-2 bg-gray-200";
+        backButton.textContent = 'もどる';
+        backButton.onclick = () => { movesContainer.style.display='none'; movesContainer.innerHTML=''; battleMenu.style.display='grid'; updateMoves(); };
+        movesContainer.appendChild(backButton);
+        return;
+    }
+
     playerTeam.forEach((pokemon, index) => {
 
         // 今、場に出ているポケモンは表示せず、残り2枠を交代先にする
@@ -3817,7 +4250,18 @@ updateStatDisplay(
     // 交代したターンは相手が攻撃
     // ========================================================
 
-    const opponentMove = getOpponentMove();
+    let opponentMove = null;
+
+    if (difficulty === "online" && onlineRole === "host") {
+        const remoteAction = await onlineWaitForAction();
+        if (remoteAction.actionType === 'move') {
+            opponentMove = opponentPokemon.moves[remoteAction.moveIndex];
+        } else if (remoteAction.actionType === 'switch') {
+            await executeOpponentAISwitch(remoteAction.index);
+        }
+    } else {
+        opponentMove = getOpponentMove();
+    }
 
     if (
         opponentMove &&
@@ -4118,30 +4562,32 @@ opponentPokemon.hasMoved = false;
 playerPokemon.selectedMove = playerMove;
 
 // ========================================================
-// AIの通常交代判定
+// COM / 対人戦の相手行動
 // ========================================================
 let opponentSwitched = false;
 let opponentMove = null;
 
-if (
+if (difficulty === "online" && onlineRole === "host") {
+    const remoteAction = await onlineWaitForAction();
+    if (remoteAction.actionType === 'switch') {
+        opponentSwitched = await executeOpponentAISwitch(remoteAction.index);
+    } else if (remoteAction.actionType === 'move') {
+        opponentMove = opponentPokemon.moves[remoteAction.moveIndex];
+    }
+} else if (
     difficulty !== "easy" &&
     shouldOpponentSwitch()
 ) {
-    const nextIndex =
-        chooseBestOpponentSwitch();
+    const nextIndex = chooseBestOpponentSwitch();
+    opponentSwitched = await executeOpponentAISwitch(nextIndex);
+}
 
-    opponentSwitched =
-        await executeOpponentAISwitch(
-            nextIndex
-        );
+if (!opponentSwitched && !opponentMove) {
+    opponentMove = getOpponentMove();
 }
 
 if (!opponentSwitched) {
-    opponentMove =
-        getOpponentMove();
-
-    opponentPokemon.selectedMove =
-        opponentMove;
+    opponentPokemon.selectedMove = opponentMove;
 }
 if (
     !opponentSwitched &&
@@ -4432,6 +4878,7 @@ turnCounter.textContent = `ターン: ${currentTurn}`;
     500
 );
             isBattleInProgress = false;
+            if (difficulty === "online" && onlineRole === "host") onlineSendState();
             enableMoves();
             updateMoves();
         }
@@ -8421,11 +8868,16 @@ if (
         `あいて の ${attacker.name} は 戻っていく！`
     );
 
-    const nextIndex = chooseBestOpponentSwitch();
+    let nextIndex = -1;
+    if (difficulty === "online" && onlineRole === "host") {
+        const remoteAction = await onlineWaitForAction();
+        if (remoteAction.actionType === 'switch') nextIndex = remoteAction.index;
+    } else {
+        nextIndex = chooseBestOpponentSwitch();
+    }
 
     if (nextIndex !== -1) {
         uTurnSwitched = true;
-
         await executeOpponentAISwitch(nextIndex);
     }
 }
@@ -9746,18 +10198,25 @@ if (
         return true;
     }
 
-    // AIが交代先を選ぶ
-    let nextIndex = chooseBestOpponentSwitch();
+    // 相手が人間の場合は、相手自身に交代先を選ばせる
+    if (difficulty === "online" && onlineRole === "host") {
+        onlineSendState();
+        const remoteAction = await onlineWaitForAction();
+        let nextIndex = remoteAction.actionType === 'switch' ? remoteAction.index : -1;
+        if (!remainingOpponentIndexes.some(x => x.index === nextIndex)) {
+            nextIndex = remainingOpponentIndexes[0].index;
+        }
 
-    // AIの選択結果が取れなかった場合でも、残っているポケモンを出す
-    if (nextIndex === -1) {
-        nextIndex = remainingOpponentIndexes[0].index;
+        opponentActiveIndex = nextIndex;
+        opponentPokemon = opponentTeam[opponentActiveIndex];
+    } else {
+        let nextIndex = chooseBestOpponentSwitch();
+        if (nextIndex === -1) nextIndex = remainingOpponentIndexes[0].index;
+        opponentActiveIndex = nextIndex;
+        opponentPokemon = opponentTeam[opponentActiveIndex];
     }
 
-    // 相手は自動で次のポケモンを出す
-    // この関数を await している攻撃処理へ戻り、次のターンへ進む。
-    opponentActiveIndex = nextIndex;
-    opponentPokemon = opponentTeam[opponentActiveIndex];
+    // 相手は選んだ次のポケモンを出す
 
     // 相手も交代時に能力変化をリセット
     opponentPokemon.statStages = {
@@ -9856,6 +10315,21 @@ async function showForcedSwitchSelection() {
 
     grid.className =
         'grid grid-cols-1 sm:grid-cols-3 gap-4';
+
+    if (onlineMode && onlineRole === 'guest') {
+        playerTeam.forEach((pokemon, index) => {
+            if (index === playerActiveIndex || pokemon.currentHp <= 0) return;
+            const button = document.createElement('button');
+            button.className = 'nes-container bg-white p-4 cursor-pointer';
+            button.innerHTML = `<p class="font-bold">${pokemon.name}</p><p class="text-sm mt-2">HP ${pokemon.currentHp} / ${pokemon.maxHp}</p>`;
+            button.onclick = () => { onlineGuestSendSwitch(index); const c=document.getElementById('switch-selection-container'); if(c)c.remove(); };
+            grid.appendChild(button);
+        });
+        box.appendChild(grid);
+        container.appendChild(box);
+        document.body.appendChild(container);
+        return;
+    }
 
     playerTeam.forEach(
         (pokemon, index) => {
@@ -11202,6 +11676,20 @@ document.getElementById("opponent-max-hp").textContent = "";
 }
 function endGame(playerWon) {
 
+    if (difficulty === "online" && onlineRole === "host") {
+        sessionStorage.removeItem('pokemonBattleInProgress');
+        disableMoves();
+        const delta = playerWon ? (Math.floor(Math.random()*11)+10 + (winStreak + 1) * 3) : -(Math.floor(Math.random()*11)+10 + (loseStreak + 1) * 2);
+        if (playerWon) { winStreak++; loseStreak=0; winCount++; rating += delta; }
+        else { loseStreak++; winStreak=0; loseCount++; rating=Math.max(1,rating+delta); }
+        updateRating();
+        saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
+        onlineSend({type:'result', guestWon:!playerWon, ratingDelta:-delta});
+        messageText.textContent = playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…';
+        setTimeout(() => { onlineCleanup(); showOpeningScreen(); }, 1800);
+        return;
+    }
+
     // ============================================================
     // 対戦終了：リロードしても「途中離脱」扱いにしない
     // ============================================================
@@ -11330,6 +11818,7 @@ function endGame(playerWon) {
 opponentPokemon = undefined;
 isBattleInProgress = false;
 
+    if (onlineMode) onlineCleanup();
     difficulty = undefined;
     currentTurn = 1;
 

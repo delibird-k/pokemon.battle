@@ -703,6 +703,8 @@ document.getElementById("reset-no-button");
 
         // 新しい対戦を始めるたびに、前回の選出状態を完全にリセット
         // （前回と同じポケモンを選んだときに、4匹目まで選べてしまう原因を防止）
+        onlineBattleStarted = false;
+        onlineBattleStartSent = false;
         selectedPlayerKeys = [];
         selectedPlayerItemNames = [];
         selectedOpponentKeys = [];
@@ -836,6 +838,8 @@ let onlineRemoteTeamData = null;
 let onlineActionResolver = null;
 let onlineQueuedAction = null;
 let onlineWaitingForRemote = false;
+let onlineBattleStarted = false;
+let onlineBattleStartSent = false;
 
 function onlineSend(message) {
     if (onlineConn && onlineConn.open) onlineConn.send(message);
@@ -1179,6 +1183,25 @@ function setupOnlineConnection(conn, role) {
     });
 }
 
+function onlineTryStartHostBattle() {
+    if (onlineRole !== 'host' || !onlineMode) return;
+    if (!onlineConn || !onlineConn.open) return;
+    if (!onlineLocalReady || !onlineRemoteReady) return;
+    if (onlineBattleStarted || onlineBattleStartSent) return;
+    if (selectedPlayerKeys.length !== 3 || selectedPlayerItemNames.length !== 3) return;
+    if (!onlineRemoteTeamData || !Array.isArray(onlineRemoteTeamData.keys) || onlineRemoteTeamData.keys.length !== 3) return;
+
+    onlineBattleStartSent = true;
+    selectedOpponentKeys = [...onlineRemoteTeamData.keys];
+    selectedOpponentItemNames = [...onlineRemoteTeamData.items];
+    onlineShowWaiting('あなたと相手の両方の選出が完了しました。対戦を開始します…');
+    onlineSend({type:'battle-start', team: onlineTeamPayload()});
+
+    // 送信と開始を同じ箇所で管理し、選出順による取りこぼしを防ぐ。
+    onlineBattleStarted = true;
+    startGame('online');
+}
+
 function handleOnlineData(data) {
     if (!data || !data.type) return;
     if (data.type === 'hello') {
@@ -1188,17 +1211,13 @@ function handleOnlineData(data) {
     if (data.type === 'team') {
         onlineRemoteTeamData = data.team;
         onlineRemoteReady = true;
+
         if (onlineRole === 'host') {
-            selectedOpponentKeys = [...data.team.keys];
-            selectedOpponentItemNames = [...data.team.items];
             if (onlineLocalReady) {
-                // 両者の選出が完了。ホストだけがバトルを生成し、ゲストへ開始通知を送る。
-                onlineShowWaiting('あなたと相手の両方の選出が完了しました。対戦を開始します…');
-                onlineSend({type:'battle-start', team: onlineTeamPayload()});
-                startGame('online');
+                // 相手が先でも自分が先でも、共通の開始判定に通す。
+                onlineTryStartHostBattle();
             } else {
-                // 相手だけが先に選出完了しても、オーナー側の選出画面はそのまま残す。
-                // 待機画面へ切り替えると「オーナー自身も選出完了した」ように見えてしまうため。
+                // 相手だけが先に選出完了しても、オーナー側は自分の選出を続ける。
                 showPlayerSelection();
                 selectionTitle.textContent = '相手の選出が完了しました。あなたの3匹を選んでください。';
             }
@@ -1260,11 +1279,24 @@ function onlineSubmitLocalTeam() {
         alert('対戦相手との接続がまだできていません。');
         return;
     }
+    if (selectedPlayerKeys.length !== 3 || selectedPlayerItemNames.length !== 3) {
+        alert('ポケモン3匹と持ち物3つを選んでください。');
+        return;
+    }
+
     onlineLocalReady = true;
     onlineSend({type:'team', team: onlineTeamPayload()});
 
-    // 選出送信後は、ロビーではなく「待機画面」だけを表示する。
-    onlineShowWaiting('あなたの選出は完了しました。相手の選出を待っています…');
+    if (onlineRole === 'host') {
+        // オーナーは相手が先に完了していても、ここで共通の開始判定を行う。
+        if (onlineRemoteReady) {
+            onlineTryStartHostBattle();
+        } else {
+            onlineShowWaiting('あなたの選出が完了しました。相手の選出を待っています…');
+        }
+    } else {
+        onlineShowWaiting('あなたの選出が完了しました。オーナーの選出を待っています…');
+    }
 }
 
 function onlineStartGuestBattle(hostTeam) {
@@ -1288,7 +1320,7 @@ function onlineStartGuestBattle(hostTeam) {
 
 function onlineCleanup() {
     sessionStorage.removeItem('pokemonBattleInProgress');
-    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineRemoteTeamData=null; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false;
+    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false;
     if (onlineConn) { try { onlineConn.close(); } catch(e){} }
     if (onlinePeer) { try { onlinePeer.destroy(); } catch(e){} }
     onlineConn=null; onlinePeer=null;

@@ -790,11 +790,18 @@ pokemonButton.onclick = () => {
 };
 
 surrenderButton.onclick = () => {
+    if (onlineMode && onlineRole === 'guest') {
+        if (onlineWaitingForRemote) return;
+
+        onlineWaitingForRemote = true;
+        disableMoves();
+        onlineSend({ type: 'action', actionType: 'surrender' });
+        messageText.textContent = 'あいての こうどうを まっています…';
+        return;
+    }
 
     isBattleInProgress = false;
-
     endGame(false);
-
 };
  
     // --- Game Data ---
@@ -947,7 +954,7 @@ function onlineApplyState(data) {
 
     const activeFainted = playerPokemon && playerPokemon.currentHp <= 0;
     const hasSwitch = playerTeam.some((p, i) => i !== playerActiveIndex && p.currentHp > 0);
-    if (activeFainted && hasSwitch) {
+    if (phase !== 'result' && activeFainted && hasSwitch) {
         // 瀕死後は「相手の行動待ち」ではなく、
         // この端末のプレイヤー自身が次のポケモンを選ぶ状態。
         // true のままだと onlineGuestSendSwitch() が弾かれてしまい、
@@ -974,11 +981,47 @@ function onlineApplyState(data) {
     }
 }
 
-function onlineGuestSendMove(moveIndex) {
+function onlineGuestSendMove(moveIndex, options = {}) {
     if (onlineRole !== 'guest' || onlineWaitingForRemote || !playerPokemon) return;
+
+    const move = playerPokemon.moves[moveIndex];
+    if (!move) return;
+
+    // 1人用と同じ「メガシンカしてから技を出す」流れを
+    // ホスト側でも再現できるよう、選択内容をそのまま送る。
+    const useMega = !!playerPokemon.pendingMega;
+
     onlineWaitingForRemote = true;
     disableMoves();
-    onlineSend({type:'action', actionType:'move', moveIndex});
+
+    onlineSend({
+        type: 'action',
+        actionType: 'move',
+        moveIndex,
+        useMega,
+        useZMove: !!options.useZMove
+    });
+
+    messageText.textContent = 'あいての こうどうを まっています…';
+}
+
+function onlineGuestSendZMove(moveIndex) {
+    if (onlineRole !== 'guest' || onlineWaitingForRemote || !playerPokemon) return;
+
+    const move = playerPokemon.moves[moveIndex];
+    if (!move || !canUseZMove(playerPokemon)) return;
+
+    onlineWaitingForRemote = true;
+    disableMoves();
+
+    onlineSend({
+        type: 'action',
+        actionType: 'move',
+        moveIndex,
+        useMega: !!playerPokemon.pendingMega,
+        useZMove: true
+    });
+
     messageText.textContent = 'あいての こうどうを まっています…';
 }
 
@@ -1182,6 +1225,10 @@ function handleOnlineData(data) {
     }
     if (data.type === 'result' && onlineRole === 'guest') {
         onlineWaitingForRemote = false;
+        disableMoves();
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+
         const guestWon = !!data.guestWon;
         sessionStorage.removeItem('pokemonBattleInProgress');
         if (guestWon) {
@@ -2038,6 +2085,8 @@ function getShownName(pokemon){
     );
 }
     function showPlayerSelection() {
+        // オンラインでも1人用と同じ手動3匹選出を使用する。
+        // 「ランダムにえらぶ」は任意で残し、手動選択を基本にする。
         // 選出画面だけを表示（オープニングとの二重表示を防止）
         gameContainer.style.display = 'block';
         openingScreen.classList.add('hidden');
@@ -3608,8 +3657,14 @@ btn.onmouseout = () => {
 };
 
             btn.onclick = () => {
-                playerPokemon.selectedZMove = move;
-                startBattleRound(useZMove(playerPokemon));
+                if (onlineMode && onlineRole === 'guest') {
+                    onlineGuestSendZMove(
+                        playerPokemon.moves.findIndex(m => m === move)
+                    );
+                } else {
+                    playerPokemon.selectedZMove = move;
+                    startBattleRound(useZMove(playerPokemon));
+                }
             };
 
             movesContainer.appendChild(btn);
@@ -4694,10 +4749,40 @@ let opponentMove = null;
 
 if (difficulty === "online" && onlineRole === "host") {
     const remoteAction = await onlineWaitForAction();
+
+    if (remoteAction.actionType === 'surrender') {
+        // ゲストが降参した場合は、ホストの勝利として
+        // 通常の endGame() を通す。
+        endGame(true);
+        isBattleInProgress = false;
+        return;
+    }
+
     if (remoteAction.actionType === 'switch') {
         opponentSwitched = await executeOpponentAISwitch(remoteAction.index);
     } else if (remoteAction.actionType === 'move') {
-        opponentMove = opponentPokemon.moves[remoteAction.moveIndex];
+        const remoteMove = opponentPokemon.moves[remoteAction.moveIndex];
+
+        if (!remoteMove) {
+            // 不正な技番号が来た場合は、試合を止めずに
+            // 通常の技選択から復旧する。
+            opponentMove = getOpponentMove();
+        } else if (remoteAction.useZMove) {
+            opponentPokemon.selectedZMove = remoteMove;
+            opponentMove = useZMove(opponentPokemon);
+
+            if (!opponentMove) {
+                opponentMove = remoteMove;
+            }
+        } else {
+            opponentMove = remoteMove;
+        }
+
+        // ゲストがメガシンカを選択していた場合だけ発動。
+        // COMのように毎ターン自動発動させない。
+        if (remoteAction.useMega && canMegaEvolve(opponentPokemon) && !opponentPokemon.megaEvolved) {
+            opponentPokemon.pendingMega = true;
+        }
     }
 } else if (
     difficulty !== "easy" &&
@@ -4715,6 +4800,7 @@ if (!opponentSwitched) {
     opponentPokemon.selectedMove = opponentMove;
 }
 if (
+    difficulty !== "online" &&
     !opponentSwitched &&
     canMegaEvolve(opponentPokemon) &&
     !opponentPokemon.megaEvolved
@@ -10462,7 +10548,7 @@ async function showForcedSwitchSelection() {
             if (index === playerActiveIndex || pokemon.currentHp <= 0) return;
             const button = document.createElement('button');
             button.className = 'nes-container bg-white p-4 cursor-pointer';
-            button.innerHTML = `<p class="font-bold">${pokemon.name}</p><p class="text-sm mt-2">HP ${pokemon.currentHp} / ${pokemon.maxHp}</p>`;
+            button.innerHTML = `<p class="font-bold">${getShownName(pokemon)}</p><p class="text-sm mt-2">HP ${pokemon.currentHp} / ${pokemon.maxHp}</p>`;
             button.onclick = () => { onlineGuestSendSwitch(index); const c=document.getElementById('switch-selection-container'); if(c)c.remove(); };
             grid.appendChild(button);
         });
@@ -11825,6 +11911,10 @@ function endGame(playerWon) {
         else { loseStreak++; winStreak=0; loseCount++; rating=Math.max(1,rating+delta); }
         updateRating();
         saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
+        onlineSendState(
+            'result',
+            playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…'
+        );
         onlineSend({type:'result', guestWon:!playerWon, ratingDelta:-delta});
         messageText.textContent = playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…';
         setTimeout(() => { onlineCleanup(); showOpeningScreen(); }, 1800);

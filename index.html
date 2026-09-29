@@ -10800,6 +10800,17 @@ await handleAbilityEffectsOnEntry("player");
     updateSubstituteMarkers();
     updateMoves();
 
+    // オンラインのオーナー側が瀕死から強制交代した場合、
+    // 交代後の activeIndex / HP / 状態を参加側へ同期する。
+    // これがないと参加側では「○○をくりだした！」の表示だけで
+    // ホスト側の実際の場の状態を受け取れず、そこで処理が止まってしまう。
+    if (difficulty === 'online' && onlineRole === 'host') {
+        onlineSendState(
+            'switch',
+            `${getShownName(playerPokemon)} を くりだした！`
+        );
+    }
+
     forcedSwitchPending = false;
 
     battleMenu.style.display = 'grid';

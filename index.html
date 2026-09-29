@@ -981,15 +981,6 @@ function onlineFinishGuestMessage(text) {
 
 function onlineSendState(phase = 'event', messageOverride = null) {
     if (onlineRole !== 'host' || !onlineConn || !playerTeam.length) return;
-
-    // オーナー側が倒れて次のポケモンを選んでいる間は、参加側に入力を開放しない。
-    // （ターン終了処理が先に進んで 'input' が送られても、交代が終わるまで待たせる。
-    //   交代完了時に executeForcedSwitch() が改めて 'input' を送る。）
-    if (phase === 'input' && (forcedSwitchPending || document.getElementById('switch-selection-container'))) {
-        phase = 'switch';
-        messageOverride = 'オーナーが 次のポケモンを えらんでいます…';
-    }
-
     const rawMessage = messageOverride !== null ? messageOverride : (messageText.textContent || '');
     onlineSend({
         type: 'state',
@@ -1075,6 +1066,12 @@ function onlineApplyState(data) {
 
     const phase = data.phase || 'event';
 
+    // 相手（ホスト側）のポケモンが瀕死の間は、参加側のコマンドを絶対に開かない。
+    // ホストが次のポケモンを選択している途中に、古い input 状態が届いた場合でも
+    // HP0の相手に対して「たたかう」などを選べてしまわないようにする。
+    const opponentFainted = !!(opponentPokemon && opponentPokemon.currentHp <= 0);
+    const playerFainted = !!(playerPokemon && playerPokemon.currentHp <= 0);
+
     onlineShowOnly('battle');
 
     // 毎回 initBattleUI() を呼ぶと、ネット対戦中の演出や入力状態まで
@@ -1116,6 +1113,29 @@ function onlineApplyState(data) {
     // 強制交代の入力は「request-switch」イベントでのみ開く（HP0の推測はしない）。
     // 交代選択中は他の state が来ても入力状態を触らない。
     if (document.getElementById('switch-selection-container')) return;
+
+    // オーナー側のポケモンが倒れている間は、参加側は完全に入力禁止。
+    // 通信順の都合で phase='input' が一瞬届いても、ここで確実にブロックする。
+    if (opponentFainted) {
+        onlineWaitingForRemote = true;
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+        disableMoves();
+        if (phase === 'input') {
+            messageText.textContent = 'オーナーが 次のポケモンを えらんでいます…';
+        }
+        return;
+    }
+
+    // 自分のポケモンが瀕死の状態でも、通常の4択は表示しない。
+    // request-switch が届いたときだけ強制交代画面を表示する。
+    if (playerFainted) {
+        onlineWaitingForRemote = true;
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+        disableMoves();
+        return;
+    }
 
     if (onlineGuestRampageTimer) { clearTimeout(onlineGuestRampageTimer); onlineGuestRampageTimer = null; }
 
@@ -10986,15 +11006,14 @@ await handleAbilityEffectsOnEntry("player");
     // ここで phase='switch' のまま送ると、参加側は交代後も「相手の行動待ち」と
     // 判断してしまい、HP0だった古いポケモンにコマンドが出たり、入力が止まる。
     // そのため、交代後の最新状態を送ったあと、両端を明確に「次の技選択」へ進める。
-    // 交代が完了したので、ここで初めて参加側の入力を解放する。
-    forcedSwitchPending = false;
-
     if (difficulty === 'online' && onlineRole === 'host') {
         onlineSendState(
             'input',
             `${getShownName(playerPokemon)} を くりだした！ ${getShownName(playerPokemon)} は どうする？`
         );
     }
+
+    forcedSwitchPending = false;
 
     battleMenu.style.display = 'grid';
     movesContainer.style.display = 'none';

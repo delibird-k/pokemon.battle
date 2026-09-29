@@ -647,7 +647,7 @@ document.getElementById("reset-no-button");
 
             return `
                 <div class="history-row ${isWin ? 'history-win' : 'history-lose'}">
-                    <div class="history-number">${matchHistory.length - index}戦目</div>
+                    <div class="history-number">${matchHistory.length - index}戦前</div>
                     <div class="history-result">
                         <strong>${isWin ? '勝利' : '敗北'}</strong>
                         <div class="history-teams">
@@ -720,7 +720,7 @@ document.getElementById("reset-no-button");
     }
 
     function resetAllRecords() {
-        rating = 1;
+        rating = 1000;
         winCount = 0;
         loseCount = 0;
         winStreak = 0;
@@ -981,6 +981,15 @@ function onlineFinishGuestMessage(text) {
 
 function onlineSendState(phase = 'event', messageOverride = null) {
     if (onlineRole !== 'host' || !onlineConn || !playerTeam.length) return;
+
+    // オーナー側が倒れて次のポケモンを選んでいる間は、参加側に入力を開放しない。
+    // （ターン終了処理が先に進んで 'input' が送られても、交代が終わるまで待たせる。
+    //   交代完了時に executeForcedSwitch() が改めて 'input' を送る。）
+    if (phase === 'input' && (forcedSwitchPending || document.getElementById('switch-selection-container'))) {
+        phase = 'switch';
+        messageOverride = 'オーナーが 次のポケモンを えらんでいます…';
+    }
+
     const rawMessage = messageOverride !== null ? messageOverride : (messageText.textContent || '');
     onlineSend({
         type: 'state',
@@ -1540,7 +1549,7 @@ let selectedPlayerItemName;
 let selectedOpponentKey;
 let selectedOpponentItemName;
     let difficulty;
-    let rating = Number(localStorage.getItem("rating")) || 1;
+    let rating = Number(localStorage.getItem("rating")) || 1000;
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
@@ -10977,14 +10986,15 @@ await handleAbilityEffectsOnEntry("player");
     // ここで phase='switch' のまま送ると、参加側は交代後も「相手の行動待ち」と
     // 判断してしまい、HP0だった古いポケモンにコマンドが出たり、入力が止まる。
     // そのため、交代後の最新状態を送ったあと、両端を明確に「次の技選択」へ進める。
+    // 交代が完了したので、ここで初めて参加側の入力を解放する。
+    forcedSwitchPending = false;
+
     if (difficulty === 'online' && onlineRole === 'host') {
         onlineSendState(
             'input',
             `${getShownName(playerPokemon)} を くりだした！ ${getShownName(playerPokemon)} は どうする？`
         );
     }
-
-    forcedSwitchPending = false;
 
     battleMenu.style.display = 'grid';
     movesContainer.style.display = 'none';

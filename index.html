@@ -973,15 +973,18 @@ function onlineApplyState(data) {
         return;
     }
 
-    if (isInputPhase || (isSwitchPhase && playerPokemon && playerPokemon.currentHp > 0 && data.message && /は どうする[？?]/.test(data.message))) {
-        // 交代後に健康なポケモンが場に出ている場合は、必ず次の入力を受け付ける。
-        // phase='switch' の古い同期を受け取っても、HP0のポケモンへ入力を出さない。
+    if (isInputPhase) {
+        // 「input」だけを次の技選択開始の合図にする。
+        // switch状態のままコマンドを出すと、相手が交代を選んでいる途中に
+        // 参加側が4択を操作できてしまう。
         onlineWaitingForRemote = false;
         battleMenu.style.display = 'grid';
         movesContainer.style.display = 'none';
         updateMoves();
         enableMoves();
     } else {
+        // switch / event / result はすべて入力禁止。
+        // 特に相手の強制交代中は4択を表示しない。
         onlineWaitingForRemote = true;
         battleMenu.style.display = 'none';
         movesContainer.style.display = 'none';
@@ -7414,9 +7417,12 @@ function getOpponentMove() {
 
         // ネット対戦では攻撃側の演出開始を相手にも通知する。
         if (onlineMode && onlineRole === 'host' && onlineConn && onlineConn.open) {
+            // ゲスト側では「攻撃したポケモン」ではなく「攻撃を受けたポケモン」を
+            // 振動させる。host視点のsideをそのまま送ることで、guest側の
+            // player/opponent変換と一致させる。
             onlineSend({
                 type: 'animation',
-                side: isPlayerAttacking ? 'player' : 'opponent',
+                side: isPlayerAttacking ? 'opponent' : 'player',
                 moveName: move?.name || ''
             });
         }
@@ -10444,6 +10450,18 @@ if (
 
         // 次のポケモンを選択させる
         forcedSwitchPending = true;
+
+        // オーナー側が瀕死になった場合、参加側には4択のコマンドを出さず、
+        // 「オーナーが次のポケモンを選んでいる」状態にする。
+        // 交代前の入力状態を残すと、参加側がHP0/古いポケモンに対して
+        // 技を選べるようになり、両端の進行がずれてしまう。
+        if (difficulty === 'online' && onlineRole === 'host') {
+            onlineSendState(
+                'switch',
+                'オーナーが 次のポケモンを えらんでいます…'
+            );
+        }
+
         await showForcedSwitchSelection();
 
         return false;

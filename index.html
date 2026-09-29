@@ -797,6 +797,7 @@ surrenderButton.onclick = () => {
         if (onlineWaitingForRemote) return;
 
         onlineWaitingForRemote = true;
+        onlineGuestActedTurn = currentTurn;
         disableMoves();
         onlineSend({ type: 'action', actionType: 'surrender' });
         messageText.textContent = 'あいての こうどうを まっています…';
@@ -840,6 +841,8 @@ let onlineQueuedAction = null;
 let onlineWaitingForRemote = false;
 let onlineBattleStarted = false;
 let onlineBattleStartSent = false;
+let onlineGuestActedTurn = 0;      // ゲストが行動を送信済みのターン（同じターンの二重入力防止）
+let onlineGuestRampageTimer = null;
 
 function onlineSend(message) {
     if (onlineConn && onlineConn.open) onlineConn.send(message);
@@ -888,8 +891,79 @@ function onlineReceiveAction(action) {
     }
 }
 
+// ------------------------------------------------------------
+// ホスト視点のメッセージを、ゲスト視点に変換する。
+// ホスト側の「あいて の ○○」は、ゲストにとっては自分のポケモン。
+// ポケモン名から「どちら側の話か」を判定し、ゲストの画面では
+//   自分のポケモン  -> 名前だけ
+//   相手のポケモン  -> 「あいて の 名前」
+// になるように書き換える。
+// ------------------------------------------------------------
+function onlineNamesFor(pokemon) {
+    const names = new Set();
+    if (!pokemon) return [];
+    if (pokemon.name) names.add(pokemon.name);
+    if (pokemon.disguiseData && pokemon.disguiseData.name) names.add(pokemon.disguiseData.name);
+    if (pokemon.megaEvolved && typeof MEGA_DATA !== 'undefined') {
+        Object.keys(MEGA_DATA).forEach(base => {
+            if (MEGA_DATA[base] && MEGA_DATA[base].form && MEGA_DATA[base].form.name === pokemon.name) names.add(base);
+        });
+    }
+    return [...names];
+}
+
+function onlineTranslateMessageForGuest(text, hostMon, guestMon) {
+    if (!text) return text;
+    const hostNames = onlineNamesFor(hostMon);
+    const guestNames = onlineNamesFor(guestMon);
+    const entries = [];
+    hostNames.forEach(n => entries.push({ name: n, side: guestNames.includes(n) ? 'both' : 'host' }));
+    guestNames.forEach(n => { if (!hostNames.includes(n)) entries.push({ name: n, side: 'guest' }); });
+    if (!entries.length) return text;
+    entries.sort((a, b) => b.name.length - a.name.length);
+
+    const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const namePattern = entries.map(e => escape(e.name)).join('|');
+    const sideOf = (name, hasPrefix) => {
+        const e = entries.find(x => x.name === name);
+        if (!e) return null;
+        if (e.side === 'both') return hasPrefix ? 'guest' : 'host';
+        return e.side;
+    };
+
+    // 定型: 「(あいて は) ○○ を ひっこめた／くりだした！」
+    const swapRe = new RegExp('^(あいて は )?(' + namePattern + ') を (ひっこめた|くりだした)！');
+    const m = text.match(swapRe);
+    if (m) {
+        const side = sideOf(m[2], !!m[1]);
+        const rest = text.slice(m[0].length);
+        if (side === 'guest') return `${m[2]} を ${m[3]}！${rest}`;
+        if (side === 'host') return `あいて は ${m[2]} を ${m[3]}！${rest}`;
+    }
+
+    // 一般: 名前の出現位置ごとに、前置きの「あいて の 」を付け外しする
+    const re = new RegExp('((?:あいて\\s?の\\s?)?)(' + namePattern + ')', 'g');
+    return text.replace(re, (all, prefix, name) => {
+        const side = sideOf(name, !!prefix);
+        if (side === 'guest') return name;              // ゲストから見て自分
+        if (side === 'host') return `あいて の ${name}`;  // ゲストから見て相手
+        return all;
+    });
+}
+
+// 変換後の仕上げ：瀕死メッセージの語尾（自分は「…」、相手は「！」）と、交代待ちの文言をゲスト視点にそろえる
+function onlineFinishGuestMessage(text) {
+    if (!text) return text;
+    let t = String(text);
+    t = t.replace(/^オーナーが 次のポケモンを えらんでいます…$/, 'あいてが 次のポケモンを えらんでいます…');
+    t = t.replace(/^(あいて の )?(.+) は たおれた(\.\.\.|！)$/, (all, prefix, name) =>
+        prefix ? `${prefix}${name} は たおれた！` : `${name} は たおれた...`);
+    return t;
+}
+
 function onlineSendState(phase = 'event', messageOverride = null) {
     if (onlineRole !== 'host' || !onlineConn || !playerTeam.length) return;
+    const rawMessage = messageOverride !== null ? messageOverride : (messageText.textContent || '');
     onlineSend({
         type: 'state',
         phase,
@@ -900,8 +974,64 @@ function onlineSendState(phase = 'event', messageOverride = null) {
         currentTurn,
         weather,
         field,
-        message: messageOverride !== null ? messageOverride : (messageText.textContent || '')
+        message: onlineFinishGuestMessage(onlineTranslateMessageForGuest(rawMessage, playerPokemon, opponentPokemon))
     });
+}
+
+// 被弾シェイク（ホストが sprite-shake を付けるのと同じタイミングで送る）
+function onlineSendShake(defenderIsHostPlayer) {
+    if (onlineRole !== 'host' || !onlineConn || !onlineConn.open) return;
+    onlineSend({ type: 'animation', side: defenderIsHostPlayer ? 'player' : 'opponent' });
+}
+
+// 瀕死アニメーション（ホストが sprite-faint を付けるのと同じタイミングで送る）
+function onlineSendFaint(isHostPlayer) {
+    if (onlineRole !== 'host' || !onlineConn || !onlineConn.open) return;
+    onlineSend({ type: 'faint', side: isHostPlayer ? 'player' : 'opponent' });
+}
+
+// ゲストに「次のポケモンを選んで」と明示的に依頼して、選択を待つ。
+// （HP0かどうかの推測では判定しない）
+async function onlineAskGuestToSwitch(reason) {
+    onlineSendState('switch');
+    onlineSend({ type: 'request-switch', reason });
+    return await onlineWaitForAction();
+}
+
+// とんぼがえり系：ゲスト側の交代先を決める（オンラインならゲスト本人に選ばせる）
+async function onlinePickOpponentPivotIndex() {
+    if (difficulty === 'online' && onlineRole === 'host') {
+        const remoteAction = await onlineAskGuestToSwitch('pivot');
+        if (remoteAction && remoteAction.actionType === 'switch') {
+            const idx = remoteAction.index;
+            if (opponentTeam[idx] && idx !== opponentActiveIndex && opponentTeam[idx].currentHp > 0) return idx;
+        }
+        return -1;
+    }
+    return chooseBestOpponentSwitch();
+}
+
+function onlineSpriteSizeClass(pokemon) {
+    return (pokemon.id === 'necrozma-ultra' || pokemon.id === 'eternatus-eternamax')
+        ? 'h-28 sm:h-36 md:h-44'
+        : 'h-24 sm:h-32 md:h-40';
+}
+
+// スプライトを更新する。ポケモンが変わったときだけ className を作り直し、
+// 被弾シェイク・瀕死アニメのクラスを途中で消さない。
+function onlineUpdateSprite(uiSide, pokemon, isBack) {
+    const shown = pokemon.disguiseData || pokemon;
+    const sprite = uiSide.sprite;
+    const url = getSpriteUrl(shown, isBack);
+    if (sprite.getAttribute('src') !== url) sprite.src = url;
+
+    const base = `mx-auto ${onlineSpriteSizeClass(pokemon)} object-contain transition-all duration-1000`;
+    if (sprite.dataset.onlineBase !== base + '|' + pokemon.id + '|' + pokemon.name) {
+        sprite.className = base;
+        sprite.dataset.onlineBase = base + '|' + pokemon.id + '|' + pokemon.name;
+    }
+    // HPが残っているなら瀕死演出は解除。HP0のときは「faint」イベントに任せる。
+    if (pokemon.currentHp > 0) sprite.classList.remove('sprite-faint');
 }
 
 function onlineApplyState(data) {
@@ -917,29 +1047,27 @@ function onlineApplyState(data) {
     field = data.field || {type:'none', turns:0};
 
     const phase = data.phase || 'event';
-    const isInputPhase = phase === 'input';
-    const isSwitchPhase = phase === 'switch';
 
     onlineShowOnly('battle');
 
     // 毎回 initBattleUI() を呼ぶと、ネット対戦中の演出や入力状態まで
     // リセットされるため、オンラインの状態受信では直接表示だけ更新する。
     turnCounter.textContent = `ターン: ${currentTurn}`;
+    updateWeatherIndicator();
+    updateFieldIndicator();
 
     if (playerPokemon) {
         const ps = playerPokemon.disguiseData || playerPokemon;
         player.nameEl.textContent = ps.name;
         player.maxHpEl.textContent = playerPokemon.maxHp;
-        player.sprite.src = getSpriteUrl(ps, true);
-        player.sprite.classList.remove('sprite-faint');
+        onlineUpdateSprite(player, playerPokemon, true);
         updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
     }
     if (opponentPokemon) {
         const os = opponentPokemon.disguiseData || opponentPokemon;
         opponent.nameEl.textContent = os.name;
         document.getElementById('opponent-max-hp').textContent = opponentPokemon.maxHp;
-        opponent.sprite.src = getSpriteUrl(os);
-        opponent.sprite.classList.remove('sprite-faint');
+        onlineUpdateSprite(opponent, opponentPokemon, false);
         updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
     }
 
@@ -958,33 +1086,45 @@ function onlineApplyState(data) {
         }
     }
 
-    const activeFainted = playerPokemon && playerPokemon.currentHp <= 0;
-    const hasSwitch = playerTeam.some((p, i) => i !== playerActiveIndex && p.currentHp > 0);
-    if (phase !== 'result' && activeFainted && hasSwitch) {
-        // 瀕死後は「相手の行動待ち」ではなく、
-        // この端末のプレイヤー自身が次のポケモンを選ぶ状態。
-        // true のままだと onlineGuestSendSwitch() が弾かれてしまい、
-        // ホスト側が永遠に交代を待つ状態になる。
-        onlineWaitingForRemote = false;
-        battleMenu.style.display = 'none';
-        movesContainer.style.display = 'none';
-        disableMoves();
-        showForcedSwitchSelection();
-        return;
-    }
+    // 強制交代の入力は「request-switch」イベントでのみ開く（HP0の推測はしない）。
+    // 交代選択中は他の state が来ても入力状態を触らない。
+    if (document.getElementById('switch-selection-container')) return;
 
-    if (isInputPhase) {
-        // 「input」だけを次の技選択開始の合図にする。
-        // switch状態のままコマンドを出すと、相手が交代を選んでいる途中に
-        // 参加側が4択を操作できてしまう。
+    if (onlineGuestRampageTimer) { clearTimeout(onlineGuestRampageTimer); onlineGuestRampageTimer = null; }
+
+    // 同じターンで既に行動を送っている場合、input が再送されても入力を再開しない。
+    const alreadyActed = currentTurn <= onlineGuestActedTurn;
+
+    if (phase === 'input' && !alreadyActed) {
         onlineWaitingForRemote = false;
         battleMenu.style.display = 'grid';
         movesContainer.style.display = 'none';
         updateMoves();
         enableMoves();
+
+        // げきりん中は、ホストと同じく技を選ばず自動で継続する。
+        if (playerPokemon && playerPokemon.isRampaging && playerPokemon.currentHp > 0) {
+            const idx = playerPokemon.moves.findIndex(m => m.name === 'げきりん');
+            if (idx >= 0) {
+                battleMenu.style.display = 'none';
+                movesContainer.style.display = 'none';
+                disableMoves();
+                const turnAtSchedule = currentTurn;
+                onlineGuestRampageTimer = setTimeout(() => {
+                    onlineGuestRampageTimer = null;
+                    if (currentTurn !== turnAtSchedule || onlineGuestActedTurn >= turnAtSchedule) return;
+                    onlineGuestSendMove(idx);
+                }, 1500);
+            }
+        }
+    } else if (phase === 'input' && alreadyActed) {
+        // 行動送信済み：相手待ちのまま
+        onlineWaitingForRemote = true;
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+        disableMoves();
     } else {
         // switch / event / result はすべて入力禁止。
-        // 特に相手の強制交代中は4択を表示しない。
         onlineWaitingForRemote = true;
         battleMenu.style.display = 'none';
         movesContainer.style.display = 'none';
@@ -1003,6 +1143,7 @@ function onlineGuestSendMove(moveIndex, options = {}) {
     const useMega = !!playerPokemon.pendingMega;
 
     onlineWaitingForRemote = true;
+    onlineGuestActedTurn = currentTurn;
     disableMoves();
 
     onlineSend({
@@ -1023,6 +1164,7 @@ function onlineGuestSendZMove(moveIndex) {
     if (!move || !canUseZMove(playerPokemon)) return;
 
     onlineWaitingForRemote = true;
+    onlineGuestActedTurn = currentTurn;
     disableMoves();
 
     onlineSend({
@@ -1045,6 +1187,8 @@ function onlineGuestSendSwitch(index) {
     if (onlineWaitingForRemote && !forcedSwitch) return;
 
     onlineWaitingForRemote = true;
+    // 強制交代（瀕死・とんぼがえり）は同じターン内の選択なので、行動済みにはしない。
+    if (!forcedSwitch) onlineGuestActedTurn = currentTurn;
     disableMoves();
     onlineSend({type:'action', actionType:'switch', index});
     const container = document.getElementById('switch-selection-container');
@@ -1244,6 +1388,24 @@ function handleOnlineData(data) {
         onlineReceiveAction(data);
         return;
     }
+    if (data.type === 'faint' && onlineRole === 'guest') {
+        // ホスト視点の side を、ゲスト視点のスプライトに変換する。
+        const target = data.side === 'player' ? opponent.sprite : player.sprite;
+        if (target) target.classList.add('sprite-faint');
+        return;
+    }
+    if (data.type === 'request-switch' && onlineRole === 'guest') {
+        // ホストが「次のポケモンを選んで」と明示的に依頼したときだけ選択画面を出す。
+        if (document.getElementById('switch-selection-container')) return;
+        const hasSwitch = playerTeam.some((p, i) => i !== playerActiveIndex && p.currentHp > 0);
+        if (!hasSwitch) return;
+        onlineWaitingForRemote = false;
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'none';
+        disableMoves();
+        showForcedSwitchSelection();
+        return;
+    }
     if (data.type === 'animation' && onlineRole === 'guest') {
         const target = data.side === 'player' ? opponent.sprite : player.sprite;
         if (target) {
@@ -1329,7 +1491,8 @@ function onlineStartGuestBattle(hostTeam) {
 
 function onlineCleanup() {
     sessionStorage.removeItem('pokemonBattleInProgress');
-    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false;
+    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false; onlineGuestActedTurn=0;
+    if (onlineGuestRampageTimer) { clearTimeout(onlineGuestRampageTimer); onlineGuestRampageTimer=null; }
     if (onlineConn) { try { onlineConn.close(); } catch(e){} }
     if (onlinePeer) { try { onlinePeer.destroy(); } catch(e){} }
     onlineConn=null; onlinePeer=null;
@@ -4211,23 +4374,6 @@ function showSwitchSelection() {
 
     movesContainer.innerHTML = "";
 
-    if (onlineMode && onlineRole === 'guest') {
-        playerTeam.forEach((pokemon, index) => {
-            if (index === playerActiveIndex || pokemon.currentHp <= 0) return;
-            const button = document.createElement('button');
-            button.className = "border-2 border-gray-800 rounded p-2 bg-green-200 hover:bg-green-300";
-            button.innerHTML = `<div class="font-bold">${pokemon.name}</div><div class="text-xs mt-1">HP ${pokemon.currentHp} / ${pokemon.maxHp}</div>`;
-            button.onclick = () => onlineGuestSendSwitch(index);
-            movesContainer.appendChild(button);
-        });
-        const backButton = document.createElement('button');
-        backButton.className = "border-2 border-gray-800 rounded p-2 bg-gray-200";
-        backButton.textContent = 'もどる';
-        backButton.onclick = () => { movesContainer.style.display='none'; movesContainer.innerHTML=''; battleMenu.style.display='grid'; updateMoves(); };
-        movesContainer.appendChild(backButton);
-        return;
-    }
-
     playerTeam.forEach((pokemon, index) => {
 
         // 今、場に出ているポケモンは表示せず、残り2枠を交代先にする
@@ -4274,7 +4420,11 @@ function showSwitchSelection() {
         `;
 
         button.onclick = () => {
-            executePlayerSwitch(index);
+            if (onlineMode && onlineRole === 'guest') {
+                onlineGuestSendSwitch(index);
+            } else {
+                executePlayerSwitch(index);
+            }
         };
 
         // ポケモンにカーソルを合わせたときツールチップを表示
@@ -4832,6 +4982,15 @@ if (difficulty === "online" && onlineRole === "host") {
             }
         } else {
             opponentMove = remoteMove;
+        }
+
+        // げきりん中は、ホスト側プレイヤーと同じく技を固定して回数を消費する。
+        if (opponentPokemon.isRampaging && opponentPokemon.rampageTurns > 0) {
+            const rampageMoveIndex = opponentPokemon.moves.findIndex(m => m.name === 'げきりん');
+            if (rampageMoveIndex >= 0) {
+                opponentPokemon.rampageTurns--;
+                opponentMove = opponentPokemon.moves[rampageMoveIndex];
+            }
         }
 
         // ゲストがメガシンカを選択していた場合だけ発動。
@@ -7415,18 +7574,6 @@ function getOpponentMove() {
         const isPlayerAttacking = attacker === playerPokemon;
         const defenderUI = isPlayerAttacking ? opponent : player;
 
-        // ネット対戦では攻撃側の演出開始を相手にも通知する。
-        if (onlineMode && onlineRole === 'host' && onlineConn && onlineConn.open) {
-            // ゲスト側では「攻撃したポケモン」ではなく「攻撃を受けたポケモン」を
-            // 振動させる。host視点のsideをそのまま送ることで、guest側の
-            // player/opponent変換と一致させる。
-            onlineSend({
-                type: 'animation',
-                side: isPlayerAttacking ? 'opponent' : 'player',
-                moveName: move?.name || ''
-            });
-        }
-
         const hpBeforeDamage = defender.currentHp;
 if (move.isDynamicType) {
 
@@ -7508,6 +7655,7 @@ if (move.isDynamicType) {
                     if (attacker.currentHp <= 0) {
                         const faintedSprite = isPlayerAttacking ? player.sprite : opponent.sprite;
                         faintedSprite.classList.add('sprite-faint');
+                        onlineSendFaint(isPlayerAttacking);
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         await showMessage(`${isPlayerAttacking ? "" : "あいて の "}${attacker.name} は たおれた${isPlayerAttacking ? "..." : "！"}`);
                         endGame(!isPlayerAttacking);
@@ -8857,6 +9005,7 @@ for(let hit = 0; hit < hitCount; hit++){
     } else {
 
     defenderUI.sprite.classList.add('sprite-shake');
+    onlineSendShake(defenderUI === player);
     setTimeout(
         () => defenderUI.sprite.classList.remove('sprite-shake'),
         500
@@ -8872,6 +9021,7 @@ for(let hit = 0; hit < hitCount; hit++){
     defender.lastDamageCategory = move.category;
 
     defenderUI.sprite.classList.add('sprite-shake');
+    onlineSendShake(defenderUI === player);
     setTimeout(
         () => defenderUI.sprite.classList.remove('sprite-shake'),
         500
@@ -9077,7 +9227,7 @@ if (move.self && move.self.stats) {
                         );
 
                         const nextIndex =
-                            chooseBestOpponentSwitch();
+                            await onlinePickOpponentPivotIndex();
 
                         if (nextIndex !== -1) {
                             uTurnSwitched = true;
@@ -9148,13 +9298,7 @@ if (
         `あいて の ${attacker.name} は 戻っていく！`
     );
 
-    let nextIndex = -1;
-    if (difficulty === "online" && onlineRole === "host") {
-        const remoteAction = await onlineWaitForAction();
-        if (remoteAction.actionType === 'switch') nextIndex = remoteAction.index;
-    } else {
-        nextIndex = chooseBestOpponentSwitch();
-    }
+    const nextIndex = await onlinePickOpponentPivotIndex();
 
     if (nextIndex !== -1) {
         uTurnSwitched = true;
@@ -10415,6 +10559,7 @@ if (
         isPlayer ? player.sprite : opponent.sprite;
 
     faintedSprite.classList.add('sprite-faint');
+    onlineSendFaint(isPlayer);
 
     await new Promise(resolve =>
         setTimeout(resolve, 1000)
@@ -10494,8 +10639,7 @@ if (
     if (difficulty === "online" && onlineRole === "host") {
         // 相手側（ゲスト）が次のポケモンを選ぶ時間。
         // 「○○はどうする？」ではなく、交代待ちであることを明示する。
-        onlineSendState('switch', 'あいてが 次のポケモンを えらんでいます…');
-        const remoteAction = await onlineWaitForAction();
+        const remoteAction = await onlineAskGuestToSwitch('faint');
         let nextIndex = remoteAction.actionType === 'switch' ? remoteAction.index : -1;
         if (!remainingOpponentIndexes.some(x => x.index === nextIndex)) {
             nextIndex = remainingOpponentIndexes[0].index;
@@ -10623,23 +10767,6 @@ async function showForcedSwitchSelection() {
     grid.className =
         'grid grid-cols-1 sm:grid-cols-3 gap-4';
 
-    if (onlineMode && onlineRole === 'guest') {
-        // 強制交代中は選択権がこの端末にある。
-        onlineWaitingForRemote = false;
-        playerTeam.forEach((pokemon, index) => {
-            if (index === playerActiveIndex || pokemon.currentHp <= 0) return;
-            const button = document.createElement('button');
-            button.className = 'nes-container bg-white p-4 cursor-pointer';
-            button.innerHTML = `<p class="font-bold">${getShownName(pokemon)}</p><p class="text-sm mt-2">HP ${pokemon.currentHp} / ${pokemon.maxHp}</p>`;
-            button.onclick = () => { onlineGuestSendSwitch(index); const c=document.getElementById('switch-selection-container'); if(c)c.remove(); };
-            grid.appendChild(button);
-        });
-        box.appendChild(grid);
-        container.appendChild(box);
-        document.body.appendChild(container);
-        return;
-    }
-
     playerTeam.forEach(
         (pokemon, index) => {
 
@@ -10740,6 +10867,12 @@ let top = e.clientY + 20;
             button.onclick =
                 async () => {
                     button.disabled = true;
+
+                    if (onlineMode && onlineRole === 'guest') {
+                        onlineGuestSendSwitch(index);
+                        container.remove();
+                        return;
+                    }
 
                     await executeForcedSwitch(index);
 

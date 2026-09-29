@@ -774,6 +774,24 @@ resetNoButton.onclick = () => {
 };
     const moveTooltip = document.getElementById('move-tooltip');
     const selectionTooltip = document.getElementById('selection-tooltip');
+
+    // ポケモン選択画面が閉じたら、表示中の詳細ツールチップも必ず消す。
+    // （選択画面ごと remove されると mouseout が発火せず、対戦画面に残ってしまうため）
+    function hideSelectionTooltips() {
+        selectionTooltip.style.display = 'none';
+        selectionTooltip.innerHTML = '';
+        moveTooltip.style.display = 'none';
+    }
+    new MutationObserver(mutations => {
+        for (const m of mutations) {
+            for (const node of m.removedNodes) {
+                if (node.nodeType === 1 && node.id === 'switch-selection-container') {
+                    hideSelectionTooltips();
+                    return;
+                }
+            }
+        }
+    }).observe(document.body, { childList: true });
     const turnCounter = document.getElementById('turn-counter');
     const weatherIndicator = document.getElementById('weather-indicator');
     const fieldIndicator = document.getElementById('field-indicator');
@@ -4420,6 +4438,7 @@ function showSwitchSelection() {
         `;
 
         button.onclick = () => {
+            hideSelectionTooltips();
             if (onlineMode && onlineRole === 'guest') {
                 onlineGuestSendSwitch(index);
             } else {
@@ -10867,6 +10886,7 @@ let top = e.clientY + 20;
             button.onclick =
                 async () => {
                     button.disabled = true;
+                    hideSelectionTooltips();
 
                     if (onlineMode && onlineRole === 'guest') {
                         onlineGuestSendSwitch(index);

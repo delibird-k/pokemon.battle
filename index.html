@@ -588,6 +588,7 @@ document.getElementById("reset-no-button");
     function updateOpeningStats() {
         openingStats.innerHTML = `
             <div>レート：<strong>${rating}</strong></div>
+            <div>ランク：${getRank()}</div>
             <div>戦績：${winCount}勝 ${loseCount}敗</div>
             <div>連勝：${winStreak}　連敗：${loseStreak}</div>
         `;

@@ -2378,10 +2378,18 @@ if (nature) {
     element.textContent = text.trim();
 }
 function getShownName(pokemon){
-    return (
-        pokemon.disguiseData?.name ||
-        pokemon.name
-    );
+    if (!pokemon) return '';
+
+    // イリュージョンが解除されるまでは、変身先の名前だけを表示。
+    if (
+        pokemon.ability === "イリュージョン" &&
+        !pokemon.diszoroaBroken &&
+        pokemon.disguiseData?.name
+    ) {
+        return pokemon.disguiseData.name;
+    }
+
+    return pokemon.name;
 }
     function showPlayerSelection() {
         // オンラインでも1人用と同じ手動3匹選出を使用する。
@@ -7722,7 +7730,7 @@ if (move.isDynamicType) {
 
         if (attacker.isConfused) {
             attacker.confusionTurns--;
-            await showMessage(`${attacker.name} は こんらんしている！`);
+            await showMessage(`${getShownName(attacker)} は こんらんしている！`);
             if (attacker.confusionTurns <= 0) {
                 attacker.isConfused = false;
                 await showMessage(`${attacker.name} は こんらんが とけた！`);
@@ -8448,7 +8456,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         // ねごとなら、このまま下の「ねごと」処理へ進む
         if (move.name !== "ねごと") {
             await showMessage(
-                `${attacker.name} は ぐうぐう ねむっている！`
+                `${getShownName(attacker)} は ぐうぐう ねむっている！`
             );
             return false;
         }
@@ -8460,7 +8468,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         attacker.status = null;
 
         await showMessage(
-            `${attacker.name} は めをさました！`
+            `${getShownName(attacker)} は めをさました！`
         );
 
         updateStatusMarkers();
@@ -8477,15 +8485,15 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         if (attacker.status === 'freeze') {
             if (Math.random() < 0.2) {
                 attacker.status = null;
-                await showMessage(`${attacker.name} の こおりが とけた！`);
+                await showMessage(`${getShownName(attacker)} の こおりが とけた！`);
                 updateStatusMarkers();
             } else {
-                await showMessage(`${attacker.name} は こおってしまって うごけない！`);
+                await showMessage(`${getShownName(attacker)} は こおってしまって うごけない！`);
                 return false;
             }
         }
 
-        await showMessage(`${attacker.name} の ${move.name}！`);
+        await showMessage(`${getShownName(attacker)} の ${move.name}！`);
 // ねごと
 if (move.name === "ねごと") {
 

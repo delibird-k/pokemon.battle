@@ -10660,56 +10660,6 @@ async function checkFainted(pokemon, isPlayer, attacker = null) {
     // 瀕死処理開始時点でロックする
 pokemon._faintProcessed = true;
 
-// ビーストブースト：敵を倒したとき、自分の一番高い能力を1段階上げる
-const beastBoostAttacker = attacker || pokemon.lastAttacker;
-
-if (
-    beastBoostAttacker &&
-    beastBoostAttacker.currentHp > 0 &&
-    beastBoostAttacker.ability === "ビーストブースト"
-) {
-    const stats = {
-        attack: beastBoostAttacker.attack,
-        defense: beastBoostAttacker.defense,
-        spAttack: beastBoostAttacker.spAttack,
-        spDefense: beastBoostAttacker.spDefense,
-        speed: beastBoostAttacker.speed
-    };
-
-    const highestStat = Object.keys(stats).reduce(
-        (a, b) => stats[a] >= stats[b] ? a : b
-    );
-
-    beastBoostAttacker.statStages[highestStat] = Math.min(
-        6,
-        beastBoostAttacker.statStages[highestStat] + 1
-    );
-
-    const statNames = {
-        attack: "こうげき",
-        defense: "ぼうぎょ",
-        spAttack: "とくこう",
-        spDefense: "とくぼう",
-        speed: "すばやさ"
-    };
-
-    await showMessage(
-        `${beastBoostAttacker.name} の ビーストブースト！`
-    );
-
-    await showMessage(
-        `${beastBoostAttacker.name} の ${statNames[highestStat]}が あがった！`
-    );
-
-    updateStatDisplay(
-        beastBoostAttacker,
-        beastBoostAttacker === playerPokemon
-            ? document.getElementById('player-stat-display')
-            : document.getElementById('opponent-stat-display')
-    );
-}
-    
-
     const faintedSprite =
         isPlayer ? player.sprite : opponent.sprite;
 
@@ -10723,6 +10673,85 @@ if (
     await showMessage(
         `${isPlayer ? "" : "あいて の "}${pokemon.name} は たおれた${isPlayer ? "..." : "！"}`
     );
+
+    // ========================================================
+    // 倒れた表示のあとに、撃破した側の「敵を倒したとき」の特性を発動
+    // ビーストブースト／しろのいななきは、必ず「○○は たおれた！」の
+    // 表示が終わってから発動する。
+    // ========================================================
+    const faintRewardAttacker = attacker || pokemon.lastAttacker;
+
+    if (
+        faintRewardAttacker &&
+        faintRewardAttacker.currentHp > 0 &&
+        faintRewardAttacker.ability === "ビーストブースト"
+    ) {
+        const stats = {
+            attack: faintRewardAttacker.attack,
+            defense: faintRewardAttacker.defense,
+            spAttack: faintRewardAttacker.spAttack,
+            spDefense: faintRewardAttacker.spDefense,
+            speed: faintRewardAttacker.speed
+        };
+
+        const highestStat = Object.keys(stats).reduce(
+            (a, b) => stats[a] >= stats[b] ? a : b
+        );
+
+        faintRewardAttacker.statStages[highestStat] = Math.min(
+            6,
+            faintRewardAttacker.statStages[highestStat] + 1
+        );
+
+        const statNames = {
+            attack: "こうげき",
+            defense: "ぼうぎょ",
+            spAttack: "とくこう",
+            spDefense: "とくぼう",
+            speed: "すばやさ"
+        };
+
+        await showMessage(
+            `${faintRewardAttacker.name} の ビーストブースト！`
+        );
+
+        await showMessage(
+            `${faintRewardAttacker.name} の ${statNames[highestStat]}が あがった！`
+        );
+
+        updateStatDisplay(
+            faintRewardAttacker,
+            faintRewardAttacker === playerPokemon
+                ? document.getElementById('player-stat-display')
+                : document.getElementById('opponent-stat-display')
+        );
+    }
+
+    if (
+        faintRewardAttacker &&
+        faintRewardAttacker.currentHp > 0 &&
+        faintRewardAttacker.ability === "しろのいななき"
+    ) {
+        faintRewardAttacker.statStages.attack = Math.min(
+            6,
+            faintRewardAttacker.statStages.attack + 1
+        );
+
+        await showMessage(
+            `${faintRewardAttacker.name} の しろのいななき！`
+        );
+
+        await showMessage(
+            `${faintRewardAttacker.name} の こうげきが あがった！`
+        );
+
+        updateStatDisplay(
+            faintRewardAttacker,
+            faintRewardAttacker === playerPokemon
+                ? document.getElementById('player-stat-display')
+                : document.getElementById('opponent-stat-display')
+        );
+    }
 
     // ========================================================
     // プレイヤー側

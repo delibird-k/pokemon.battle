@@ -9175,13 +9175,6 @@ for(let hit = 0; hit < hitCount; hit++){
     defender.lastDamageTaken = currentDamage;
     defender.lastDamageCategory = move.category;
 
-    defenderUI.sprite.classList.add('sprite-shake');
-    onlineSendShake(defenderUI === player);
-    setTimeout(
-        () => defenderUI.sprite.classList.remove('sprite-shake'),
-        500
-    );
-
     updateHpBars();
 
     // ========================================================
@@ -9523,6 +9516,16 @@ defender.currentHp = Math.max(0, defender.currentHp - damage);
 defender.lastDamageTaken = damage;
 defender.lastDamageCategory = move.category;
 defender.lastAttacker = attacker;
+
+    // 被弾した側を毎回振動させる。
+    // 自分が攻撃を受けた場合も、相手が攻撃を受けた場合も同じ処理を通る。
+    // 連続技では applyDamage が1発ごとに呼ばれるため、1発ずつ振動する。
+    defenderUI.sprite.classList.remove('sprite-shake');
+    void defenderUI.sprite.offsetWidth;
+    defenderUI.sprite.classList.add('sprite-shake');
+    onlineSendShake(defenderUI === player);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    defenderUI.sprite.classList.remove('sprite-shake');
 
     updateHpBars();
 

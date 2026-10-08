@@ -4421,7 +4421,7 @@ async function executeUTurnSwitch(newIndex) {
     const oldPokemon = playerPokemon;
 
 await showMessage(
-    `${oldPokemon.name} を ひっこめた！`
+    `${getShownName(oldPokemon)} を ひっこめた！`
 );
 
 // 交代するとみがわりは消える
@@ -4698,7 +4698,7 @@ async function executePlayerSwitch(newIndex) {
 const oldPokemon = playerPokemon;
 
 await showMessage(
-    `${oldPokemon.name} を ひっこめた！`
+    `${getShownName(oldPokemon)} を ひっこめた！`
 );
 
 // 交代するとみがわりは消える
@@ -4981,7 +4981,7 @@ async function executeOpponentAISwitch(newIndex) {
     opponentPokemon;
 
 await showMessage(
-    `あいて は ${oldPokemon.name} を ひっこめた！`
+    `あいて は ${getShownName(oldPokemon)} を ひっこめた！`
 );
 
 // 交代するとみがわりは消える

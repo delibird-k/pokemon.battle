@@ -5003,6 +5003,13 @@ opponentPokemon =
         speed: 0
     };
 
+    // 交代前の相手ポケモンに表示されていた能力変動を、
+    // 交代後のポケモンには引き継がない。
+    updateStatDisplay(
+        opponentPokemon,
+        document.getElementById('opponent-stat-display')
+    );
+
     opponentPokemon.hasMoved = false;
     playerPokemon.lastDamageTaken = 0;
 playerPokemon.lastDamageCategory = null;
@@ -5053,6 +5060,13 @@ if (await applyStealthRockOnEntry(opponentPokemon)) {
 await handleAbilityEffectsOnEntry(
     "opponent"
 );
+
+    // 場に出たときの特性などで能力変動が発生した場合は、
+    // その「新しいポケモン」の能力変動だけを表示する。
+    updateStatDisplay(
+        opponentPokemon,
+        document.getElementById('opponent-stat-display')
+    );
 
     updateHpBars();
     updateStatusMarkers();
@@ -6385,7 +6399,6 @@ function getAIRecoilPenalty(
 
     const recoilMoves = [
         "フレアドライブ",
-        "ウッドハンマー",
         "ワイルドボルト",
         "ブレイブバード",
         "もろはのずつき",
@@ -7929,7 +7942,6 @@ if (defender.currentHp <= 0) {
     // ========================================================
     const recoilMoves = [
         "フレアドライブ",
-        "ウッドハンマー",
         "ワイルドボルト",
         "ブレイブバード",
         "もろはのずつき",
@@ -9178,7 +9190,6 @@ for(let hit = 0; hit < hitCount; hit++){
 // ========================================================
 const recoilMoves = [
     "フレアドライブ",
-    "ウッドハンマー",
     "ワイルドボルト",
     "ブレイブバード",
     "もろはのずつき",

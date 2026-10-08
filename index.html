@@ -1115,14 +1115,14 @@ function onlineApplyState(data) {
 
     if (playerPokemon) {
         const ps = playerPokemon.disguiseData || playerPokemon;
-        player.nameEl.textContent = ps.name;
+        player.nameEl.textContent = getShownName(playerPokemon);
         player.maxHpEl.textContent = playerPokemon.maxHp;
         onlineUpdateSprite(player, playerPokemon, true);
         updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
     }
     if (opponentPokemon) {
         const os = opponentPokemon.disguiseData || opponentPokemon;
-        opponent.nameEl.textContent = os.name;
+        opponent.nameEl.textContent = getShownName(opponentPokemon);
         document.getElementById('opponent-max-hp').textContent = opponentPokemon.maxHp;
         onlineUpdateSprite(opponent, opponentPokemon, false);
         updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
@@ -2379,16 +2379,9 @@ if (nature) {
 }
 function getShownName(pokemon){
     if (!pokemon) return '';
-
-    // イリュージョンが解除されるまでは、変身先の名前だけを表示。
-    if (
-        pokemon.ability === "イリュージョン" &&
-        !pokemon.diszoroaBroken &&
-        pokemon.disguiseData?.name
-    ) {
+    if (pokemon.ability === "イリュージョン" && !pokemon.diszoroaBroken && pokemon.disguiseData?.name) {
         return pokemon.disguiseData.name;
     }
-
     return pokemon.name;
 }
     function showPlayerSelection() {
@@ -3776,7 +3769,7 @@ const playerShown =
     playerPokemon.disguiseData || playerPokemon;
 
 player.nameEl.textContent =
-    playerShown.name;
+    getShownName(playerPokemon);
 
 player.maxHpEl.textContent =
     playerPokemon.maxHp;
@@ -3787,7 +3780,7 @@ const opponentShown =
     opponentPokemon.disguiseData || opponentPokemon;
 
 opponent.nameEl.textContent =
-    opponentShown.name;
+    getShownName(opponentPokemon);
 
 document.getElementById("opponent-max-hp").textContent =
     opponentPokemon.maxHp;
@@ -4406,7 +4399,7 @@ playerPokemon.statStages = {
         playerPokemon;
 
     player.nameEl.textContent =
-        playerShown.name;
+        getShownName(playerPokemon);
 
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
@@ -4689,7 +4682,7 @@ updateStatDisplay(
         playerPokemon;
 
     player.nameEl.textContent =
-        playerShown.name;
+        getShownName(playerPokemon);
 
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
@@ -4968,7 +4961,7 @@ opponentPokemon.protectUsed = false;
         opponentPokemon;
 
     opponent.nameEl.textContent =
-        opponentShown.name;
+        getShownName(opponentPokemon);
 
     document.getElementById(
         'opponent-max-hp'
@@ -7730,7 +7723,7 @@ if (move.isDynamicType) {
 
         if (attacker.isConfused) {
             attacker.confusionTurns--;
-            await showMessage(`${getShownName(attacker)} は こんらんしている！`);
+            await showMessage(`${attacker.name} は こんらんしている！`);
             if (attacker.confusionTurns <= 0) {
                 attacker.isConfused = false;
                 await showMessage(`${attacker.name} は こんらんが とけた！`);
@@ -8456,7 +8449,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         // ねごとなら、このまま下の「ねごと」処理へ進む
         if (move.name !== "ねごと") {
             await showMessage(
-                `${getShownName(attacker)} は ぐうぐう ねむっている！`
+                `${attacker.name} は ぐうぐう ねむっている！`
             );
             return false;
         }
@@ -8468,7 +8461,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         attacker.status = null;
 
         await showMessage(
-            `${getShownName(attacker)} は めをさました！`
+            `${attacker.name} は めをさました！`
         );
 
         updateStatusMarkers();
@@ -8485,15 +8478,15 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         if (attacker.status === 'freeze') {
             if (Math.random() < 0.2) {
                 attacker.status = null;
-                await showMessage(`${getShownName(attacker)} の こおりが とけた！`);
+                await showMessage(`${attacker.name} の こおりが とけた！`);
                 updateStatusMarkers();
             } else {
-                await showMessage(`${getShownName(attacker)} は こおってしまって うごけない！`);
+                await showMessage(`${attacker.name} は こおってしまって うごけない！`);
                 return false;
             }
         }
 
-        await showMessage(`${getShownName(attacker)} の ${move.name}！`);
+        await showMessage(`${attacker.name} の ${move.name}！`);
 // ねごと
 if (move.name === "ねごと") {
 
@@ -9026,11 +9019,11 @@ for(let hit = 0; hit < hitCount; hit++){
     defender.disguiseData = null;
 
     if (defender === playerPokemon) {
-        player.nameEl.textContent = defender.name;
+        player.nameEl.textContent = getShownName(defender);
         player.sprite.src =
             "https://play.pokemonshowdown.com/sprites/ani-back/zoroark-hisui.gif";
     } else {
-        opponent.nameEl.textContent = defender.name;
+        opponent.nameEl.textContent = getShownName(defender);
         opponent.sprite.src =
             "https://play.pokemonshowdown.com/sprites/ani/zoroark-hisui.gif";
     }
@@ -10774,7 +10767,7 @@ updateStatDisplay(
         opponentPokemon.disguiseData || opponentPokemon;
 
     opponent.nameEl.textContent =
-        opponentShown.name;
+        getShownName(opponentPokemon);
 
     document.getElementById(
         'opponent-max-hp'
@@ -11003,7 +10996,7 @@ updateStatDisplay(
     playerPokemon;
 
 player.nameEl.textContent =
-    playerShown.name;
+    getShownName(playerPokemon);
 
 player.maxHpEl.textContent =
     playerPokemon.maxHp;

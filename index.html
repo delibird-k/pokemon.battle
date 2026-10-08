@@ -110,6 +110,12 @@
 #difficulty-selection-screen{
     background: transparent !important;
 }
+            /* メッセージ欄が縦に広がった分だけ、HP欄とポケモン画像も上へ移動 */
+            .battle-ui-shift {
+                transform: translateY(calc(-1 * var(--menu-expand-shift, 0px)));
+                transition: transform 0.15s ease-out;
+            }
+
             #battle-screen{
         background-image: url("kusa.jpeg");
         background-size: cover;
@@ -454,7 +460,7 @@
                 </div>
             </div>
 
-<div id="player-area" class="absolute bottom-32 sm:bottom-36 left-12 w-2/5 max-w-[300px] flex flex-col items-center">
+<div id="player-area" class="battle-ui-shift absolute bottom-32 sm:bottom-36 left-12 w-2/5 max-w-[300px] flex flex-col items-center">
 
     <div class="relative" style="top:10px;">
         <div id="player-tooltip" class="absolute bottom-full mb-2 hidden nes-container bg-white/95 p-2 text-xs z-10 w-48 text-center left-1/2 -translate-x-1/2"></div>
@@ -834,7 +840,28 @@ const pokemonButton = document.getElementById("pokemon-button");
 const surrenderButton = document.getElementById("surrender-button");
 const ratingDisplay = document.getElementById("rating-display");
 
+// 下のメニュー（テキスト欄）が高くなった分だけ、
+// HP欄とポケモン画像のエリアも同じ量だけ上へ動かす。
+const baseMenuHeight = 120;
+const menuResizeObserver = new ResizeObserver(() => {
+    const expandedBy = Math.max(0, menu.offsetHeight - baseMenuHeight);
+    battleScreen.style.setProperty("--menu-expand-shift", `${expandedBy}px`);
+});
+menuResizeObserver.observe(menu);
+
+function returnToBattleMenu() {
+    // 技選択・Zワザ選択から通常のコマンド画面へ戻る
+    moveTooltip.style.display = "none";
+    moveTooltip.innerHTML = "";
+    movesContainer.innerHTML = "";
+    movesContainer.style.display = "none";
+    battleMenu.style.display = "grid";
+}
+
 fightButton.onclick = () => {
+    // 「戻る」で技ボタンを消しているため、
+    // 「たたかう」を押すたびに技選択画面を作り直す。
+    updateMoves();
     battleMenu.style.display = "none";
     movesContainer.style.display = "grid";
 };
@@ -1115,14 +1142,14 @@ function onlineApplyState(data) {
 
     if (playerPokemon) {
         const ps = playerPokemon.disguiseData || playerPokemon;
-        player.nameEl.textContent = getShownName(playerPokemon);
+        player.nameEl.textContent = ps.name;
         player.maxHpEl.textContent = playerPokemon.maxHp;
         onlineUpdateSprite(player, playerPokemon, true);
         updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
     }
     if (opponentPokemon) {
         const os = opponentPokemon.disguiseData || opponentPokemon;
-        opponent.nameEl.textContent = getShownName(opponentPokemon);
+        opponent.nameEl.textContent = os.name;
         document.getElementById('opponent-max-hp').textContent = opponentPokemon.maxHp;
         onlineUpdateSprite(opponent, opponentPokemon, false);
         updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
@@ -2379,9 +2406,16 @@ if (nature) {
 }
 function getShownName(pokemon){
     if (!pokemon) return '';
-    if (pokemon.ability === "イリュージョン" && !pokemon.diszoroaBroken && pokemon.disguiseData?.name) {
+
+    // イリュージョンが解除されるまでは、変身先の名前だけを表示。
+    if (
+        pokemon.ability === "イリュージョン" &&
+        !pokemon.diszoroaBroken &&
+        pokemon.disguiseData?.name
+    ) {
         return pokemon.disguiseData.name;
     }
+
     return pokemon.name;
 }
     function showPlayerSelection() {
@@ -3769,7 +3803,7 @@ const playerShown =
     playerPokemon.disguiseData || playerPokemon;
 
 player.nameEl.textContent =
-    getShownName(playerPokemon);
+    playerShown.name;
 
 player.maxHpEl.textContent =
     playerPokemon.maxHp;
@@ -3780,7 +3814,7 @@ const opponentShown =
     opponentPokemon.disguiseData || opponentPokemon;
 
 opponent.nameEl.textContent =
-    getShownName(opponentPokemon);
+    opponentShown.name;
 
 document.getElementById("opponent-max-hp").textContent =
     opponentPokemon.maxHp;
@@ -3969,10 +4003,35 @@ btn.onmouseout = () => {
 
             movesContainer.appendChild(btn);
         });
+
+        const zMoveBackButton = document.createElement("button");
+        zMoveBackButton.id = "z-move-back-button";
+        zMoveBackButton.textContent = "戻る";
+        zMoveBackButton.className =
+            "col-span-2 border-2 border-gray-800 rounded p-1 bg-gray-200 hover:bg-gray-300";
+        zMoveBackButton.onclick = () => {
+            returnToBattleMenu();
+            updateMoves();
+            battleMenu.style.display = "grid";
+            movesContainer.style.display = "none";
+        };
+        movesContainer.appendChild(zMoveBackButton);
     };
 
     movesContainer.appendChild(zBtn);
 }
+
+    // 「たたかう」から入った技選択画面を閉じて、
+    // 「たたかう・ポケモン・こうさん・せってい」に戻るボタン。
+    const moveBackButton = document.createElement("button");
+    moveBackButton.id = "move-back-button";
+    moveBackButton.textContent = "戻る";
+    moveBackButton.className =
+        "col-span-2 border-2 border-gray-800 rounded p-1 bg-gray-200 hover:bg-gray-300";
+    moveBackButton.onclick = () => {
+        returnToBattleMenu();
+    };
+    movesContainer.appendChild(moveBackButton);
 }
 
     
@@ -4399,7 +4458,7 @@ playerPokemon.statStages = {
         playerPokemon;
 
     player.nameEl.textContent =
-        getShownName(playerPokemon);
+        playerShown.name;
 
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
@@ -4682,7 +4741,7 @@ updateStatDisplay(
         playerPokemon;
 
     player.nameEl.textContent =
-        getShownName(playerPokemon);
+        playerShown.name;
 
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
@@ -4961,7 +5020,7 @@ opponentPokemon.protectUsed = false;
         opponentPokemon;
 
     opponent.nameEl.textContent =
-        getShownName(opponentPokemon);
+        opponentShown.name;
 
     document.getElementById(
         'opponent-max-hp'
@@ -7723,7 +7782,7 @@ if (move.isDynamicType) {
 
         if (attacker.isConfused) {
             attacker.confusionTurns--;
-            await showMessage(`${attacker.name} は こんらんしている！`);
+            await showMessage(`${getShownName(attacker)} は こんらんしている！`);
             if (attacker.confusionTurns <= 0) {
                 attacker.isConfused = false;
                 await showMessage(`${attacker.name} は こんらんが とけた！`);
@@ -8449,7 +8508,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         // ねごとなら、このまま下の「ねごと」処理へ進む
         if (move.name !== "ねごと") {
             await showMessage(
-                `${attacker.name} は ぐうぐう ねむっている！`
+                `${getShownName(attacker)} は ぐうぐう ねむっている！`
             );
             return false;
         }
@@ -8461,7 +8520,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         attacker.status = null;
 
         await showMessage(
-            `${attacker.name} は めをさました！`
+            `${getShownName(attacker)} は めをさました！`
         );
 
         updateStatusMarkers();
@@ -8478,15 +8537,15 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         if (attacker.status === 'freeze') {
             if (Math.random() < 0.2) {
                 attacker.status = null;
-                await showMessage(`${attacker.name} の こおりが とけた！`);
+                await showMessage(`${getShownName(attacker)} の こおりが とけた！`);
                 updateStatusMarkers();
             } else {
-                await showMessage(`${attacker.name} は こおってしまって うごけない！`);
+                await showMessage(`${getShownName(attacker)} は こおってしまって うごけない！`);
                 return false;
             }
         }
 
-        await showMessage(`${attacker.name} の ${move.name}！`);
+        await showMessage(`${getShownName(attacker)} の ${move.name}！`);
 // ねごと
 if (move.name === "ねごと") {
 
@@ -9019,11 +9078,11 @@ for(let hit = 0; hit < hitCount; hit++){
     defender.disguiseData = null;
 
     if (defender === playerPokemon) {
-        player.nameEl.textContent = getShownName(defender);
+        player.nameEl.textContent = defender.name;
         player.sprite.src =
             "https://play.pokemonshowdown.com/sprites/ani-back/zoroark-hisui.gif";
     } else {
-        opponent.nameEl.textContent = getShownName(defender);
+        opponent.nameEl.textContent = defender.name;
         opponent.sprite.src =
             "https://play.pokemonshowdown.com/sprites/ani/zoroark-hisui.gif";
     }
@@ -10767,7 +10826,7 @@ updateStatDisplay(
         opponentPokemon.disguiseData || opponentPokemon;
 
     opponent.nameEl.textContent =
-        getShownName(opponentPokemon);
+        opponentShown.name;
 
     document.getElementById(
         'opponent-max-hp'
@@ -10996,7 +11055,7 @@ updateStatDisplay(
     playerPokemon;
 
 player.nameEl.textContent =
-    getShownName(playerPokemon);
+    playerShown.name;
 
 player.maxHpEl.textContent =
     playerPokemon.maxHp;

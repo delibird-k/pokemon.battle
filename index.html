@@ -5050,7 +5050,7 @@ opponentPokemon.protectUsed = false;
     );
 
     await showMessage(
-    `あいて は ${opponentPokemon.name} を くりだした！`
+    `あいて は ${getShownName(opponentPokemon)} を くりだした！`
 );
 
 if (await applyStealthRockOnEntry(opponentPokemon)) {
@@ -10860,7 +10860,7 @@ updateStatDisplay(
 );
 
     await showMessage(
-        `あいて は ${opponentPokemon.name} を くりだした！`
+        `あいて は ${getShownName(opponentPokemon)} を くりだした！`
     );
 
     opponent.sprite.classList.remove('sprite-faint');

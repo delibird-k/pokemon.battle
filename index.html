@@ -51,7 +51,16 @@
             animation: shake 0.5s;
         }
         @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); }
+            0%,100% { transform: translate(0,0) rotate(0deg); }
+            10% { transform: translate(-8px,-4px) rotate(-4deg); }
+            20% { transform: translate(8px,4px) rotate(4deg); }
+            30% { transform: translate(-10px,2px) rotate(-3deg); }
+            40% { transform: translate(10px,-3px) rotate(3deg); }
+            50% { transform: translate(-8px,4px) rotate(-4deg); }
+            60% { transform: translate(8px,-2px) rotate(3deg); }
+            70% { transform: translate(-6px,3px) rotate(-2deg); }
+            80% { transform: translate(6px,-3px) rotate(2deg); }
+            90% { transform: translate(-3px,1px) rotate(-1deg); }
         }
         .pokemon-card, .item-card, .difficulty-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -1056,6 +1065,22 @@ function onlineSendState(phase = 'event', messageOverride = null) {
     });
 }
 
+// 攻撃を受けたポケモンの画像だけを振動させる
+function shakeSprite(el) {
+    if (!el) return;
+    el.classList.remove('sprite-shake');
+    void el.offsetWidth;
+    el.classList.add('sprite-shake');
+    setTimeout(() => el.classList.remove('sprite-shake'), 500);
+}
+
+// 攻撃を受けたときに端末を振動させる（対応端末のみ。非対応なら何もしない）
+function vibrateOnHit() {
+    try {
+        if (navigator.vibrate) navigator.vibrate([80, 40, 120]);
+    } catch (e) {}
+}
+
 // 被弾シェイク（ホストが sprite-shake を付けるのと同じタイミングで送る）
 function onlineSendShake(defenderIsHostPlayer) {
     if (onlineRole !== 'host' || !onlineConn || !onlineConn.open) return;
@@ -1514,13 +1539,9 @@ function handleOnlineData(data) {
         return;
     }
     if (data.type === 'animation' && onlineRole === 'guest') {
-        const target = data.side === 'player' ? opponent.sprite : player.sprite;
-        if (target) {
-            target.classList.remove('sprite-shake');
-            void target.offsetWidth;
-            target.classList.add('sprite-shake');
-            setTimeout(() => target.classList.remove('sprite-shake'), 500);
-        }
+        const shakeTarget = data.side === 'player' ? opponent.sprite : player.sprite;
+        shakeSprite(shakeTarget);
+        vibrateOnHit();
         return;
     }
     if (data.type === 'state' && onlineRole === 'guest') {
@@ -9082,6 +9103,11 @@ for(let hit = 0; hit < hitCount; hit++){
         defender.currentHp - currentDamage
     );
     defender.lastAttacker = attacker;
+    if (currentDamage > 0) {
+        shakeSprite(defenderUI.sprite);
+        vibrateOnHit();
+        onlineSendShake(defenderUI === player);
+    }
     if (
     currentDamage > 0 &&
     defender.ability === "イリュージョン" &&
@@ -9158,13 +9184,6 @@ for(let hit = 0; hit < hitCount; hit++){
         updateHpBars();
 
     } else {
-
-    defenderUI.sprite.classList.add('sprite-shake');
-    onlineSendShake(defenderUI === player);
-    setTimeout(
-        () => defenderUI.sprite.classList.remove('sprite-shake'),
-        500
-    );
 
     updateHpBars();
 
@@ -9520,16 +9539,10 @@ defender.lastAttacker = attacker;
     // 被弾した側を毎回振動させる。
     // 自分が攻撃を受けた場合も、相手が攻撃を受けた場合も同じ処理を通る。
     // 連続技では applyDamage が1発ごとに呼ばれるため、1発ずつ振動する。
-    defenderUI.sprite.classList.remove('sprite-shake');
-    void defenderUI.sprite.offsetWidth;
-    defenderUI.sprite.classList.add('sprite-shake');
-        // ★ ここを追加（200ミリ秒振動させる）
-    if ('vibrate' in navigator) {
-        navigator.vibrate(200);
-    }
+    shakeSprite(defenderUI.sprite);
+    vibrateOnHit();
     onlineSendShake(defenderUI === player);
     await new Promise(resolve => setTimeout(resolve, 500));
-    defenderUI.sprite.classList.remove('sprite-shake');
 
     updateHpBars();
 

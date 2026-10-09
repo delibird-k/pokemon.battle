@@ -9523,6 +9523,10 @@ defender.lastAttacker = attacker;
     defenderUI.sprite.classList.remove('sprite-shake');
     void defenderUI.sprite.offsetWidth;
     defenderUI.sprite.classList.add('sprite-shake');
+        // ★ ここを追加（200ミリ秒振動させる）
+    if ('vibrate' in navigator) {
+        navigator.vibrate(200);
+    }
     onlineSendShake(defenderUI === player);
     await new Promise(resolve => setTimeout(resolve, 500));
     defenderUI.sprite.classList.remove('sprite-shake');

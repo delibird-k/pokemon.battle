@@ -305,6 +305,11 @@
                 📜 履歴を見る
             </button>
 
+            <button id="customize-pokemon-button"
+                    class="opening-button" style="background:#c4b5fd;">
+                🛠 努力値・性格をカスタマイズ
+            </button>
+
             <button id="online-battle-button"
                     class="opening-button" style="background:#7c3aed;color:white;">
                 👥 対人戦(PC推奨)
@@ -356,6 +361,25 @@
         </div>
         <button id="online-cancel-button" class="opening-button opening-back-button" style="width:100%;margin-top:10px;">← 戻る</button>
     </div>
+</div>
+
+<div id="customize-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.78);padding:14px;overflow-y:auto;">
+  <div style="max-width:900px;margin:20px auto;background:#fff;border:4px solid #111;border-radius:10px;padding:18px;">
+    <h2 style="font-size:1.15rem;font-weight:900;text-align:center;margin-bottom:14px;">努力値・性格カスタマイズ</h2>
+    <p style="font-size:.8rem;line-height:1.7;margin-bottom:12px;">ポケモンを選び、努力値と性格を編集できます。努力値は各項目0〜252、合計510までです。下にはそのポケモンが覚えている技も参考用に表示します。変更はこのブラウザに保存され、次回以降の対戦にも反映されます。</p>
+    <label for="custom-pokemon-select">ポケモン</label><select id="custom-pokemon-select" style="width:100%;border:2px solid #333;padding:9px;margin:5px 0 14px;"></select>
+    <h3 style="font-weight:900;margin:8px 0;">性格</h3>
+    <select id="custom-nature-select" style="width:100%;border:2px solid #333;padding:9px;margin:5px 0 14px;"></select>
+    <p id="custom-nature-effect" style="font-size:.75rem;line-height:1.6;color:#444;margin-bottom:14px;"></p>
+    <h3 style="font-weight:900;margin:8px 0;">技（努力値・性格を考えるための参考）</h3>
+    <div id="custom-moves-reference" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:16px;"></div>
+    <h3 style="font-weight:900;margin:8px 0;">努力値（合計 <span id="custom-ev-total">0</span> / 510）</h3><div id="custom-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;">
+      <button id="custom-save-button" class="opening-button opening-battle-button" style="flex:1;">保存する</button>
+      <button id="custom-reset-one-button" class="opening-button opening-history-button" style="flex:1;">このポケモンの努力値・性格を初期設定に戻す</button>
+      <button id="custom-close-button" class="opening-button opening-back-button" style="flex:1;">閉じる</button>
+    </div><p id="customize-status" style="font-size:.75rem;margin-top:10px;line-height:1.6;"></p>
+  </div>
 </div>
 
 <div id="game-container" class="w-full max-w-4xl p-4" style="display:none;">
@@ -1780,6 +1804,101 @@ let isBattleInProgress = false;
         RagingBolt: { name: "タケルライコ", id: "ragingbolt", types: ["でんき", "ドラゴン"], baseHp: 125, baseAttack: 73, baseDefense: 91, baseSpAttack: 137, baseSpDefense: 89, baseSpeed: 75, ability: "こだいかっせい",evs: { hp: 228, atk: 0, def: 36, spa: 236, spd: 4, spe: 0},ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 }, { name: "じんらい", power: 70, pp: 5, type: "でんき", category: "special", accuracy: 100, priority: 1 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
     };
 
+    // ===== 努力値カスタマイズ =====
+    const customPokemonButton = document.getElementById('customize-pokemon-button');
+    const customModal = document.getElementById('customize-modal');
+    const customPokemonSelect = document.getElementById('custom-pokemon-select');
+    const customStatsGrid = document.getElementById('custom-stats-grid');
+    const customStatus = document.getElementById('customize-status');
+    const customStatFields = [['hp','HP'],['atk','こうげき'],['def','ぼうぎょ'],['spa','とくこう'],['spd','とくぼう'],['spe','すばやさ']];
+    let customOverrides = {};
+    try { customOverrides = JSON.parse(localStorage.getItem('pokemonEvOverrides') || '{}') || {}; } catch(e) {}
+    function customApplyOverrides() {
+      Object.keys(customOverrides).forEach(key => {
+        const p=pokemonBaseData[key], saved=customOverrides[key]; if(!p||!saved)return;
+        p.evs = p.evs || {hp:0,atk:0,def:0,spa:0,spd:0,spe:0};
+        customStatFields.forEach(([field])=>{if(Number.isFinite(Number(saved[field])))p.evs[field]=Number(saved[field]);});
+        if (typeof saved.nature === 'string' && Object.prototype.hasOwnProperty.call(natures, saved.nature)) p.nature = saved.nature;
+      });
+    }
+    function customField(label,value,attrs) {
+      const safe=String(value??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      return `<label style="display:flex;flex-direction:column;gap:4px;font-size:.75rem;font-weight:bold;">${label}<input ${attrs} value="${safe}" style="width:100%;min-width:0;border:1px solid #777;border-radius:4px;padding:7px;box-sizing:border-box;font-weight:normal;"></label>`;
+    }
+    const customNatureSelect = document.getElementById('custom-nature-select');
+    const customNatureEffect = document.getElementById('custom-nature-effect');
+    const customMovesReference = document.getElementById('custom-moves-reference');
+    const customNatureStatLabels = {attack:'こうげき',defense:'ぼうぎょ',spAttack:'とくこう',spDefense:'とくぼう',speed:'すばやさ'};
+    const customNatureStatAbbr = {attack:'Atk',defense:'Def',spAttack:'Spa',spDefense:'Spd',speed:'Spe'};
+    function customNatureOptionLabel(natureName) {
+      const n=natures[natureName];
+      if(!n || (!n.up && !n.down)) return `${natureName} (補正なし)`;
+      return `${natureName} (${customNatureStatAbbr[n.up]}↑, ${customNatureStatAbbr[n.down]}↓)`;
+    }
+    function customNatureDescription(natureName) {
+      const n=natures[natureName]; if(!n || (!n.up && !n.down)) return '能力補正なし（上昇・下降する能力はありません）';
+      return `上昇：${customNatureStatLabels[n.up]}（1.1倍）／下降：${customNatureStatLabels[n.down]}（0.9倍）`;
+    }
+    function customRenderMoves(p) {
+      const moves=Array.isArray(p.moves)?p.moves:[];
+      if(!moves.length){customMovesReference.innerHTML='<p style="font-size:.8rem;color:#666;">技データがありません。</p>';return;}
+      const esc=v=>String(v??'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      customMovesReference.innerHTML=moves.map(m=>{
+        const type=Array.isArray(m.type)?m.type.join('／'):m.type;
+        const category=m.category==='physical'?'物理':m.category==='special'?'特殊':'変化';
+        const power=m.category==='status'||m.power==null?'—':m.power;
+        const accuracy=Number(m.accuracy)>=101?'必中':(m.accuracy==null?'—':`${m.accuracy}%`);
+        return `<div style="border:1px solid #aaa;border-radius:6px;padding:9px;background:#f8fafc;font-size:.78rem;line-height:1.55;"><div style="font-weight:900;font-size:.9rem;margin-bottom:3px;">${esc(m.name)}</div><div>${esc(type)}・${category}</div><div>威力：${esc(power)}　命中：${esc(accuracy)}　PP：${esc(m.pp??'—')}</div></div>`;
+      }).join('');
+    }
+    function customRenderEditor() {
+      const p=pokemonBaseData[customPokemonSelect.value]; if(!p)return;
+      const evs=p.evs || {hp:0,atk:0,def:0,spa:0,spd:0,spe:0};
+      customStatsGrid.innerHTML=customStatFields.map(([f,l])=>customField(l,evs[f]||0,`data-custom-ev="${f}" type="number" min="0" max="252" step="1"`)).join('');
+      customStatsGrid.querySelectorAll('[data-custom-ev]').forEach(el=>el.addEventListener('input',customUpdateTotal));
+      customNatureSelect.innerHTML=Object.keys(natures).map(name=>`<option value="${name}">${customNatureOptionLabel(name)}</option>`).join('');
+      customNatureSelect.value=Object.prototype.hasOwnProperty.call(natures,p.nature)?p.nature:'がんばりや';
+      customNatureEffect.textContent=customNatureDescription(customNatureSelect.value);
+      customNatureSelect.onchange=()=>{customNatureEffect.textContent=customNatureDescription(customNatureSelect.value);};
+      customRenderMoves(p);
+      customUpdateTotal();
+      customStatus.textContent='';
+    }
+    function customUpdateTotal(){
+      const total=Array.from(customStatsGrid.querySelectorAll('[data-custom-ev]')).reduce((sum,el)=>sum+(Number(el.value)||0),0);
+      const totalEl=document.getElementById('custom-ev-total'); if(totalEl)totalEl.textContent=total;
+      if(totalEl)totalEl.style.color=total>510?'#dc2626':'#111';
+    }
+    customPokemonButton.onclick=()=>{
+      customPokemonSelect.innerHTML=Object.entries(pokemonBaseData).map(([k,p])=>`<option value="${k}">${p.name}</option>`).join('');
+      customModal.style.display='block'; customRenderEditor();
+    };
+    customPokemonSelect.onchange=customRenderEditor;
+    document.getElementById('custom-close-button').onclick=()=>customModal.style.display='none';
+    document.getElementById('custom-save-button').onclick=()=>{
+      const key=customPokemonSelect.value,p=pokemonBaseData[key]; if(!p)return;
+      const evs={}; let valid=true; let total=0;
+      customStatsGrid.querySelectorAll('[data-custom-ev]').forEach(el=>{const n=Number(el.value);if(!Number.isInteger(n)||n<0||n>252)valid=false;evs[el.dataset.customEv]=n;total+=n;});
+      if(total>510)valid=false;
+      if(!valid){customStatus.textContent='入力を確認してください。各努力値は0〜252の整数、合計は510以下にしてください。';return;}
+      const nature=customNatureSelect.value;
+      if(!Object.prototype.hasOwnProperty.call(natures,nature)){customStatus.textContent='性格を選択してください。';return;}
+      customOverrides[key]={...evs,nature};
+      try{
+        localStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));
+        p.evs={...evs};
+        p.nature=nature;
+        customNatureEffect.textContent=customNatureDescription(nature);
+        customStatus.textContent=`保存しました！（努力値合計 ${total}/510、性格：${nature}）次に開始する対戦から反映されます。`;
+      }catch(e){customStatus.textContent='保存できませんでした。ブラウザの保存設定を確認してください。'}
+    };
+    document.getElementById('custom-reset-one-button').onclick=()=>{
+      delete customOverrides[customPokemonSelect.value];
+      try{localStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));}catch(e){}
+      customStatus.textContent='初期値に戻すため、ページを再読み込みします。';
+      setTimeout(()=>location.reload(),500);
+    };
+
     const typeChart = { ノーマル: { いわ: 0.5, ゴースト: 0, はがね: 0.5 }, ほのお: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 2, Icc: 2, むし: 2, いわ: 0.5, ドラゴン: 0.5, はがね: 2 }, みず: { ほのお: 2, みず: 0.5, くさ: 0.5, じめん: 2, いわ: 2, ドラゴン: 0.5 }, でんき: { みず: 2, でんき: 0.5, くさ: 0.5, じめん: 0, ひこう: 2, ドラゴン: 0.5 }, くさ: { ほのお: 0.5, みず: 2, くさ: 0.5, どく: 0.5, じめん: 2, ひこう: 0.5, むし: 0.5, いわ: 2, ドラゴン: 0.5, はがね: 0.5 }, こおり: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 0.5, Icc: 0.5,じめん: 2, ひこう: 2, ドラゴン: 2, はがね: 0.5 }, かくとう: { ノーマル: 2, Norma1:2, こおり: 2, Icc: 2, どく: 0.5, ひこう: 0.5, エスパー: 0.5, むし: 0.5, いわ: 2, ゴースト: 0, あく: 2, はがね: 2, フェアリー: 0.5 }, どく: { くさ: 2, どく: 0.5, じめん: 0.5, いわ: 0.5, ゴースト: 0.5, はがね: 0, フェアリー: 2 }, じめん: { ほのお: 2, でんき: 2, くさ: 0.5, どく: 2, ひこう: 0, むし: 0.5, いわ: 2, はがね: 2 }, ひこう: { でんき: 0.5, くさ: 2, かくとう: 2, むし: 2, いわ: 0.5, はがね: 0.5 }, エスパー: { かくとう: 2, どく: 2, エスパー: 0.5, あく: 0, はがね: 0.5 }, むし: { ほのお: 0.5, くさ: 2, かくとう: 0.5, どく: 0.5, ひこう: 0.5, エスパー: 2, ゴースト: 0.5, あく: 2, はがね: 0.5, フェアリー: 0.5 }, いわ: { ほのお: 2, こおり: 2, Icc: 2, かくとう: 0.5, じめん: 0.5, ひこう: 2, むし: 2, はがね: 0.5 }, ゴースト: { ノーマル: 0, Norma1:0, エスパー: 2, ゴースト: 2, あく: 0.5 }, ドラゴン: { ドラゴン: 2, はがね: 0.5, フェアリー: 0 }, あく: { かくとう: 0.5, エスパー: 2, ゴースト: 2, あく: 0.5, フェアリー: 0.5 }, はがね: { ほのお: 0.5, みず: 0.5, でんき: 0.5, こおり: 2, Icc: 2, いわ: 2, はがね: 0.5, フェアリー: 2 }, フェアリー: { ほのお: 0.5, かくとう: 2, どく: 0.5, ドラゴン: 2, あく: 2, はがね: 0.5 }, 神: {ノーマル: 2, ほのお: 2, みず: 2, でんき: 2, くさ: 2, こおり: 2, Icc: 2, かくとう: 2, どく: 2, じめん: 2, ひこう: 2, エスパー: 2, むし: 2, いわ: 2, ゴースト: 2, ドラゴン: 2, あく: 2, はがね: 2, フェアリー: 2, 神: 2 }, Z: {ノーマル: 0, ほのお: 0, みず: 0, でんき: 0, くさ: 0, こおり: 0, Icc: 0, かくとう: 0, どく: 0, じめん: 0, ひこう: 0, エスパー: 0, むし: 0, いわ: 0, ゴースト: 0, ドラゴン: 0, あく: 0, はがね: 0, フェアリー: 0, 神: 0 }};
 
     const natures = {
@@ -1814,6 +1933,9 @@ let isBattleInProgress = false;
     きまぐれ: {up: null, down: null},
     まじめ: {up: null, down: null}
 };
+
+// 努力値・性格の保存設定は性格一覧を定義した後に適用する。
+    customApplyOverrides();
 
 const MEGA_DATA = {
     "ボーマンダ": {

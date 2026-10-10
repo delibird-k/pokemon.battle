@@ -307,7 +307,7 @@
 
             <button id="customize-pokemon-button"
                     class="opening-button" style="background:#c4b5fd;">
-                🛠 努力値・性格をカスタマイズ
+                🛠 技・努力値・性格をカスタマイズ
             </button>
 
             <button id="online-battle-button"
@@ -365,8 +365,8 @@
 
 <div id="customize-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.78);padding:14px;overflow-y:auto;">
   <div style="max-width:900px;margin:20px auto;background:#fff;border:4px solid #111;border-radius:10px;padding:18px;">
-    <h2 style="font-size:1.15rem;font-weight:900;text-align:center;margin-bottom:14px;">努力値・性格カスタマイズ</h2>
-    <p style="font-size:.8rem;line-height:1.7;margin-bottom:12px;">ポケモンごとに努力値・性格・技4つを編集できます。努力値は各項目0〜252、合計510までです。技候補には現在の技と、取得できた場合はNational Dex OUの使用率上位10技を表示します。技の威力・PP・命中率は原作データを使い、変更はこのブラウザに保存されます。</p>
+    <h2 style="font-size:1.15rem;font-weight:900;text-align:center;margin-bottom:14px;">技・努力値・性格カスタマイズ</h2>
+    <p style="font-size:.8rem;line-height:1.7;margin-bottom:12px;">ポケモンごとに努力値・性格・技4つを編集できます。努力値は各項目0〜252、合計510までです。技候補には現在の技と、そのポケモンの使用率上位（または定番）の技を表示します。使用率の実データ入力済みのポケモンは「使用率N位」と表示されます。ゲームに無い技は自動で追加されます。技の威力・PP・命中率は原作データを使い、変更はこのブラウザに保存されます。</p>
     <label for="custom-pokemon-picker-trigger">選択中のポケモン</label>
     <button id="custom-pokemon-picker-trigger" type="button" aria-expanded="false" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;border:2px solid #333;border-radius:6px;padding:12px;margin:5px 0 14px;background:#fff;color:#111;text-align:left;font-weight:800;cursor:pointer;">
       <span id="custom-pokemon-picker-current">ポケモンを選択</span><span aria-hidden="true">⌄</span>
@@ -386,7 +386,7 @@
     <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">努力値・性格を変更すると、実数値はリアルタイムで更新されます。個体値はゲーム内計算に合わせ、基本31（特殊技型のポケモンは攻撃0）として計算します。</p>
     <div id="custom-stats-reference" style="overflow-x:auto;margin-bottom:16px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">技の変更（4枠）</h3>
-    <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。候補の使用率順位はNational Dex OUの集計に基づきます。技の追加データ取得にはインターネット接続が必要です。</p>
+    <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。使用率順位はポケモンチャンピオンズ（シングル）の集計に基づきます。データ未登録のポケモンはインターネット接続が必要です。</p>
     <p id="custom-moves-source" style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">技候補を読み込みます…</p>
     <div id="custom-moves-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:12px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">現在の技データ</h3>
@@ -1876,17 +1876,50 @@ let isBattleInProgress = false;
     const customMoveCache = new Map();
     let customUsagePromise = null;
     const customLearnsetCache = new Map();
-    async function customLoadLearnset(p){
-      const speciesId=String(p?.id||'').toLowerCase().trim();
+    // PokéAPI のスラッグはこのゲームの id と異なる場合があるため、別名テーブルと species 経由のフォールバックを用意
+    const customPokeApiAlias = {
+      'urshifu':'urshifu-single-strike','urshifu-rapidstrike':'urshifu-rapid-strike',
+      'landorus':'landorus-incarnate','thundurus':'thundurus-incarnate','tornadus':'tornadus-incarnate',
+      'aegislash':'aegislash-shield','mimikyu':'mimikyu-disguised','basculegion':'basculegion-male',
+      'fluttermane':'flutter-mane','chienpao':'chien-pao','chiyu':'chi-yu','roaringmoon':'roaring-moon',
+      'ragingbolt':'raging-bolt','tapulele':'tapu-lele','tapukoko':'tapu-koko','tapubulu':'tapu-bulu','tapufini':'tapu-fini',
+      'tinglu':'ting-lu','wochien':'wo-chien','greatTusk':'great-tusk','irontreads':'iron-treads','ironbundle':'iron-bundle',
+      'ironvaliant':'iron-valiant','ironhands':'iron-hands','ironmoth':'iron-moth','ironthorns':'iron-thorns',
+      'ironcrown':'iron-crown','ironboulder':'iron-boulder','ironjugulis':'iron-jugulis','ironleaves':'iron-leaves',
+      'greattusk':'great-tusk','screamtail':'scream-tail','brutebonnet':'brute-bonnet','sandyshocks':'sandy-shocks',
+      'slitherwing':'slither-wing','walkingwake':'walking-wake','gougingfire':'gouging-fire'
+    };
+    function customPokeApiSlug(p,key){
+      const raw=String(p?.id||key||'').toLowerCase().trim();
+      return customPokeApiAlias[raw]||raw;
+    }
+    function customNormMoveSlug(v){return String(v||'').toLowerCase().trim().replace(/[_\s]+/g,'-');}
+    function customSlugKey(v){return String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+    async function customLoadLearnset(p,key){
+      const speciesId=customPokeApiSlug(p,key);
       if(!speciesId)return null;
       if(customLearnsetCache.has(speciesId))return customLearnsetCache.get(speciesId);
+      const tryFetch=async(slug)=>{
+        const res=await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(slug)}/`,{cache:'force-cache'});
+        if(!res.ok)return null;
+        return res.json();
+      };
       try{
-        const res=await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(speciesId)}/`,{cache:'force-cache'});
-        if(!res.ok){customLearnsetCache.set(speciesId,null);return null;}
-        const data=await res.json();
-        // Keep only moves listed in this species' learnset. Across-game learn methods are accepted
-        // so the pool reflects moves the species can learn in the main-series games, not just OU usage.
-        const learned=new Set((data.moves||[]).map(entry=>String(entry.move?.name||'').toLowerCase()));
+        let data=await tryFetch(speciesId);
+        if(!data){
+          // species 経由で標準フォルムを探す（例: aegislash → aegislash-shield）
+          const base=speciesId.split('-')[0];
+          const sres=await fetch(`https://pokeapi.co/api/v2/pokemon-species/${encodeURIComponent(base)}/`,{cache:'force-cache'});
+          if(sres.ok){
+            const sp=await sres.json();
+            const names=(sp.varieties||[]).map(v=>v.pokemon?.name).filter(Boolean);
+            const hit=names.find(n=>customSlugKey(n)===customSlugKey(speciesId))||(sp.varieties||[]).find(v=>v.is_default)?.pokemon?.name;
+            if(hit)data=await tryFetch(hit);
+          }
+        }
+        if(!data){customLearnsetCache.set(speciesId,null);return null;}
+        // このポケモンが（世代を問わず）覚えられる技の一覧
+        const learned=new Set((data.moves||[]).map(entry=>customNormMoveSlug(entry.move?.name)));
         customLearnsetCache.set(speciesId,learned);return learned;
       }catch(e){customLearnsetCache.set(speciesId,null);return null;}
     }
@@ -1899,6 +1932,137 @@ let isBattleInProgress = false;
       return map;
     }
     const customKnownMoveLibrary=customGetAllKnownMoves();
+    // ============================================================
+    // 使用率データ（ポケモンチャンピオンズ・シングル／GameWith掲載、集計日 8/31 シーズンM-5）
+    //   キー = pokemonBaseData のキー。技は使用率の高い順（[技名, 使用率%]）。
+    //   ここに追加するだけで、そのポケモンの技候補が使用率上位10技になります（未登録のポケモンは従来のネット取得にフォールバック）。
+    // ============================================================
+    const CHAMPIONS_MOVE_USAGE = {
+      garchomp: [['じしん',99.2],['ステルスロック',50.5],['スケイルショット',46.7],['つるぎのまい',31.6],['ドラゴンテール',30.2],['げきりん',30.1],['がんせきふうじ',29.2],['どくづき',16.0],['いわなだれ',13.8],['ほのおのキバ',10.7]]
+    };
+    // ゲーム内に無い技の定義（威力・命中・PP・タイプ・分類・追加効果はGameWith掲載のチャンピオンズ版データ）。
+    // 使用率データに出てきた技がゲームに無い場合、ここから自動で追加されます。
+    const CHAMPIONS_EXTRA_MOVES = {
+      'スケイルショット':{name:'スケイルショット',power:25,pp:20,type:'ドラゴン',category:'physical',accuracy:90},
+      'ドラゴンテール':{name:'ドラゴンテール',power:60,pp:12,type:'ドラゴン',category:'physical',accuracy:90,isContact:true},
+      'がんせきふうじ':{name:'がんせきふうじ',power:60,pp:16,type:'いわ',category:'physical',accuracy:95,secondary:{chance:100,effect:'stat',stat:'speed',stage:-1}},
+      'いわなだれ':{name:'いわなだれ',power:75,pp:12,type:'いわ',category:'physical',accuracy:90,secondary:{chance:30,effect:'flinch'}},
+      'どくづき':{name:'どくづき',power:80,pp:20,type:'どく',category:'physical',accuracy:100,isContact:true,secondary:{chance:30,effect:'status',status:'poison'}},
+      'ストーンエッジ':{name:'ストーンエッジ',power:100,pp:8,type:'いわ',category:'physical',accuracy:80,critPriority:1},
+      'アイアンヘッド':{name:'アイアンヘッド',power:80,pp:16,type:'はがね',category:'physical',accuracy:100,isContact:true,secondary:{chance:20,effect:'flinch'}},
+      'ドラゴンクロー':{name:'ドラゴンクロー',power:80,pp:16,type:'ドラゴン',category:'physical',accuracy:100,isContact:true},
+      'かみくだく':{name:'かみくだく',power:80,pp:16,type:'あく',category:'physical',accuracy:100,isContact:true,secondary:{chance:20,effect:'stat',stat:'defense',stage:-1}},
+      'アクアブレイク':{name:'アクアブレイク',power:85,pp:12,type:'みず',category:'physical',accuracy:100,isContact:true,secondary:{chance:20,effect:'stat',stat:'defense',stage:-1}},
+      'パワージェム':{name:'パワージェム',power:80,pp:20,type:'いわ',category:'special',accuracy:100},
+      'りゅうせいぐん':{name:'りゅうせいぐん',power:130,pp:8,type:'ドラゴン',category:'special',accuracy:90,secondary:{chance:100,effect:'stat',stat:'spAttack',stage:-2,self:true}},
+      'かえんほうしゃ':{name:'かえんほうしゃ',power:90,pp:16,type:'ほのお',category:'special',accuracy:100,secondary:{chance:10,effect:'status',status:'burn'}},
+      'れいとうビーム':{name:'れいとうビーム',power:90,pp:12,type:'こおり',category:'special',accuracy:100,secondary:{chance:10,effect:'status',status:'freeze'}},
+      'ムーンフォース':{name:'ムーンフォース',power:95,pp:16,type:'フェアリー',category:'special',accuracy:100,secondary:{chance:10,effect:'stat',stat:'spAttack',stage:-1}},
+      'うたかたのアリア':{name:'うたかたのアリア',power:90,pp:12,type:'みず',category:'special',accuracy:100},
+      'ハイドロポンプ':{name:'ハイドロポンプ',power:110,pp:8,type:'みず',category:'special',accuracy:80}
+      ,'かみなり':{name:'かみなり',power:110,pp:10,type:'でんき',category:'special',accuracy:70,secondary:{chance:30,effect:'status',status:'paralyze'}}
+      ,'かみなりのキバ':{name:'かみなりのキバ',power:65,pp:15,type:'でんき',category:'physical',accuracy:95,isContact:true,secondary:[{chance:10,effect:'status',status:'paralyze'},{chance:10,effect:'flinch'}]}
+      ,'かみなりパンチ':{name:'かみなりパンチ',power:75,pp:15,type:'でんき',category:'physical',accuracy:100,isContact:true,secondary:{chance:10,effect:'status',status:'paralyze'}}
+      ,'こうごうせい':{name:'こうごうせい',pp:8,type:'くさ',category:'status',accuracy:101,apiTarget:'user',apiMetaCategory:'heal'}
+      ,'こおりのつぶて':{name:'こおりのつぶて',power:40,pp:30,type:'こおり',category:'physical',accuracy:100,priority:1}
+      ,'じだんだ':{name:'じだんだ',power:75,pp:12,type:'じめん',category:'physical',accuracy:100,isContact:true}
+      ,'だいもんじ':{name:'だいもんじ',power:110,pp:8,type:'ほのお',category:'special',accuracy:85,secondary:{chance:10,effect:'status',status:'burn'}}
+      ,'ねっとう':{name:'ねっとう',power:80,pp:15,type:'みず',category:'special',accuracy:100,secondary:{chance:30,effect:'status',status:'burn'}}
+      ,'ねむりごな':{name:'ねむりごな',pp:15,type:'くさ',category:'status',accuracy:75,apiTarget:'selected-pokemon',apiAilment:'sleep',apiEffectChance:100}
+      ,'はたきおとす':{name:'はたきおとす',power:65,pp:20,type:'あく',category:'physical',accuracy:100,isContact:true}
+      ,'ばかぢから':{name:'ばかぢから',power:120,pp:5,type:'かくとう',category:'physical',accuracy:100,isContact:true,secondary:[{chance:100,effect:'stat',stat:'attack',stage:-1,self:true},{chance:100,effect:'stat',stat:'defense',stage:-1,self:true}]}
+      ,'ふぶき':{name:'ふぶき',power:110,pp:8,type:'こおり',category:'special',accuracy:70,secondary:{chance:10,effect:'status',status:'freeze'}}
+      ,'ほうでん':{name:'ほうでん',power:80,pp:15,type:'でんき',category:'special',accuracy:100,secondary:{chance:30,effect:'status',status:'paralyze'}}
+      ,'むしのさざめき':{name:'むしのさざめき',power:90,pp:10,type:'むし',category:'special',accuracy:100,secondary:{chance:10,effect:'stat',stat:'spDefense',stage:-1}}
+      ,'アクロバット':{name:'アクロバット',power:55,pp:15,type:'ひこう',category:'physical',accuracy:100,isContact:true}
+      ,'イカサマ':{name:'イカサマ',power:95,pp:15,type:'あく',category:'physical',accuracy:100,isContact:true}
+      ,'エナジーボール':{name:'エナジーボール',power:90,pp:10,type:'くさ',category:'special',accuracy:100,secondary:{chance:10,effect:'stat',stat:'spDefense',stage:-1}}
+      ,'コメットパンチ':{name:'コメットパンチ',power:90,pp:10,type:'はがね',category:'physical',accuracy:90,isContact:true,secondary:{chance:20,effect:'stat',stat:'attack',stage:1,self:true}}
+      ,'ゴーストダイブ':{name:'ゴーストダイブ',power:90,pp:10,type:'ゴースト',category:'physical',accuracy:100,isContact:true}
+      ,'サイコノイズ':{name:'サイコノイズ',power:75,pp:12,type:'エスパー',category:'special',accuracy:100}
+      ,'シザークロス':{name:'シザークロス',power:80,pp:15,type:'むし',category:'physical',accuracy:100,isContact:true}
+      ,'ドラゴンダイブ':{name:'ドラゴンダイブ',power:100,pp:10,type:'ドラゴン',category:'physical',accuracy:75,isContact:true,secondary:{chance:20,effect:'flinch'}}
+      ,'ドリルくちばし':{name:'ドリルくちばし',power:80,pp:20,type:'ひこう',category:'physical',accuracy:100,isContact:true}
+      ,'パワーウィップ':{name:'パワーウィップ',power:120,pp:10,type:'くさ',category:'physical',accuracy:85,isContact:true}
+      ,'ブレイズキック':{name:'ブレイズキック',power:85,pp:10,type:'ほのお',category:'physical',accuracy:90,isContact:true,critPriority:1,secondary:{chance:10,effect:'status',status:'burn'}}
+      ,'マジカルフレイム':{name:'マジカルフレイム',power:75,pp:10,type:'ほのお',category:'special',accuracy:100,secondary:{chance:100,effect:'stat',stat:'spAttack',stage:-1}}
+    };
+    // 仮データ：使用率の実測値ではなく、一般的によく使われる定番技（ガブリアス以外）。GameWithなどの実データが手に入ったら CHAMPIONS_MOVE_USAGE に [技名,使用率] で追加すると置き換わります。
+    const CHAMPIONS_PROVISIONAL_MOVES = {
+ "Venusaur": "ギガドレイン,ヘドロばくだん,やどりぎのたね,ねむりごな,どくどく,こうごうせい,エナジーボール,ウッドハンマー,じしん,だいちのちから",
+ "charizard": "かえんほうしゃ,フレアドライブ,じしん,はねやすめ,りゅうのまい,エアスラッシュ,オーバーヒート,げきりん,だいもんじ,ねっぷう",
+ "Ninetales": "オーロラベール,ふぶき,ムーンフォース,れいとうビーム,こおりのつぶて,わるだくみ,マジカルシャイン,シャドーボール,めいそう,まもる",
+ "slowbro": "シェルアームズ,なまける,サイコキネシス,れいとうビーム,かえんほうしゃ,どくどく,わるだくみ,ヘドロばくだん,ヘドロウェーブ,ねむる",
+ "gengar": "シャドーボール,ヘドロばくだん,きあいだま,ヘドロウェーブ,みがわり,わるだくみ,10まんボルト,かげうち,おにび,まもる",
+ "Kangaskhan": "ふいうち,じしん,すてみタックル,ほのおのパンチ,れいとうパンチ,じゃれつく,からげんき,おんがえし,ギガインパクト,まもる",
+ "Starmie": "ハイドロポンプ,サイコキネシス,れいとうビーム,10まんボルト,じこさいせい,アクアジェット,しねんのずつき,アイススピナー,ねっとう,まもる",
+ "Gyarados": "りゅうのまい,たきのぼり,かみくだく,じしん,げきりん,アクアジェット,こおりのキバ,ストーンエッジ,まもる,ハイドロポンプ",
+ "snorlax": "のしかかり,じしん,ねむる,ねごと,あくび,のろい,からげんき,れいとうパンチ,ほのおのパンチ,ギガインパクト",
+ "zapdos": "10まんボルト,ボルトチェンジ,ねっぷう,はねやすめ,エアスラッシュ,めざめるパワー氷,ほうでん,でんじは,まもる,かみなり",
+ "dragonite": "りゅうのまい,しんそく,じしん,アイススピナー,ドラゴンクロー,はねやすめ,げきりん,ほのおのパンチ,かみなりパンチ,まもる",
+ "Umbreon": "イカサマ,つきのひかり,どくどく,あくのはどう,まもる,あくび,ねむる,ねごと,のろい",
+ "scizor": "バレットパンチ,つるぎのまい,とんぼがえり,はねやすめ,インファイト,アイアンヘッド,シザークロス,まもる",
+ "Porygon2": "じこさいせい,トライアタック,れいとうビーム,10まんボルト,でんじは,サイコキネシス,シャドーボール,わるだくみ,ふぶき",
+ "Entei": "せいなるほのお,フレアドライブ,しんそく,アイアンヘッド,ストーンエッジ,くさわけ,じしん,ほのおのキバ,まもる,だいもんじ",
+ "Tyranitar": "ストーンエッジ,かみくだく,じしん,ステルスロック,ほのおのパンチ,れいとうパンチ,いわなだれ,アイアンヘッド,かみなりパンチ,りゅうのまい",
+ "Blaziken": "フレアドライブ,インファイト,つるぎのまい,とんぼがえり,ブレイズキック,ストーンエッジ,れいとうパンチ,かみなりパンチ,まもる",
+ "Breloom": "きのこのほうし,たねばくだん,マッハパンチ,インファイト,つるぎのまい,ストーンエッジ,やどりぎのたね,まもる",
+ "Mawile": "じゃれつく,アイアンヘッド,つるぎのまい,ふいうち,ほのおのパンチ,れいとうパンチ,かみなりパンチ,かみくだく",
+ "Sharpedo": "アクアブレイク,かみくだく,アクアジェット,こおりのキバ,どくづき,ハイドロポンプ,まもる",
+ "Glalie": "フリーズドライ,こおりのつぶて,ふぶき,かみくだく,ぜったいれいど,みがわり,まもる,れいとうビーム,こおりのキバ",
+ "Salamence": "りゅうのまい,じしん,すてみタックル,はねやすめ,げきりん,ハイパーボイス,かえんほうしゃ,ドラゴンクロー,かみくだく,まもる",
+ "metagross": "しねんのずつき,バレットパンチ,コメットパンチ,じしん,アイアンヘッド,れいとうパンチ,ほのおのパンチ,かみなりパンチ",
+ "Latias": "ミストボール,りゅうせいぐん,サイコキネシス,じこさいせい,めいそう,はどうだん,れいとうビーム,ドラゴンテール",
+ "Latios": "りゅうせいぐん,サイコキネシス,ラスターパージ,10まんボルト,れいとうビーム,はどうだん,ドラゴンテール,めいそう,まもる",
+ "Bastiodon": "ステルスロック,ラスターカノン,ボディプレス,てっぺき,ねむる,ねごと,パワージェム,メタルバースト,じわれ",
+ "Lucario": "インファイト,はどうだん,ラスターカノン,バレットパンチ,しんくうは,つるぎのまい,ストーンエッジ,じしん,まもる,めいそう",
+ "Hippowdon": "じしん,なまける,ステルスロック,あくび,ストーンエッジ,かみくだく,ふぶき,こおりのキバ,ほのおのキバ,かみなりのキバ",
+ "togekiss": "マジカルシャイン,エアスラッシュ,はねやすめ,でんじは,かえんほうしゃ,わるだくみ,だいもんじ,まもる",
+ "Rotom": "ボルトチェンジ,ハイドロポンプ,おにび,10まんボルト,シャドーボール,ほうでん,でんじは,みがわり,ねっとう,まもる",
+ "rotom2": "オーバーヒート,ボルトチェンジ,おにび,でんじは,10まんボルト,シャドーボール,だいもんじ,ほうでん,みがわり,まもる",
+ "Heatran": "ラスターカノン,マグマストーム,だいちのちから,ステルスロック,おにび,まもる,オーバーヒート,だいもんじ,パワージェム",
+ "Cresselia": "つきのひかり,ムーンフォース,サイコキネシス,めいそう,れいとうビーム,どくどく,シャドーボール",
+ "zoroarkhisui": "ハイパーボイス,シャドーボール,きあいだま,かえんほうしゃ,ヘドロばくだん,うらみつらみ,わるだくみ,かげうち",
+ "Ferrothorn": "やどりぎのたね,ジャイロボール,ステルスロック,パワーウィップ,ボディプレス,てっぺき,まもる,どくどく",
+ "Hydreigon": "あくのはどう,りゅうせいぐん,かえんほうしゃ,だいもんじ,れいとうビーム,ラスターカノン,わるだくみ,めざめるパワー氷,ドラゴンテール",
+ "Volcarona": "ちょうのまい,ほのおのまい,ギガドレイン,むしのさざめき,あさのひざし,ねっぷう,まもる,だいもんじ",
+ "Landorus": "だいちのちから,ヘドロウェーブ,わるだくみ,サイコキネシス,きあいだま,エナジーボール,ステルスロック,ヘドロばくだん,じしん,とんぼがえり",
+ "landorus": "じしん,とんぼがえり,ステルスロック,つるぎのまい,ストーンエッジ,いわなだれ,はねやすめ,はたきおとす,じだんだ,ばかぢから",
+ "Greninja": "ハイドロポンプ,あくのはどう,れいとうビーム,みずしゅりけん,ヘドロウェーブ,とんぼがえり",
+ "aegislash": "キングシールド,シャドーボール,アイアンヘッド,かげうち,つるぎのまい,インファイト,せいなるつるぎ",
+ "Primarina": "うたかたのアリア,ムーンフォース,めいそう,アクアジェット,ハイパーボイス,れいとうビーム,サイコノイズ,クイックターン,ハイドロポンプ,エナジーボール",
+ "mimikyu": "つるぎのまい,じゃれつく,シャドークロー,ゴーストダイブ,ウッドハンマー,かげうち,のろい,シャドーボール,みがわり",
+ "TapuLele": "ムーンフォース,サイコキネシス,シャドーボール,きあいだま,エナジーボール,めいそう,めざめるパワー炎,マジカルシャイン",
+ "Pheromosa": "インファイト,とびひざげり,とびかかる,どくづき,むしのさざめき,フェイント,ギガインパクト,ばかぢから",
+ "Celesteela": "ヘビーボンバー,やどりぎのたね,まもる,ボディプレス,エアスラッシュ,かえんほうしゃ,ラスターカノン,てっぺき,みがわり",
+ "kartana": "つるぎのまい,リーフブレード,スマートホーン,せいなるつるぎ,はたきおとす,ギガインパクト",
+ "Rillaboom": "グラススライダー,ウッドハンマー,はたきおとす,とんぼがえり,ばかぢから,つるぎのまい,げきりん",
+ "Cinderace": "かえんボール,とびひざげり,とんぼがえり,ふいうち,つるぎのまい",
+ "Corviknight": "ボディプレス,てっぺき,はねやすめ,とんぼがえり,アイアンヘッド,ドリルくちばし",
+ "Dragapult": "ドラゴンアロー,ポルターガイスト,ゴーストダイブ,シャドーボール,りゅうせいぐん,ふいうち,りゅうのまい,かえんほうしゃ,おにび",
+ "Urshifu": "すいりゅうれんだ,インファイト,アクアジェット,とんぼがえり,アイススピナー,つるぎのまい,ストーンエッジ",
+ "Urshifu1": "あんこくきょうだ,インファイト,ふいうち,とんぼがえり,つるぎのまい,れいとうパンチ,アイアンヘッド,かわらわり",
+ "Glastrier": "つららおとし,インファイト,10まんばりき,ヘビーボンバー,ギガインパクト,ぜったいれいど",
+ "Ursaluna": "からげんき,じしん,じゃれつく,インファイト,ふいうち,すてみタックル,まもる,ギガインパクト,ほのおのパンチ,れいとうパンチ",
+ "UrsalunaBloodmoon": "ブラッドムーン,ハイパーボイス,だいちのちから,しんくうは,まもる,みがわり",
+ "Basculegion": "ウェーブタックル,おはかまいり,アクアジェット,こうそくいどう,アクアブレイク,ストーンエッジ,どくづき",
+ "Meowscarada": "トリックフラワー,トリプルアクセル,とんぼがえり,はたきおとす,ふいうち,じゃれつく,ばかぢから",
+ "Kingambit": "ふいうち,ドゲザン,アイアンヘッド,つるぎのまい,インファイト,はたきおとす,かわらわり,ギガインパクト",
+ "FlutterMane": "ムーンフォース,シャドーボール,マジカルフレイム,パワージェム,わるだくみ,めいそう,みがわり,おにび,まもる,めざめるパワー炎",
+ "ChienPao": "つるぎのまい,つららおとし,かみくだく,せいなるつるぎ,ふいうち,こおりのつぶて,アイススピナー,はたきおとす",
+ "ChiYu": "オーバーヒート,あくのはどう,わるだくみ,だいもんじ,かえんほうしゃ,サイコキネシス,めざめるパワー氷",
+ "RoaringMoon": "りゅうのまい,ドラゴンダイブ,かみくだく,じしん,アイアンヘッド,はたきおとす,ストーンエッジ,げきりん,アクロバット,まもる",
+ "Archaludon": "ラスターカノン,ボディプレス,りゅうせいぐん,10まんボルト,ステルスロック,ドラゴンテール,でんじは,はどうだん",
+ "RagingBolt": "10まんボルト,じんらい,りゅうせいぐん,ボルトチェンジ,かみなり,ボディプレス,ドラゴンテール,めいそう"
+};
+    Object.entries(CHAMPIONS_PROVISIONAL_MOVES).forEach(([k,v])=>{ if(!CHAMPIONS_MOVE_USAGE[k]) CHAMPIONS_MOVE_USAGE[k]=v.split(',').map(n=>[n,null]); });
+    function customResolveChampionsMove(name){
+      const lib=customKnownMoveLibrary.get(name);
+      if(lib)return {move:customCloneMove(lib),added:false};
+      const extra=CHAMPIONS_EXTRA_MOVES[name];
+      if(extra)return {move:Object.assign(customCloneMove(extra),{customAdded:true}),added:true};
+      return null;
+    }
     function customParseUsageMoves(row){
       if(!row)return [];
       let raw=row.top_moves ?? row.moves ?? [];
@@ -1909,7 +2073,7 @@ let isBattleInProgress = false;
       if(!Array.isArray(raw))return [];
       return raw.map((m,index)=>{
         if(typeof m==='string'){const bits=m.split(':');return {id:bits[0],rank:index+1,usage:parseFloat(bits[1])||0};}
-        return {id:m.move_id||m.id||m.move||m.name||m.slug, name:m.move_name||m.name_en||m.name, rank:m.rank||index+1, usage:parseFloat(String(m.usage_pct??m.usage??m.percent??0).replace('%',''))||0};
+        return {id:m.move_id||m.id||m.move||m.name||m.slug, name:m.move_name||m.name_en||m.name, rank:m.rank||index+1, usage:Number(m.usage_pct??m.usage??m.percent)||0};
       }).filter(m=>m.id);
     }
     async function customLoadUsageRows(){
@@ -1931,9 +2095,16 @@ let isBattleInProgress = false;
       return customUsagePromise;
     }
     function customUsageForPokemon(key,p){
-      if(!customUsageRows)return null;
-      const id=String(p.id||key||'').toLowerCase();
-      return customUsageRows.find(row=>String(row.pokemon_id||row.id||'').toLowerCase()===id || customMoveId(row.pokemon_name||'')===customMoveId(p.name))||null;
+      if(!customUsageRows||!customUsageRows.length)return null;
+      const cands=[...new Set([customPokeApiSlug(p,key),String(p?.id||'').toLowerCase(),String(key||'').toLowerCase()].map(customSlugKey).filter(Boolean))];
+      const rowKeys=row=>[row.pokemon_id,row.id,row.slug,row.pokemon_slug,row.name_en,row.pokemon_name_en,row.pokemon_name,row.name].map(customSlugKey).filter(Boolean);
+      // 1) 完全一致  2) 名前（日本語）一致  3) 基本名での前方一致（フォルム違い対策）
+      let hit=customUsageRows.find(row=>rowKeys(row).some(k=>cands.includes(k)));
+      if(hit)return hit;
+      const jp=String(p?.name||'').trim();
+      if(jp){hit=customUsageRows.find(row=>[row.pokemon_name,row.name,row.name_ja,row.pokemon_name_ja].some(n=>n&&String(n).trim()===jp));if(hit)return hit;}
+      const base=customSlugKey(String(customPokeApiSlug(p,key)).split('-')[0]);
+      return base?customUsageRows.find(row=>rowKeys(row).some(k=>k.startsWith(base)))||null:null;
     }
     async function customFetchMoveData(moveId){
       const id=customMoveId(moveId);
@@ -1960,9 +2131,9 @@ let isBattleInProgress = false;
         customMoveCache.set(id,customCloneMove(move));customMoveCache.set(move.name,customCloneMove(move));return move;
       }catch(e){return null;}
     }
-    function customMoveOptionLabel(move,usageRank){
+    function customMoveOptionLabel(move,usageRank,usagePct){
       const kind=move.category==='physical'?'物理':move.category==='special'?'特殊':'変化';
-      return `${usageRank?`使用率${usageRank}位｜`:''}${move.name}（${move.type||'タイプ不明'}・${kind}・威力${move.category==='status'?'—':(move.power??'—')}・PP${move.pp??'—'}）`;
+      return `${usageRank?(usagePct?`使用率${usageRank}位(${usagePct}%)｜`:''):''}${move.name}（${move.type||'タイプ不明'}・${kind}・威力${move.category==='status'?'—':(move.power??'—')}・PP${move.pp??'—'}）`;
     }
     function customRenderMoveReference(p){
       const moves=Array.isArray(p.moves)?p.moves:[];
@@ -1992,20 +2163,20 @@ let isBattleInProgress = false;
         label.appendChild(select); customMovesEditor.appendChild(label); customMoveSelects.push(select);
       }
       const currentMap=new Map(current.map(m=>[m.name,customCloneMove(m)]));
-      const setOptions=(usageMoves=[],learnedSet=null)=>{
+      const setOptions=(usageMoves=[],learnedSet=null,trusted=false)=>{
         const candidateMap=new Map();
         // The moves already assigned to the Pokémon are kept as existing legal-set entries.
         current.forEach(m=>candidateMap.set(m.name,{move:customCloneMove(m),rank:0}));
         // Usage-ranked candidates are admitted only when the species' PokéAPI learnset contains them.
         usageMoves.forEach(item=>{
           const slug=String(item.id||'').toLowerCase().replace(/_/g,'-');
-          if(item.move?.name && learnedSet && learnedSet.has(slug))candidateMap.set(item.move.name,{move:item.move,rank:item.rank});
+          if(item.move?.name && (trusted || (learnedSet && learnedSet.has(customNormMoveSlug(slug)))))candidateMap.set(item.move.name,{move:item.move,rank:item.rank,usage:item.usage});
         });
         customMoveSelects.forEach((select,index)=>{
           const wanted=selectedMoves[index];
           select.innerHTML='';
-          candidateMap.forEach(({move,rank},name)=>{
-            const opt=document.createElement('option');opt.value=name;opt.textContent=customMoveOptionLabel(move,rank);select.appendChild(opt);
+          candidateMap.forEach(({move,rank,usage},name)=>{
+            const opt=document.createElement('option');opt.value=name;opt.textContent=customMoveOptionLabel(move,rank,usage);select.appendChild(opt);
           });
           select.value=wanted&&candidateMap.has(wanted)?wanted:(select.options[0]?.value||'');
           selectedMoves[index]=select.value;
@@ -2019,39 +2190,49 @@ let isBattleInProgress = false;
       };
       setOptions([],new Set());
       customMovesSource.textContent='このポケモンが覚えられる技を確認しています…';
-      const learnedSet=await customLoadLearnset(p);
-      if(!document.getElementById('customize-modal') || customPokemonSelect.value!==key)return;
-      const rows=await customLoadUsageRows();
-      if(!document.getElementById('customize-modal') || customPokemonSelect.value!==key)return;
-      const row=customUsageForPokemon(key,p);
-      // First filter the Pokémon's complete usage-ranked move list by its learnset,
-      // then take the 10 most-used moves among those it can learn. Do NOT take the
-      // global top 10 first, because that can leave fewer than 10 eligible moves.
-      const allUsage=customParseUsageMoves(row);
-      const hasUsageValues=allUsage.some(item=>Number(item.usage)>0);
-      if(hasUsageValues) allUsage.sort((a,b)=>Number(b.usage||0)-Number(a.usage||0));
-      const usageMoves=[];
-      if(learnedSet){
-        const eligibleUsage=allUsage.filter(item=>{
-          const slug=String(item.id||'').toLowerCase().replace(/_/g,'-');
-          return learnedSet.has(slug) || [...learnedSet].some(learned=>customMoveId(learned)===customMoveId(slug));
+      const stale=()=>!document.getElementById('customize-modal') || customPokemonSelect.value!==key;
+      // ① 埋め込み済みの使用率データ（GameWith）があればそれを最優先で使う。ゲームに無い技は自動で追加する。
+      const embedded=CHAMPIONS_MOVE_USAGE[key];
+      if(embedded&&embedded.length){
+        const usageMoves=[];const added=[];
+        embedded.slice(0,10).forEach(([name,pct],i)=>{
+          const r=customResolveChampionsMove(name);
+          if(!r)return;
+          customMoveCache.set(r.move.name,customCloneMove(r.move));
+          if(r.added)added.push(name);
+          usageMoves.push({id:name,move:r.move,rank:i+1,usage:pct});
         });
-        for(let i=0;i<eligibleUsage.length && usageMoves.length<10;i++){
-          const item=eligibleUsage[i];
-          const move=await customFetchMoveData(item.id);
-          if(move)usageMoves.push({id:item.id,move,rank:usageMoves.length+1,usage:item.usage});
+        if(usageMoves.length){
+          setOptions(usageMoves,null,true);
+          const real=usageMoves.some(u=>u.usage!=null);
+          customMovesSource.textContent=(real?`候補：現在の技 ＋ 使用率上位${usageMoves.length}技（ポケモンチャンピオンズ・シングル／GameWith）。`:`候補：現在の技 ＋ このポケモンがよく使う技${usageMoves.length}技。`)+(added.length?` ゲームに無かった技を追加しました：${added.join('、')}`:'');
+          customRenderMoveReference({moves:selectedMoves.map(n=>currentMap.get(n)||customMoveCache.get(n)).filter(Boolean)});
+          return;
         }
       }
-      if(customPokemonSelect.value!==key)return;
-      if(learnedSet){
+      const [learnedSet,rows]=await Promise.all([customLoadLearnset(p,key),customLoadUsageRows()]);
+      if(stale())return;
+      const row=customUsageForPokemon(key,p);
+      const allUsage=customParseUsageMoves(row);
+      if(!learnedSet){
+        // 覚える技が確認できない場合は、安全のため現在の技のみ
+        setOptions([],new Set());
+        customMovesSource.textContent='覚える技データを取得できなかったため、現在の技のみ表示しています。通信できる環境で再度開いてください。';
+      }else if(!allUsage.length){
+        setOptions([],learnedSet);
+        customMovesSource.textContent='使用率データを取得できなかったため、現在の技のみ表示しています。通信できる環境で再度開いてください。';
+      }else{
+        // ① 使用率順のまま「このポケモンが覚えられる技」だけに絞る → ② その上位10技を候補にする
+        const learnable=allUsage.filter(item=>learnedSet.has(customNormMoveSlug(item.id)));
+        const picked=learnable.slice(0,14); // 技データ取得に失敗した分の予備を含めて取得
+        const fetched=await Promise.all(picked.map(async item=>({item,move:await customFetchMoveData(item.id)})));
+        if(stale())return;
+        const usageMoves=[];
+        fetched.forEach(({item,move})=>{if(move&&usageMoves.length<10)usageMoves.push({id:item.id,move,rank:usageMoves.length+1,usage:item.usage});});
         setOptions(usageMoves,learnedSet);
         customMovesSource.textContent=usageMoves.length
-          ?`このポケモンが覚えられる技の中から、使用率が高い上位${usageMoves.length}技を候補にしています。`
+          ?`候補：現在の技 ＋ このポケモンが覚えられる技の使用率上位${usageMoves.length}技（National Dex OU）。好きな技を4枠に選べます。`
           :'使用率データの中に、このポケモンが覚えられる技が見つかりませんでした。現在の技のみ選択できます。';
-      }else{
-        // Fail closed: if the learnset cannot be verified, do not offer usage-ranked or global moves.
-        setOptions([],new Set());
-        customMovesSource.textContent='覚える技データを取得できなかったため、安全のため現在の技のみ表示しています。通信できる環境で再度開いてください。';
       }
       customRenderMoveReference({moves:selectedMoves.map(n=>currentMap.get(n)||customMoveCache.get(n)).filter(Boolean)});
     }

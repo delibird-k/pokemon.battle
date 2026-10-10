@@ -1700,6 +1700,7 @@ let isBattleInProgress = false;
         'きあいのハチマキ': { name: 'きあいのハチマキ', description: '30%でHP1耐える。'},
         'かえんだま': { name: 'かえんだま', description: 'やけどする。あっつ。'},
         'Zクリスタル': { name: 'Zクリスタル', description: 'Z技が使える。'},
+        'ブーストエナジー': { name: 'ブーストエナジー', description: 'こだいかっせい・クォークチャージを発動。'},
         'メガストーン': { name: 'メガストーン', description: 'メガシンカできる。'},
         'なにも持たせない': { name: 'なにも持たせない', description: 'とくに効果なし。'},
     };
@@ -2183,6 +2184,33 @@ function initZData(pokemon) {
     power: firstMove.power,
     category: firstMove.category
   };
+}
+
+// こだいかっせい：晴れ、またはブーストエナジー所持で発動。
+function isAncientBoostActive(pokemon) {
+    if (!pokemon || pokemon.ability !== "こだいかっせい") return false;
+    if (weather?.type === "sun") return true;
+    if (pokemon.ancientBoostActivated) return true;
+    if (pokemon.item?.name === "ブーストエナジー" && !pokemon.boostEnergyConsumed) {
+        pokemon.boostEnergyConsumed = true;
+        pokemon.ancientBoostActivated = true;
+        return true;
+    }
+    return false;
+}
+
+// 最も高い実数値を判定。こだいかっせいは最高能力を1.3倍、すばやさなら1.5倍。
+function getAncientBoostStat(pokemon) {
+    if (!pokemon) return null;
+    const stats = {
+        attack: pokemon.attack,
+        defense: pokemon.defense,
+        spAttack: pokemon.spAttack,
+        spDefense: pokemon.spDefense,
+        speed: pokemon.speed
+    };
+    return Object.keys(stats).reduce((best, stat) =>
+        stats[stat] > stats[best] ? stat : best, "attack");
 }
 
 // ===== 使用可能判定 =====
@@ -7722,9 +7750,21 @@ function getOpponentMove() {
     // ③ 最終決定
     // ========================================================
 
-    return chooseHumanLikeAIMove(
-        scoredMoves
-    );
+    const chosenMove = chooseHumanLikeAIMove(scoredMoves);
+
+    // 相手AIもZクリスタルを持っていれば、1試合に1回Zワザを使用する。
+    // Zワザ化できる攻撃技を選んだ場合に、通常の技選択をZワザへ置き換える。
+    if (
+        chosenMove &&
+        chosenMove.category !== "status" &&
+        canUseZMove(attacker)
+    ) {
+        attacker.selectedZMove = chosenMove;
+        const zMove = useZMove(attacker);
+        if (zMove) return zMove;
+    }
+
+    return chosenMove;
 }
     function calculateSelfConfusionDamage(attacker) {
         const level = 50;
@@ -11872,6 +11912,7 @@ function chooseBestOpponentSwitch() {
     }
     function getPokemonSpeed(pokemon) {
         let speed = pokemon.speed * getStatModifier(pokemon.statStages.speed);
+        if (isAncientBoostActive(pokemon) && getAncientBoostStat(pokemon) === "speed") speed *= 1.5;
         if (pokemon.status === 'paralyze') speed *= 0.5;
         if (pokemon.item && pokemon.item.name === 'しゅんそくスカーフ') {
             speed *= 1.5;
@@ -12018,6 +12059,10 @@ const defStageFix = (stage) =>
         attacker.attack *
         getStatModifier(atkStageFix(attacker.statStages.attack));
 
+    // こだいかっせい：攻撃が最高能力なら物理火力を上げる。
+    if (isAncientBoostActive(attacker) && getAncientBoostStat(attacker) === "attack") {
+        attackStat *= 1.3;
+    }
     // わざわいのおふだ
     if (defender.ability === "わざわいのおふだ") {
         attackStat *= 0.75;
@@ -12034,6 +12079,10 @@ defenseStat =
     defender.defense *
     getStatModifier(defStageFix(defenseStage));
 
+if (isAncientBoostActive(defender) && getAncientBoostStat(defender) === "defense") {
+    defenseStat *= 1.3;
+}
+
 // わざわいのつるぎ
 if (attacker.ability === "わざわいのつるぎ") {
     defenseStat *= 0.75;
@@ -12046,6 +12095,10 @@ else if (move.category === 'special') {
     attacker.spAttack *
     getStatModifier(atkStageFix(attacker.statStages.spAttack));
 
+if (isAncientBoostActive(attacker) && getAncientBoostStat(attacker) === "spAttack") {
+    attackStat *= 1.3;
+}
+
 // わざわいのうつわ
 if (defender.ability === "わざわいのうつわ") {
     attackStat *= 0.75;
@@ -12054,6 +12107,10 @@ if (defender.ability === "わざわいのうつわ") {
     defenseStat =
         defender.spDefense *
         getStatModifier(defStageFix(defender.statStages.spDefense));
+
+    if (isAncientBoostActive(defender) && getAncientBoostStat(defender) === "spDefense") {
+        defenseStat *= 1.3;
+    }
 
         // ゆき補正
     if (

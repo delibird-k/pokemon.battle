@@ -366,7 +366,7 @@
 <div id="customize-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.78);padding:14px;overflow-y:auto;">
   <div style="max-width:900px;margin:20px auto;background:#fff;border:4px solid #111;border-radius:10px;padding:18px;">
     <h2 style="font-size:1.15rem;font-weight:900;text-align:center;margin-bottom:14px;">努力値・性格カスタマイズ</h2>
-    <p style="font-size:.8rem;line-height:1.7;margin-bottom:12px;">ポケモンを選び、努力値と性格を編集できます。努力値は各項目0〜252、合計510までです。下にはそのポケモンが覚えている技も参考用に表示します。変更はこのブラウザに保存され、次回以降の対戦にも反映されます。</p>
+    <p style="font-size:.8rem;line-height:1.7;margin-bottom:12px;">ポケモンごとに努力値・性格・技4つを編集できます。努力値は各項目0〜252、合計510までです。技候補には現在の技と、取得できた場合はNational Dex OUの使用率上位10技を表示します。技の威力・PP・命中率は原作データを使い、変更はこのブラウザに保存されます。</p>
     <label for="custom-pokemon-picker-trigger">選択中のポケモン</label>
     <button id="custom-pokemon-picker-trigger" type="button" aria-expanded="false" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;border:2px solid #333;border-radius:6px;padding:12px;margin:5px 0 14px;background:#fff;color:#111;text-align:left;font-weight:800;cursor:pointer;">
       <span id="custom-pokemon-picker-current">ポケモンを選択</span><span aria-hidden="true">⌄</span>
@@ -385,12 +385,16 @@
     <h3 style="font-weight:900;margin:8px 0;">種族値・実数値（Lv.50）</h3>
     <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">努力値・性格を変更すると、実数値はリアルタイムで更新されます。個体値はゲーム内計算に合わせ、基本31（特殊技型のポケモンは攻撃0）として計算します。</p>
     <div id="custom-stats-reference" style="overflow-x:auto;margin-bottom:16px;"></div>
-    <h3 style="font-weight:900;margin:8px 0;">技（努力値・性格を考えるための参考）</h3>
+    <h3 style="font-weight:900;margin:8px 0;">技の変更（4枠）</h3>
+    <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。候補の使用率順位はNational Dex OUの集計に基づきます。技の追加データ取得にはインターネット接続が必要です。</p>
+    <p id="custom-moves-source" style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">技候補を読み込みます…</p>
+    <div id="custom-moves-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:12px;"></div>
+    <h3 style="font-weight:900;margin:8px 0;">現在の技データ</h3>
     <div id="custom-moves-reference" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:16px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">努力値（合計 <span id="custom-ev-total">0</span> / 510）</h3><div id="custom-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;"></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;">
       <button id="custom-save-button" class="opening-button opening-battle-button" style="flex:1;">保存する</button>
-      <button id="custom-reset-one-button" class="opening-button opening-history-button" style="flex:1;">このポケモンの努力値・性格を初期設定に戻す</button>
+      <button id="custom-reset-one-button" class="opening-button opening-history-button" style="flex:1;">このポケモンの設定を初期状態に戻す</button>
       <button id="custom-close-button" class="opening-button opening-back-button" style="flex:1;">閉じる</button>
     </div><p id="customize-status" style="font-size:.75rem;margin-top:10px;line-height:1.6;"></p>
   </div>
@@ -1855,6 +1859,7 @@ let isBattleInProgress = false;
         p.evs = p.evs || {hp:0,atk:0,def:0,spa:0,spd:0,spe:0};
         customStatFields.forEach(([field])=>{if(Number.isFinite(Number(saved[field])))p.evs[field]=Number(saved[field]);});
         if (typeof saved.nature === 'string' && Object.prototype.hasOwnProperty.call(natures, saved.nature)) p.nature = saved.nature;
+        if (Array.isArray(saved.moves) && saved.moves.length === 4 && saved.moves.every(m=>m && typeof m.name==='string' && Number(m.pp)>0)) p.moves=saved.moves.map(customCloneMove);
       });
     }
     function customField(label,value,attrs) {
@@ -1864,6 +1869,193 @@ let isBattleInProgress = false;
     const customNatureSelect = document.getElementById('custom-nature-select');
     const customNatureEffect = document.getElementById('custom-nature-effect');
     const customMovesReference = document.getElementById('custom-moves-reference');
+    const customMovesEditor = document.getElementById('custom-moves-editor');
+    const customMovesSource = document.getElementById('custom-moves-source');
+    let customMoveSelects = [];
+    let customUsageRows = null;
+    const customMoveCache = new Map();
+    let customUsagePromise = null;
+    const customLearnsetCache = new Map();
+    async function customLoadLearnset(p){
+      const speciesId=String(p?.id||'').toLowerCase().trim();
+      if(!speciesId)return null;
+      if(customLearnsetCache.has(speciesId))return customLearnsetCache.get(speciesId);
+      try{
+        const res=await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(speciesId)}/`,{cache:'force-cache'});
+        if(!res.ok){customLearnsetCache.set(speciesId,null);return null;}
+        const data=await res.json();
+        // Keep only moves listed in this species' learnset. Across-game learn methods are accepted
+        // so the pool reflects moves the species can learn in the main-series games, not just OU usage.
+        const learned=new Set((data.moves||[]).map(entry=>String(entry.move?.name||'').toLowerCase()));
+        customLearnsetCache.set(speciesId,learned);return learned;
+      }catch(e){customLearnsetCache.set(speciesId,null);return null;}
+    }
+    const customTypeNames = {normal:'ノーマル',fire:'ほのお',water:'みず',electric:'でんき',grass:'くさ',ice:'こおり',fighting:'かくとう',poison:'どく',ground:'じめん',flying:'ひこう',psychic:'エスパー',bug:'むし',rock:'いわ',ghost:'ゴースト',dragon:'ドラゴン',dark:'あく',steel:'はがね',fairy:'フェアリー'};
+    function customCloneMove(move){return JSON.parse(JSON.stringify(move));}
+    function customMoveId(name){return String(name||'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g,'');}
+    function customGetAllKnownMoves(){
+      const map=new Map();
+      Object.values(pokemonBaseData).forEach(p=>{(p.moves||[]).forEach(m=>{if(m&&m.name&&!map.has(m.name))map.set(m.name,customCloneMove(m));});});
+      return map;
+    }
+    const customKnownMoveLibrary=customGetAllKnownMoves();
+    function customParseUsageMoves(row){
+      if(!row)return [];
+      let raw=row.top_moves ?? row.moves ?? [];
+      if(typeof raw==='string'){
+        return raw.split('|').map((part,index)=>{const bits=part.split(':');return {id:bits[0],usage:parseFloat(bits[1])||0,rank:index+1};}).filter(x=>x.id);
+      }
+      if(raw && !Array.isArray(raw) && typeof raw==='object') raw=Object.entries(raw).map(([id,usage])=>({id,usage}));
+      if(!Array.isArray(raw))return [];
+      return raw.map((m,index)=>{
+        if(typeof m==='string'){const bits=m.split(':');return {id:bits[0],rank:index+1,usage:parseFloat(bits[1])||0};}
+        return {id:m.move_id||m.id||m.move||m.name||m.slug, name:m.move_name||m.name_en||m.name, rank:m.rank||index+1, usage:parseFloat(String(m.usage_pct??m.usage??m.percent??0).replace('%',''))||0};
+      }).filter(m=>m.id);
+    }
+    async function customLoadUsageRows(){
+      if(customUsageRows)return customUsageRows;
+      if(customUsagePromise)return customUsagePromise;
+      customUsagePromise=(async()=>{
+        const urls=['https://poke.itlibra.com/opendata/usage-nationaldex.json','https://poke.itlibra.com/opendata/usage-nationaldexou.json'];
+        for(const url of urls){
+          try{
+            const res=await fetch(url,{cache:'force-cache'}); if(!res.ok)continue;
+            const data=await res.json();
+            const rawRows=Array.isArray(data)?data:(data.pokemon??data.results??data.data??[]);
+            const rows=Array.isArray(rawRows)?rawRows:(rawRows&&typeof rawRows==='object'?Object.values(rawRows):[]);
+            if(rows.length){customUsageRows=rows;return rows;}
+          }catch(e){}
+        }
+        customUsageRows=[];return customUsageRows;
+      })();
+      return customUsagePromise;
+    }
+    function customUsageForPokemon(key,p){
+      if(!customUsageRows)return null;
+      const id=String(p.id||key||'').toLowerCase();
+      return customUsageRows.find(row=>String(row.pokemon_id||row.id||'').toLowerCase()===id || customMoveId(row.pokemon_name||'')===customMoveId(p.name))||null;
+    }
+    async function customFetchMoveData(moveId){
+      const id=customMoveId(moveId);
+      if(customMoveCache.has(id))return customMoveCache.get(id);
+      const known=[...customKnownMoveLibrary.values()].find(m=>customMoveId(m.name)===id);
+      if(known){customMoveCache.set(id,customCloneMove(known));return customCloneMove(known);}
+      try{
+        const apiSlug=String(moveId||'').toLowerCase().trim().replace(/_/g,'-');
+        const res=await fetch(`https://pokeapi.co/api/v2/move/${encodeURIComponent(apiSlug)}/`);
+        if(!res.ok)return null;
+        const d=await res.json();
+        const ja=(d.names||[]).find(x=>x.language?.name==='ja')?.name;
+        const localMove=ja?customKnownMoveLibrary.get(ja):null;
+        if(localMove){customMoveCache.set(id,customCloneMove(localMove));customMoveCache.set(localMove.name,customCloneMove(localMove));return customCloneMove(localMove);}
+        const type=customTypeNames[d.type?.name]||'ノーマル';
+        const category=d.damage_class?.name==='physical'?'physical':d.damage_class?.name==='special'?'special':'status';
+        const move={name:ja||d.name,power:d.power||0,pp:d.pp||1,type,category,accuracy:d.accuracy==null?101:d.accuracy,priority:d.priority||0,customFetched:true,apiTarget:d.target?.name||'',apiStatChanges:(d.stat_changes||[]).map(x=>({stat:x.stat?.name,change:x.change})),apiMetaCategory:d.meta?.category?.name||'',apiAilment:d.meta?.ailment?.name||'',apiEffectChance:d.effect_chance??100,apiEffectText:(d.effect_entries||[]).find(x=>x.language?.name==='en')?.short_effect||''};
+        if(d.meta?.ailment?.name && d.meta.ailment.name!=='none' && (d.effect_chance||0)>0){
+          const ailmentMap={burn:'burn',paralysis:'paralyze',poison:'poison',freeze:'freeze',sleep:'sleep',confusion:'confuse',flinch:'flinch'};
+          const effect=ailmentMap[d.meta.ailment.name];
+          if(effect)move.secondary={chance:d.effect_chance,effect:effect==='flinch'?'flinch':(effect==='confuse'?'confuse':'status'),...(effect==='status'?{status:effect}:{})};
+        }
+        if(d.meta?.crit_rate)move.critPriority=d.meta.crit_rate;
+        customMoveCache.set(id,customCloneMove(move));customMoveCache.set(move.name,customCloneMove(move));return move;
+      }catch(e){return null;}
+    }
+    function customMoveOptionLabel(move,usageRank){
+      const kind=move.category==='physical'?'物理':move.category==='special'?'特殊':'変化';
+      return `${usageRank?`使用率${usageRank}位｜`:''}${move.name}（${move.type||'タイプ不明'}・${kind}・威力${move.category==='status'?'—':(move.power??'—')}・PP${move.pp??'—'}）`;
+    }
+    function customRenderMoveReference(p){
+      const moves=Array.isArray(p.moves)?p.moves:[];
+      if(!moves.length){customMovesReference.innerHTML='<p style="font-size:.8rem;color:#666;">技データがありません。</p>';return;}
+      const esc=v=>String(v??'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      const th='padding:7px 8px;border:1px solid #cbd5e1;background:#e2e8f0;text-align:center;white-space:nowrap;';
+      customMovesReference.innerHTML=moves.map(m=>{
+        const type=Array.isArray(m.type)?m.type.join('／'):m.type;
+        const category=m.category==='physical'?'物理':m.category==='special'?'特殊':'変化';
+        const power=m.category==='status'||m.power==null?'—':m.power;
+        const accuracy=Number(m.accuracy)>=101?'必中':(m.accuracy==null?'—':`${m.accuracy}%`);
+        return `<div style="border:1px solid #aaa;border-radius:6px;padding:9px;background:#f8fafc;font-size:.78rem;line-height:1.55;"><div style="font-weight:900;font-size:.9rem;margin-bottom:3px;">${esc(m.name)}</div><div>${esc(type)}・${category}</div><div>威力：${esc(power)}　命中：${esc(accuracy)}　PP：${esc(m.pp??'—')}</div></div>`;
+      }).join('');
+    }
+    async function customRenderMoveEditor(key,p){
+      customMoveSelects=[];
+      const current=Array.isArray(p.moves)?p.moves:[];
+      const selectedMoves=current.slice(0,4).map(m=>m.name);
+      while(selectedMoves.length<4)selectedMoves.push('');
+      customMovesEditor.innerHTML='';
+      for(let i=0;i<4;i++){
+        const label=document.createElement('label');
+        label.style.cssText='display:flex;flex-direction:column;gap:5px;font-size:.78rem;font-weight:800;border:1px solid #bbb;border-radius:7px;padding:9px;background:#f8fafc;';
+        label.appendChild(document.createTextNode(`技${i+1}`));
+        const select=document.createElement('select');
+        select.dataset.moveSlot=String(i); select.style.cssText='width:100%;min-width:0;border:1px solid #777;border-radius:5px;padding:8px;background:#fff;color:#111;font-size:.76rem;';
+        label.appendChild(select); customMovesEditor.appendChild(label); customMoveSelects.push(select);
+      }
+      const currentMap=new Map(current.map(m=>[m.name,customCloneMove(m)]));
+      const setOptions=(usageMoves=[],learnedSet=null)=>{
+        const candidateMap=new Map();
+        // The moves already assigned to the Pokémon are kept as existing legal-set entries.
+        current.forEach(m=>candidateMap.set(m.name,{move:customCloneMove(m),rank:0}));
+        // Usage-ranked candidates are admitted only when the species' PokéAPI learnset contains them.
+        usageMoves.forEach(item=>{
+          const slug=String(item.id||'').toLowerCase().replace(/_/g,'-');
+          if(item.move?.name && learnedSet && learnedSet.has(slug))candidateMap.set(item.move.name,{move:item.move,rank:item.rank});
+        });
+        customMoveSelects.forEach((select,index)=>{
+          const wanted=selectedMoves[index];
+          select.innerHTML='';
+          candidateMap.forEach(({move,rank},name)=>{
+            const opt=document.createElement('option');opt.value=name;opt.textContent=customMoveOptionLabel(move,rank);select.appendChild(opt);
+          });
+          select.value=wanted&&candidateMap.has(wanted)?wanted:(select.options[0]?.value||'');
+          selectedMoves[index]=select.value;
+          select.onchange=()=>{
+            selectedMoves[index]=select.value;
+            const move=candidateMap.get(select.value)?.move;
+            if(move)customMoveCache.set(move.name,customCloneMove(move));
+            customRenderMoveReference({moves:selectedMoves.map(n=>candidateMap.get(n)?.move).filter(Boolean)});
+          };
+        });
+      };
+      setOptions([],new Set());
+      customMovesSource.textContent='このポケモンが覚えられる技を確認しています…';
+      const learnedSet=await customLoadLearnset(p);
+      if(!document.getElementById('customize-modal') || customPokemonSelect.value!==key)return;
+      const rows=await customLoadUsageRows();
+      if(!document.getElementById('customize-modal') || customPokemonSelect.value!==key)return;
+      const row=customUsageForPokemon(key,p);
+      // First filter the Pokémon's complete usage-ranked move list by its learnset,
+      // then take the 10 most-used moves among those it can learn. Do NOT take the
+      // global top 10 first, because that can leave fewer than 10 eligible moves.
+      const allUsage=customParseUsageMoves(row);
+      const hasUsageValues=allUsage.some(item=>Number(item.usage)>0);
+      if(hasUsageValues) allUsage.sort((a,b)=>Number(b.usage||0)-Number(a.usage||0));
+      const usageMoves=[];
+      if(learnedSet){
+        const eligibleUsage=allUsage.filter(item=>{
+          const slug=String(item.id||'').toLowerCase().replace(/_/g,'-');
+          return learnedSet.has(slug) || [...learnedSet].some(learned=>customMoveId(learned)===customMoveId(slug));
+        });
+        for(let i=0;i<eligibleUsage.length && usageMoves.length<10;i++){
+          const item=eligibleUsage[i];
+          const move=await customFetchMoveData(item.id);
+          if(move)usageMoves.push({id:item.id,move,rank:usageMoves.length+1,usage:item.usage});
+        }
+      }
+      if(customPokemonSelect.value!==key)return;
+      if(learnedSet){
+        setOptions(usageMoves,learnedSet);
+        customMovesSource.textContent=usageMoves.length
+          ?`このポケモンが覚えられる技の中から、使用率が高い上位${usageMoves.length}技を候補にしています。`
+          :'使用率データの中に、このポケモンが覚えられる技が見つかりませんでした。現在の技のみ選択できます。';
+      }else{
+        // Fail closed: if the learnset cannot be verified, do not offer usage-ranked or global moves.
+        setOptions([],new Set());
+        customMovesSource.textContent='覚える技データを取得できなかったため、安全のため現在の技のみ表示しています。通信できる環境で再度開いてください。';
+      }
+      customRenderMoveReference({moves:selectedMoves.map(n=>currentMap.get(n)||customMoveCache.get(n)).filter(Boolean)});
+    }
+
     const customNatureStatLabels = {attack:'こうげき',defense:'ぼうぎょ',spAttack:'とくこう',spDefense:'とくぼう',speed:'すばやさ'};
     const customNatureStatAbbr = {attack:'Atk',defense:'Def',spAttack:'Spa',spDefense:'Spd',speed:'Spe'};
     function customNatureOptionLabel(natureName) {
@@ -1929,18 +2121,6 @@ let isBattleInProgress = false;
         <tbody>${rows.map(([label,key]) => `<tr><th style="${td}text-align:left;background:#f8fafc;">${label}</th><td style="${td}">${base[key]}</td><td style="${td}font-weight:900;background:#eff6ff;">${currentStats[key]}</td>${megaBase ? `<td style="${td}">${megaBase[key]}</td><td style="${td}font-weight:900;background:#f5f3ff;">${megaStats[key]}</td>` : ''}</tr>`).join('')}</tbody>
       </table>${megaBase ? `<p style="font-size:.72rem;line-height:1.6;color:#5b21b6;margin-top:6px;">メガシンカ後（${esc(mega.form.name)}）も、現在入力中の努力値・性格を使って計算しています。</p>` : ''}`;
     }
-    function customRenderMoves(p) {
-      const moves=Array.isArray(p.moves)?p.moves:[];
-      if(!moves.length){customMovesReference.innerHTML='<p style="font-size:.8rem;color:#666;">技データがありません。</p>';return;}
-      const esc=v=>String(v??'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      customMovesReference.innerHTML=moves.map(m=>{
-        const type=Array.isArray(m.type)?m.type.join('／'):m.type;
-        const category=m.category==='physical'?'物理':m.category==='special'?'特殊':'変化';
-        const power=m.category==='status'||m.power==null?'—':m.power;
-        const accuracy=Number(m.accuracy)>=101?'必中':(m.accuracy==null?'—':`${m.accuracy}%`);
-        return `<div style="border:1px solid #aaa;border-radius:6px;padding:9px;background:#f8fafc;font-size:.78rem;line-height:1.55;"><div style="font-weight:900;font-size:.9rem;margin-bottom:3px;">${esc(m.name)}</div><div>${esc(type)}・${category}</div><div>威力：${esc(power)}　命中：${esc(accuracy)}　PP：${esc(m.pp??'—')}</div></div>`;
-      }).join('');
-    }
     function customRenderEditor() {
       const p=pokemonBaseData[customPokemonSelect.value]; if(!p)return;
       const pickerCurrent=document.getElementById('custom-pokemon-picker-current');
@@ -1952,7 +2132,8 @@ let isBattleInProgress = false;
       customNatureSelect.value=Object.prototype.hasOwnProperty.call(natures,p.nature)?p.nature:'がんばりや';
       customNatureEffect.textContent=customNatureDescription(customNatureSelect.value);
       customNatureSelect.onchange=()=>{customNatureEffect.textContent=customNatureDescription(customNatureSelect.value);customRenderStatsReference();};
-      customRenderMoves(p);
+      customRenderMoveReference(p);
+      customRenderMoveEditor(customPokemonSelect.value,p);
       customUpdateTotal();
       customStatus.textContent='';
     }
@@ -2046,19 +2227,31 @@ let isBattleInProgress = false;
       if(!valid){customStatus.textContent='入力を確認してください。各努力値は0〜252の整数、合計は510以下にしてください。';return;}
       const nature=customNatureSelect.value;
       if(!Object.prototype.hasOwnProperty.call(natures,nature)){customStatus.textContent='性格を選択してください。';return;}
-      customOverrides[key]={...evs,nature};
+      const moveNames=customMoveSelects.map(el=>el.value);
+      if(moveNames.length!==4 || moveNames.some(n=>!n)){customStatus.textContent='技を4つ選択してください。';return;}
+      if(new Set(moveNames).size!==4){customStatus.textContent='同じ技を複数の枠に設定することはできません。4つとも別の技を選んでください。';return;}
+      const chosenMoves=[];
+      for(const name of moveNames){
+        let move=customMoveCache.get(name);
+        if(!move)move=customKnownMoveLibrary.get(name);
+        if(!move){customStatus.textContent=`「${name}」の技データを取得できませんでした。通信後に候補を選び直してください。`;return;}
+        chosenMoves.push(customCloneMove(move));
+      }
+      customOverrides[key]={...evs,nature,moves:chosenMoves};
       try{
         localStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));
         p.evs={...evs};
         p.nature=nature;
+        p.moves=chosenMoves.map(customCloneMove);
         customNatureEffect.textContent=customNatureDescription(nature);
-        customStatus.textContent=`保存しました！（努力値合計 ${total}/510、性格：${nature}）次に開始する対戦から反映されます。`;
+        customRenderMoveReference(p);
+        customStatus.textContent=`保存しました！（努力値合計 ${total}/510、性格：${nature}、技4つ）次に開始する対戦から反映されます。`;
       }catch(e){customStatus.textContent='保存できませんでした。ブラウザの保存設定を確認してください。'}
     };
     document.getElementById('custom-reset-one-button').onclick=()=>{
       delete customOverrides[customPokemonSelect.value];
       try{localStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));}catch(e){}
-      customStatus.textContent='初期値に戻すため、ページを再読み込みします。';
+      customStatus.textContent='努力値・性格・技を初期値に戻すため、ページを再読み込みします。';
       setTimeout(()=>location.reload(),500);
     };
 
@@ -10506,6 +10699,42 @@ if (
     break;
             case 'てっぺき': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 2); message = `${attacker.name} の ぼうぎょが ぐーんと あがった！`; break;
             case 'コットンガード': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 3); message = `${attacker.name} の ぼうぎょが ぐぐーんと あがった！`; break;
+            default: {
+                // APIから取得した技のうち、既存の個別処理がない変化技は、公式データの能力変化・状態異常・回復情報を使って処理する。
+                const apiTargetIsUser = ['user','users-field','ally','user-and-allies','all-allies'].includes(move.apiTarget);
+                const apiTarget = apiTargetIsUser ? attacker : defender;
+                const apiStatNames = {attack:'attack',defense:'defense','special-attack':'spAttack','special-defense':'spDefense',speed:'speed','accuracy':'accuracy','evasion':'evasion'};
+                if (Array.isArray(move.apiStatChanges) && move.apiStatChanges.length) {
+                    let changed = false;
+                    for (const change of move.apiStatChanges) {
+                        const stat = apiStatNames[change.stat];
+                        if (!stat || !apiTarget.statStages || !Number(change.change)) continue;
+                        const before = apiTarget.statStages[stat] || 0;
+                        apiTarget.statStages[stat] = Math.max(-6, Math.min(6, before + Number(change.change)));
+                        changed = changed || apiTarget.statStages[stat] !== before;
+                    }
+                    if (changed) message = `${apiTarget.name} の能力が変化した！`;
+                }
+                if (!message && move.apiMetaCategory === 'heal') {
+                    const heal = Math.max(1, Math.floor(apiTarget.maxHp / 2));
+                    if (apiTarget.currentHp < apiTarget.maxHp) {
+                        apiTarget.currentHp = Math.min(apiTarget.maxHp, apiTarget.currentHp + heal);
+                        updateHpBars();
+                        message = `${apiTarget.name} は たいりょくを かいふくした！`;
+                    } else message = 'しかし うまくきまらなかった！';
+                }
+                if (!message && !apiTargetIsUser && move.apiAilment && move.apiAilment !== 'none') {
+                    const ailmentMap = {burn:'burn',paralysis:'paralyze',poison:'poison',toxicity:'toxic',sleep:'sleep',freeze:'freeze'};
+                    const status = ailmentMap[move.apiAilment];
+                    if (status && apiTarget.status == null && Math.random()*100 < Number(move.apiEffectChance ?? 100)) {
+                        apiTarget.status = status;
+                        if (status === 'sleep') apiTarget.statusTurns = Math.floor(Math.random()*3)+2;
+                        message = `${apiTarget.name} は 状態異常になった！`;
+                    }
+                }
+                if (!message) message = 'しかし うまくきまらなかった！';
+                break;
+            }
         }
 
         if (move.isZMove && move.category === 'status') {

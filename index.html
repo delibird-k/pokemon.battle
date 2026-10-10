@@ -1326,6 +1326,13 @@ function onlineGuestSendMove(moveIndex, options = {}) {
 
     const move = playerPokemon.moves[moveIndex];
     if (!move) return;
+    if (isChoiceMoveLocked(playerPokemon, move)) {
+        messageText.textContent = `${playerPokemon.name} は ${playerPokemon.choiceLockedMove} しか だせない！`;
+        return;
+    }
+    if (hasChoiceItem(playerPokemon) && !playerPokemon.choiceLockedMove) {
+        playerPokemon.choiceLockedMove = move.name;
+    }
 
     // 1人用と同じ「メガシンカしてから技を出す」流れを
     // ホスト側でも再現できるよう、選択内容をそのまま送る。
@@ -1351,6 +1358,13 @@ function onlineGuestSendZMove(moveIndex) {
 
     const move = playerPokemon.moves[moveIndex];
     if (!move || !canUseZMove(playerPokemon)) return;
+    if (isChoiceMoveLocked(playerPokemon, move)) {
+        messageText.textContent = `${playerPokemon.name} は ${playerPokemon.choiceLockedMove} しか だせない！`;
+        return;
+    }
+    if (hasChoiceItem(playerPokemon) && !playerPokemon.choiceLockedMove) {
+        playerPokemon.choiceLockedMove = move.name;
+    }
 
     onlineWaitingForRemote = true;
     onlineGuestActedTurn = currentTurn;
@@ -1751,11 +1765,22 @@ let isBattleInProgress = false;
     getDifficulty: () => difficulty
 };
     
+    // こだわり系アイテムの技固定処理。交代時に choiceLockedMove を消去する。
+    function hasChoiceItem(pokemon) {
+        return !!pokemon && ['こだわりハチマキ', 'こだわりメガネ', 'こだわりスカーフ'].includes(pokemon.item?.name);
+    }
+
+    function isChoiceMoveLocked(pokemon, move) {
+        return hasChoiceItem(pokemon) && !!pokemon.choiceLockedMove && pokemon.choiceLockedMove !== move?.name;
+    }
+
     const items = {
         'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
-        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.5倍。'},
-        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.5倍。'},
-        'しゅんそくスカーフ': { name: 'しゅんそくスカーフ', description: '持つと素早さが1.5倍。'},
+        'こだわりハチマキ': { name: 'こだわりハチマキ', description: '物理技の威力が1.5倍。同じ技しか出せない。'},
+        'こだわりメガネ': { name: 'こだわりメガネ', description: '特殊技の威力が1.5倍。同じ技しか出せない。'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.2倍。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.2倍。'},
+        'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.5倍。最初に選んだ技に固定され、交代すると解除。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復。'},
@@ -3740,14 +3765,14 @@ function determineOpponentItem(pokemon) {
         ],
         "ポリゴン2": [
             "たべのこし",
-            "ものしりメガネ",
+            "こだわりメガネ",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "ゾロアーク": [
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             "せんせいのツメ",
             'Zクリスタル',
             'Zクリスタル',
@@ -3760,22 +3785,22 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             "せんせいのツメ",
             'Zクリスタル',
             'Zクリスタル',
             "きあいのハチマキ",
         ],
         "水ウーラオス": [
-            "ちからのハチマキ",
-            "しゅんそくスカーフ",
+            "こだわりハチマキ",
+            "こだわりスカーフ",
             'Zクリスタル',
             'Zクリスタル',
             "きあいのタスキ",
         ],
         "悪ウーラオス": [
-            "ちからのハチマキ",
-            "しゅんそくスカーフ",
+            "こだわりハチマキ",
+            "こだわりスカーフ",
             'Zクリスタル',
             'Zクリスタル',
             "きあいのタスキ",
@@ -3789,7 +3814,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "化ランドロス": [
-            "ものしりメガネ",
+            "こだわりメガネ",
             "きあいのタスキ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
@@ -3801,7 +3826,7 @@ function determineOpponentItem(pokemon) {
             "オボンの実",
             "きあいのタスキ",
             "たいきゅうチョッキ",
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             'たべのこし',
             'Zクリスタル',
             "きあいのハチマキ",
@@ -3826,8 +3851,8 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "ガチグマ（アカツキ）": [
-            "ものしりメガネ",
-            "ものしりメガネ",
+            "こだわりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",
             "きあいのタスキ",
             "たべのこし",
@@ -3839,7 +3864,7 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "メガストーン",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "きあいのタスキ",
             "せんせいのツメ",
             'Zクリスタル',
@@ -3856,7 +3881,7 @@ function determineOpponentItem(pokemon) {
         "グソクムシャ": [
             "オボンの実",
             "たべのこし",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "たいきゅうチョッキ",
             'Zクリスタル',
             'Zクリスタル',
@@ -3868,7 +3893,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
             'Zクリスタル',
             'Zクリスタル',
-            "ちからのハチマキ",
+            "こだわりハチマキ",
         ],
         "バンギラス": [
             "メガストーン",
@@ -3887,7 +3912,7 @@ function determineOpponentItem(pokemon) {
         ],
         "暁ガチグマ": [
             "オボンの実",
-            "ものしりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
             "きあいのハチマキ",
@@ -3899,38 +3924,38 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             'Zクリスタル',
             'Zクリスタル',
             "きあいのハチマキ",
         ],
         "ハバタクカミ": [
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             'Zクリスタル',
             'Zクリスタル',
             "きあいのハチマキ",
         ],
         "イーユイ": [
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             'Zクリスタル',
             'Zクリスタル',
             "きあいのハチマキ",
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
         ],
         "カミツルギ": [
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "きあいのハチマキ",
         ],
         "パオジアン": [
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "きあいのハチマキ",
         ],
         "クチート": [
@@ -3943,7 +3968,7 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
             "メガストーン",
             "メガストーン",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
@@ -3951,21 +3976,21 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "ギルガルド": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "たべのこし",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "メルメタル": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "たべのこし",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
         ],
         "ブリジュラス": [
-            "ものしりメガネ",
+            "こだわりメガネ",
             "しろいハーブ",
             'Zクリスタル',
             'Zクリスタル',
@@ -3976,12 +4001,12 @@ function determineOpponentItem(pokemon) {
             "メガストーン",
         ],
         "エンテイ": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "たいきゅうチョッキ",
             "たいきゅうチョッキ",
             'Zクリスタル',
             'Zクリスタル',
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             "たべのこし",
             "せんせいのツメ",
             "きあいのハチマキ",
@@ -3994,7 +4019,7 @@ function determineOpponentItem(pokemon) {
             'Zクリスタル',
         ],
         "ヒードラン": [
-            "ものしりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",
             "オボンの実",
             'Zクリスタル',
@@ -4003,7 +4028,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "テッカグヤ": [
-            "ものしりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",
             "オボンの実",
             "たべのこし",
@@ -4027,7 +4052,7 @@ function determineOpponentItem(pokemon) {
         "スイクン": [
             "オボンの実",
             "たべのこし",
-            "ものしりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
             'Zクリスタル',
@@ -4035,15 +4060,15 @@ function determineOpponentItem(pokemon) {
         ],
         "ゲッコウガ": [
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             'Zクリスタル',
             'Zクリスタル',
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
         ],
         "アシレーヌ": [
             "オボンの実",
             "たべのこし",
-            "ものしりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4052,14 +4077,14 @@ function determineOpponentItem(pokemon) {
         ],
         "イダイトウ": [
             "きあいのタスキ",
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             'Zクリスタル',
             'Zクリスタル',
-            "ちからのハチマキ",
+            "こだわりハチマキ",
         ],
         "デンジュモク": [
             "きあいのタスキ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             "せんせいのツメ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4067,7 +4092,7 @@ function determineOpponentItem(pokemon) {
         ],
         "タケルライコ": [
             "せんせいのツメ",
-            "ものしりメガネ",
+            "こだわりメガネ",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
@@ -4090,7 +4115,7 @@ function determineOpponentItem(pokemon) {
         ],
         "マスカーニャ": [
             "きあいのタスキ",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "せんせいのツメ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4098,7 +4123,7 @@ function determineOpponentItem(pokemon) {
         ],
         "ブリザポス": [
             "せんせいのツメ",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
@@ -4109,7 +4134,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
             'Zクリスタル',
             'Zクリスタル',
-            "ちからのハチマキ",
+            "こだわりハチマキ",
         ],
         "クレセリア": [
             "たべのこし",
@@ -4124,12 +4149,12 @@ function determineOpponentItem(pokemon) {
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
-            "ものしりメガネ",
+            "こだわりメガネ",
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
         "カイリュー": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "たいきゅうチョッキ",
             "せんせいのツメ",
             'Zクリスタル',
@@ -4138,7 +4163,7 @@ function determineOpponentItem(pokemon) {
         ],
         "ガブリアス": [
             "きあいのタスキ",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "せんせいのツメ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4172,10 +4197,10 @@ function determineOpponentItem(pokemon) {
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
-            "ものしりメガネ",
+            "こだわりメガネ",
         ],
         "ドラパルト": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4183,7 +4208,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "トドロクツキ": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4192,8 +4217,8 @@ function determineOpponentItem(pokemon) {
         ],
         "サザンドラ": [
             "きあいのタスキ",
-            "ものしりメガネ",
-            "しゅんそくスカーフ",
+            "こだわりメガネ",
+            "こだわりスカーフ",
             'Zクリスタル',
             'Zクリスタル',
             "せんせいのツメ",
@@ -4202,14 +4227,14 @@ function determineOpponentItem(pokemon) {
         "ドドゲザン": [
             "きあいのタスキ",
             "せんせいのツメ",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
             "きあいのハチマキ",
         ],
         "ミミッキュ": [
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             "きあいのタスキ",
             'Zクリスタル',
             'Zクリスタル',
@@ -4220,18 +4245,18 @@ function determineOpponentItem(pokemon) {
             "せんせいのツメ",
         ],
         "サンダー": [
-            "ものしりメガネ",
+            "こだわりメガネ",
             "たいきゅうチョッキ",,
             'Zクリスタル',
             'Zクリスタル',
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
         "キノガッサ": [
             "きあいのタスキ",
             'Zクリスタル',
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             "せんせいのツメ",
             "きあいのハチマキ",
         ],
@@ -4275,7 +4300,7 @@ function determineOpponentItem(pokemon) {
         "水ロトム": [
             "オボンの実",
             "たべのこし",
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             'きあいのハチマキ',
             'せんせいのツメ',
             'Zクリスタル',
@@ -4284,7 +4309,7 @@ function determineOpponentItem(pokemon) {
         "ヒートロトム": [
             "オボンの実",
             "たべのこし",
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             'きあいのハチマキ',
             'せんせいのツメ',
             'Zクリスタル',
@@ -4293,23 +4318,23 @@ function determineOpponentItem(pokemon) {
                 "ジャローダ": [
             "オボンの実",
             "たべのこし",
-            "しゅんそくスカーフ",
+            "こだわりスカーフ",
             'きあいのハチマキ',
             'せんせいのツメ',
             'Zクリスタル',
-            "ものしりメガネ",
+            "こだわりメガネ",
         ],
         "ゴリランダー": [
             "オボンの実",
             "きあいのタスキ",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             'きあいのハチマキ',
             'せんせいのツメ',
             'Zクリスタル',
         ],
         "エースバーン": [
             "きあいのタスキ",
-            "ちからのハチマキ",
+            "こだわりハチマキ",
             'きあいのハチマキ',
             'せんせいのツメ',
             'Zクリスタル',
@@ -4334,7 +4359,7 @@ function determineOpponentItem(pokemon) {
     if (MEGA_DATA[pokemon.name]) {
         const items = [
             'きあいのタスキ',
-            'しゅんそくスカーフ',
+            'こだわりスカーフ',
             'せんせいのツメ',
             'メガストーン'
         ];
@@ -4370,8 +4395,8 @@ function determineOpponentItem(pokemon) {
     if (pokemon.baseAttack > pokemon.baseSpAttack) {
         const items = [
             'きあいのタスキ',
-            'ちからのハチマキ',
-            'しゅんそくスカーフ',
+            'こだわりハチマキ',
+            'こだわりスカーフ',
             'せんせいのツメ',
             'たいきゅうチョッキ',
             'きあいのハチマキ',
@@ -4387,8 +4412,8 @@ function determineOpponentItem(pokemon) {
     if (pokemon.baseSpAttack > pokemon.baseAttack) {
         const items = [
             'きあいのタスキ',
-            'ものしりメガネ',
-            'しゅんそくスカーフ',
+            'こだわりメガネ',
+            'こだわりスカーフ',
             'せんせいのツメ',
             'たいきゅうチョッキ',
             'きあいのハチマキ',
@@ -4566,7 +4591,8 @@ if (!playerPokemon.pendingMega) {
 
         const isDisabled =
     move.currentPp === 0 ||
-    (move.isBloodMoon && playerPokemon.bloodMoonBlocked);
+    (move.isBloodMoon && playerPokemon.bloodMoonBlocked) ||
+    isChoiceMoveLocked(playerPokemon, move);
 
 let displayType = Array.isArray(move.type)
     ? move.type[0]
@@ -5119,6 +5145,7 @@ function showUTurnSwitchSelection() {
 async function executeUTurnSwitch(newIndex) {
 
     const oldPokemon = playerPokemon;
+oldPokemon.choiceLockedMove = null;
 
 await showMessage(
     `${getShownName(oldPokemon)} を ひっこめた！`
@@ -5679,6 +5706,7 @@ async function executeOpponentAISwitch(newIndex) {
 
     const oldPokemon =
     opponentPokemon;
+    oldPokemon.choiceLockedMove = null;
 
 await showMessage(
     `あいて は ${getShownName(oldPokemon)} を ひっこめた！`
@@ -5775,6 +5803,15 @@ await handleAbilityEffectsOnEntry(
     return true;
 }
     async function startBattleRound(playerMove) {
+        if (!playerMove) return;
+        if (isChoiceMoveLocked(playerPokemon, playerMove)) {
+            await showMessage(`${playerPokemon.name} は こだわりアイテムの効果で ${playerPokemon.choiceLockedMove} しか だせない！`);
+            updateMoves();
+            return;
+        }
+        if (hasChoiceItem(playerPokemon) && !playerPokemon.choiceLockedMove) {
+            playerPokemon.choiceLockedMove = playerMove.name;
+        }
         // ブラッドムーンの連続使用禁止を解除
 if (playerPokemon.bloodMoonBlocked) {
     playerPokemon.bloodMoonBlocked = false;
@@ -5839,6 +5876,14 @@ if (difficulty === "online" && onlineRole === "host") {
             opponentMove = remoteMove;
         }
 
+        if (hasChoiceItem(opponentPokemon)) {
+            if (opponentPokemon.choiceLockedMove && opponentMove.name !== opponentPokemon.choiceLockedMove) {
+                opponentMove = opponentPokemon.moves.find(m => m.name === opponentPokemon.choiceLockedMove) || opponentMove;
+            } else if (!opponentPokemon.choiceLockedMove) {
+                opponentPokemon.choiceLockedMove = opponentMove.name;
+            }
+        }
+
         // げきりん中は、ホスト側プレイヤーと同じく技を固定して回数を消費する。
         if (opponentPokemon.isRampaging && opponentPokemon.rampageTurns > 0) {
             const rampageMoveIndex = opponentPokemon.moves.findIndex(m => m.name === 'げきりん');
@@ -5868,6 +5913,9 @@ if (!opponentSwitched && !opponentMove) {
 
 if (!opponentSwitched) {
     opponentPokemon.selectedMove = opponentMove;
+    if (hasChoiceItem(opponentPokemon) && !opponentPokemon.choiceLockedMove && opponentMove) {
+        opponentPokemon.choiceLockedMove = opponentMove.name;
+    }
 }
 if (
     difficulty !== "online" &&
@@ -6604,6 +6652,12 @@ function getAIDamage(move, attacker, defender) {
                 ) / 50
             ) + 2
         );
+
+    // 持ち物による火力補正（AIのダメージ予測にも反映）
+    if (attacker.item?.name === "こだわりハチマキ" && move.category === "physical") damage *= 1.5;
+    if (attacker.item?.name === "こだわりメガネ" && move.category === "special") damage *= 1.5;
+    if (attacker.item?.name === "ちからのハチマキ" && move.category === "physical") damage *= 1.2;
+    if (attacker.item?.name === "ものしりメガネ" && move.category === "special") damage *= 1.2;
 
     // STAB
     const attackerTypes =
@@ -8322,6 +8376,11 @@ function getOpponentMove() {
 
     if (!attacker || !defender) {
         return null;
+    }
+
+    if (hasChoiceItem(attacker) && attacker.choiceLockedMove) {
+        const lockedMove = attacker.moves.find(m => m.name === attacker.choiceLockedMove && m.currentPp > 0);
+        if (lockedMove) return lockedMove;
     }
 
     const moves =
@@ -11823,6 +11882,7 @@ let top = e.clientY + 20;
 }
 async function executeForcedSwitch(newIndex) {
 
+    if (playerPokemon) playerPokemon.choiceLockedMove = null;
     playerActiveIndex = newIndex;
 
     playerPokemon =
@@ -12611,7 +12671,7 @@ function chooseBestOpponentSwitch() {
         let speed = pokemon.speed * getStatModifier(pokemon.statStages.speed);
         if (isAncientBoostActive(pokemon) && getAncientBoostStat(pokemon) === "speed") speed *= 1.5;
         if (pokemon.status === 'paralyze') speed *= 0.5;
-        if (pokemon.item && pokemon.item.name === 'しゅんそくスカーフ') {
+        if (pokemon.item && pokemon.item.name === 'こだわりスカーフ') {
             speed *= 1.5;
         }
         if (pokemon.ability && pokemon.ability.name === 'ききかいひ') {
@@ -12849,7 +12909,10 @@ if (defender.ability === "わざわいのうつわ") {
 }
         if ((attacker.ability === 'もうか' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'ほのお') || (attacker.ability === 'げきりゅう' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'みず') || (attacker.ability === 'しんりょく' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'くさ') || (attacker.ability === 'むしのしらせ' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'むし')) movePower *= 1.5;
         if (attacker.ability === 'テクニシャン' && move.power <= 60) movePower *= 1.5;
-        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.5;
+        if (attacker.item && attacker.item.name === 'こだわりハチマキ' && move.category === 'physical') movePower *= 1.5;
+        if (attacker.item && attacker.item.name === 'こだわりメガネ' && move.category === 'special') movePower *= 1.5;
+        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.2;
+        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.2;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
         if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'そうだいしょう' && move.category && move.power <= 2000) movePower *= 1.3;

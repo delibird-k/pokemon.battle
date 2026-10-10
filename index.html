@@ -382,18 +382,20 @@
     <h3 style="font-weight:900;margin:8px 0;">性格</h3>
     <select id="custom-nature-select" style="width:100%;border:2px solid #333;padding:9px;margin:5px 0 14px;"></select>
     <p id="custom-nature-effect" style="font-size:.75rem;line-height:1.6;color:#444;margin-bottom:14px;"></p>
-    <h3 style="font-weight:900;margin:8px 0;">種族値・実数値（Lv.50）</h3>
+    <h3 style="font-weight:900;margin:8px 0;">種族値</h3>
+    <div id="custom-base-stats-reference" style="overflow-x:auto;margin-bottom:14px;"></div>
+    <h3 style="font-weight:900;margin:8px 0;">実数値（Lv.50）</h3>
     <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">努力値・性格を変更すると、実数値はリアルタイムで更新されます。個体値はゲーム内計算に合わせ、基本31（特殊技型のポケモンは攻撃0）として計算します。</p>
     <div id="custom-stats-reference" style="overflow-x:auto;margin-bottom:16px;"></div>
+    <h3 style="font-weight:900;margin:8px 0;">努力値（合計 <span id="custom-ev-total">0</span> / 510）</h3>
+    <div id="custom-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:16px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">技の変更（4枠）</h3>
     <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。使用率順位はポケモンチャンピオンズ（シングル）の集計に基づきます。データ未登録のポケモンはインターネット接続が必要です。</p>
     <p id="custom-moves-source" style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">技候補を読み込みます…</p>
     <div id="custom-moves-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:12px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">現在の技データ</h3>
     <div id="custom-moves-reference" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:16px;"></div>
-    <h3 style="font-weight:900;margin:8px 0;">努力値（合計 <span id="custom-ev-total">0</span> / 510）</h3><div id="custom-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;">
-      <button id="custom-save-button" class="opening-button opening-battle-button" style="flex:1;">保存する</button>
+    <button id="custom-save-button" class="opening-button opening-battle-button" style="flex:1;">保存する</button>
       <button id="custom-reset-one-button" class="opening-button opening-history-button" style="flex:1;">このポケモンの設定を初期状態に戻す</button>
       <button id="custom-close-button" class="opening-button opening-back-button" style="flex:1;">閉じる</button>
     </div><p id="customize-status" style="font-size:.75rem;margin-top:10px;line-height:1.6;"></p>
@@ -2267,40 +2269,28 @@ let isBattleInProgress = false;
       return stat;
     }
     function customRenderStatsReference() {
+      const baseContainer = document.getElementById('custom-base-stats-reference');
       const container = document.getElementById('custom-stats-reference');
       const p = pokemonBaseData[customPokemonSelect.value];
-      if (!container || !p) return;
+      if (!container || !baseContainer || !p) return;
       const evs = {};
       customStatsGrid.querySelectorAll('[data-custom-ev]').forEach(el => { evs[el.dataset.customEv] = Number(el.value) || 0; });
       const natureName = customNatureSelect.value || p.nature || 'がんばりや';
-      const base = {
-        hp:Number(p.baseHp)||1, attack:Number(p.baseAttack)||1, defense:Number(p.baseDefense)||1,
-        spAttack:Number(p.baseSpAttack)||1, spDefense:Number(p.baseSpDefense)||1, speed:Number(p.baseSpeed)||1
-      };
-      // 対戦内の計算と同じく、特殊技型は攻撃個体値を0として扱う。
+      const base = { hp:Number(p.baseHp)||1, attack:Number(p.baseAttack)||1, defense:Number(p.baseDefense)||1, spAttack:Number(p.baseSpAttack)||1, spDefense:Number(p.baseSpDefense)||1, speed:Number(p.baseSpeed)||1 };
       const attackIv = base.spAttack > base.attack ? 0 : 31;
       const currentStats = customCalculateReferenceStats(base, evs, natureName, attackIv);
       const mega = typeof MEGA_DATA !== 'undefined' ? MEGA_DATA[p.name] : null;
       let megaBase = null, megaStats = null;
       if (mega && mega.form) {
-        megaBase = {
-          hp:Number(mega.form.baseHp)||base.hp, attack:Number(mega.form.baseAttack)||base.attack,
-          defense:Number(mega.form.baseDefense)||base.defense, spAttack:Number(mega.form.baseSpAttack)||base.spAttack,
-          spDefense:Number(mega.form.baseSpDefense)||base.spDefense, speed:Number(mega.form.baseSpeed)||base.speed
-        };
+        megaBase = { hp:Number(mega.form.baseHp)||base.hp, attack:Number(mega.form.baseAttack)||base.attack, defense:Number(mega.form.baseDefense)||base.defense, spAttack:Number(mega.form.baseSpAttack)||base.spAttack, spDefense:Number(mega.form.baseSpDefense)||base.spDefense, speed:Number(mega.form.baseSpeed)||base.speed };
         megaStats = customCalculateReferenceStats(megaBase, evs, natureName, attackIv);
       }
-      const rows = [
-        ['HP','hp','hp'], ['こうげき','attack','atk'], ['ぼうぎょ','defense','def'],
-        ['とくこう','spAttack','spa'], ['とくぼう','spDefense','spd'], ['すばやさ','speed','spe']
-      ];
+      const rows = [['HP','hp'],['こうげき','attack'],['ぼうぎょ','defense'],['とくこう','spAttack'],['とくぼう','spDefense'],['すばやさ','speed']];
       const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const th = 'padding:7px 8px;border:1px solid #cbd5e1;background:#e2e8f0;text-align:center;white-space:nowrap;';
       const td = 'padding:7px 8px;border:1px solid #cbd5e1;text-align:center;white-space:nowrap;';
-      container.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.78rem;background:white;">
-        <thead><tr><th style="${th}">能力</th><th style="${th}">種族値</th><th style="${th}">実数値</th>${megaBase ? `<th style="${th}">メガ種族値</th><th style="${th}">メガ実数値</th>` : ''}</tr></thead>
-        <tbody>${rows.map(([label,key]) => `<tr><th style="${td}text-align:left;background:#f8fafc;">${label}</th><td style="${td}">${base[key]}</td><td style="${td}font-weight:900;background:#eff6ff;">${currentStats[key]}</td>${megaBase ? `<td style="${td}">${megaBase[key]}</td><td style="${td}font-weight:900;background:#f5f3ff;">${megaStats[key]}</td>` : ''}</tr>`).join('')}</tbody>
-      </table>${megaBase ? `<p style="font-size:.72rem;line-height:1.6;color:#5b21b6;margin-top:6px;">メガシンカ後（${esc(mega.form.name)}）も、現在入力中の努力値・性格を使って計算しています。</p>` : ''}`;
+      baseContainer.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.78rem;background:white;"><thead><tr><th style="${th}">能力</th><th style="${th}">種族値</th>${megaBase ? `<th style="${th}">メガ種族値</th>` : ''}</tr></thead><tbody>${rows.map(([label,key]) => `<tr><th style="${td}text-align:left;background:#f8fafc;">${label}</th><td style="${td}">${base[key]}</td>${megaBase ? `<td style="${td}">${megaBase[key]}</td>` : ''}</tr>`).join('')}</tbody></table>`;
+      container.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.78rem;background:white;"><thead><tr><th style="${th}">能力</th><th style="${th}">実数値</th>${megaStats ? `<th style="${th}">メガ実数値</th>` : ''}</tr></thead><tbody>${rows.map(([label,key]) => `<tr><th style="${td}text-align:left;background:#f8fafc;">${label}</th><td style="${td}font-weight:900;background:#eff6ff;">${currentStats[key]}</td>${megaStats ? `<td style="${td}font-weight:900;background:#f5f3ff;">${megaStats[key]}</td>` : ''}</tr>`).join('')}</tbody></table>${megaBase ? `<p style="font-size:.72rem;line-height:1.6;color:#5b21b6;margin-top:6px;">メガシンカ後（${esc(mega.form.name)}）も、現在入力中の努力値・性格を使って計算しています。</p>` : ''}`;
     }
     function customRenderEditor() {
       const p=pokemonBaseData[customPokemonSelect.value]; if(!p)return;

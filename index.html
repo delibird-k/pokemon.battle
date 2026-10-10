@@ -2193,9 +2193,19 @@ function isAncientBoostActive(pokemon) {
     if (pokemon.item?.name === "ブーストエナジー" && !pokemon.boostEnergyConsumed) {
         pokemon.boostEnergyConsumed = true;
         pokemon.ancientBoostActivated = true;
+        pokemon.pendingAncientBoostMessage = true;
         return true;
     }
     return false;
+}
+
+// ブーストエナジーによる発動メッセージを、技の演出前に表示する。
+async function showAncientBoostActivationMessage(pokemon) {
+    // 素早さ判定などでまだ発動していない場合も、ここで発動を確認する。
+    isAncientBoostActive(pokemon);
+    if (!pokemon?.pendingAncientBoostMessage) return;
+    pokemon.pendingAncientBoostMessage = false;
+    await showMessage(`${getShownName(pokemon)} の こだいかっせい！\nなんらかの能力が上がった！`);
 }
 
 // 最も高い実数値を判定。こだいかっせいは最高能力を1.3倍、すばやさなら1.5倍。
@@ -3068,6 +3078,7 @@ function determineOpponentItem(pokemon) {
     const pokemonItems = {
         "カビゴン": [
             "オボンの実",
+            "たべのこし",
             "たべのこし",
             'Zクリスタル',
             'Zクリスタル',
@@ -8609,6 +8620,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
             }
         }
 
+        await showAncientBoostActivationMessage(attacker);
         await showMessage(`${getShownName(attacker)} の ${move.name}！`);
 // ねごと
 if (move.name === "ねごと") {
@@ -12547,6 +12559,30 @@ isBattleInProgress = false;
     // これにより、相手が交代したときに自分の「いかく」などがもう一度発動するのを防ぐ。
     const playerEntered = side === "player" || side === "both";
     const opponentEntered = side === "opponent" || side === "both";
+
+    // ブーストエナジー：こだいかっせいのポケモンが場に出た瞬間に発動メッセージを表示。
+    // ダメージ計算などで先に発動済みになっていても、場に出た時点で未消費ならここで表示する。
+    const ancientBoostStatLabels = {
+        attack: "こうげき",
+        defense: "ぼうぎょ",
+        spAttack: "とくこう",
+        spDefense: "とくぼう",
+        speed: "すばやさ"
+    };
+    const activateBoosterEnergyOnEntry = async (pokemon) => {
+        if (!pokemon || pokemon.ability !== "こだいかっせい" ||
+            pokemon.item?.name !== "ブーストエナジー" || pokemon.boostEnergyConsumed) return;
+
+        pokemon.boostEnergyConsumed = true;
+        pokemon.ancientBoostActivated = true;
+        pokemon.pendingAncientBoostMessage = false;
+        const boostedStat = getAncientBoostStat(pokemon);
+        await showMessage(`${getShownName(pokemon)} の こだいかっせい！`);
+        await showMessage(`${ancientBoostStatLabels[boostedStat] || "能力"}が上がった！`);
+    };
+
+    if (playerEntered) await activateBoosterEnergyOnEntry(playerPokemon);
+    if (opponentEntered) await activateBoosterEnergyOnEntry(opponentPokemon);
 
     if (playerEntered && playerPokemon.ability === "すなおこし" || opponentEntered && opponentPokemon.ability === "すなおこし") {
         weather.type = 'sandstorm';

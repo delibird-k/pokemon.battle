@@ -367,7 +367,18 @@
   <div style="max-width:900px;margin:20px auto;background:#fff;border:4px solid #111;border-radius:10px;padding:18px;">
     <h2 style="font-size:1.15rem;font-weight:900;text-align:center;margin-bottom:14px;">努力値・性格カスタマイズ</h2>
     <p style="font-size:.8rem;line-height:1.7;margin-bottom:12px;">ポケモンを選び、努力値と性格を編集できます。努力値は各項目0〜252、合計510までです。下にはそのポケモンが覚えている技も参考用に表示します。変更はこのブラウザに保存され、次回以降の対戦にも反映されます。</p>
-    <label for="custom-pokemon-select">ポケモン</label><select id="custom-pokemon-select" style="width:100%;border:2px solid #333;padding:9px;margin:5px 0 14px;"></select>
+    <label for="custom-pokemon-picker-trigger">選択中のポケモン</label>
+    <button id="custom-pokemon-picker-trigger" type="button" aria-expanded="false" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;border:2px solid #333;border-radius:6px;padding:12px;margin:5px 0 14px;background:#fff;color:#111;text-align:left;font-weight:800;cursor:pointer;">
+      <span id="custom-pokemon-picker-current">ポケモンを選択</span><span aria-hidden="true">⌄</span>
+    </button>
+    <select id="custom-pokemon-select" aria-hidden="true" tabindex="-1" style="display:none;"></select>
+    <div id="custom-pokemon-picker" style="display:none;border:2px solid #333;border-radius:8px;padding:10px;margin:-6px 0 16px;background:#f8fafc;">
+      <label for="custom-pokemon-search" style="display:block;font-weight:800;margin-bottom:5px;">名前で検索</label>
+      <input id="custom-pokemon-search" type="text" autocomplete="off" placeholder="例：リザードン、ガブリアス" style="width:100%;border:2px solid #555;border-radius:5px;padding:10px;margin-bottom:8px;box-sizing:border-box;">
+      <p style="font-size:.72rem;color:#555;margin:0 0 7px;">候補一覧は上下にスワイプして探せます。名前を入力すると絞り込めます。</p>
+      <div id="custom-pokemon-suggestions" role="listbox" aria-label="ポケモン候補" style="display:none;max-height:260px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;border:1px solid #aaa;border-radius:5px;background:#fff;"></div>
+      <button id="custom-pokemon-picker-done" type="button" style="width:100%;padding:9px;margin-top:8px;border:1px solid #333;border-radius:5px;background:#e5e7eb;font-weight:800;">選択を閉じる</button>
+    </div>
     <h3 style="font-weight:900;margin:8px 0;">性格</h3>
     <select id="custom-nature-select" style="width:100%;border:2px solid #333;padding:9px;margin:5px 0 14px;"></select>
     <p id="custom-nature-effect" style="font-size:.75rem;line-height:1.6;color:#444;margin-bottom:14px;"></p>
@@ -386,6 +397,10 @@
         
         <div id="selection-screen" class="hidden p-4">
             <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline ">せんとうに だす ポケモンを えらんでくれ！</h2>
+            <div style="max-width:520px;margin:0 auto 14px;">
+                <input id="player-pokemon-search" type="text" autocomplete="off" placeholder="ポケモン名で検索（例：リザ、ガブリ）" aria-label="自分のポケモンを検索" style="width:100%;padding:10px;border:2px solid #333;border-radius:6px;color:#111;box-sizing:border-box;">
+                <p style="font-size:.75rem;margin-top:4px;color:#fff;text-shadow:1px 1px #111;">名前の一部を入力すると、候補だけに絞り込まれます。</p>
+            </div>
             <div id="pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
 </div>
 
@@ -406,6 +421,10 @@
 
         <div id="opponent-selection-screen" class="hidden p-4">
             <h2 class="text-center text-lg md:text-2xl mb-4 text-outline">あいての ポケモンを えらんでくれ！</h2>
+            <div style="max-width:520px;margin:0 auto 14px;">
+                <input id="opponent-pokemon-search" type="text" autocomplete="off" placeholder="相手のポケモン名で検索（例：リザ、ガブリ）" aria-label="相手のポケモンを検索" style="width:100%;padding:10px;border:2px solid #333;border-radius:6px;color:#111;box-sizing:border-box;">
+                <p style="font-size:.75rem;margin-top:4px;color:#fff;text-shadow:1px 1px #111;">名前の一部を入力すると、候補だけに絞り込まれます。</p>
+            </div>
             <div id="opponent-pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             </div>
              <div class="text-center mt-4">
@@ -605,6 +624,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemSelectionTitle = document.getElementById('item-selection-title');
     const opponentSelectionScreen = document.getElementById('opponent-selection-screen');
     const opponentPokemonSelectionGrid = document.getElementById('opponent-pokemon-selection-grid');
+    const playerPokemonSearch = document.getElementById('player-pokemon-search');
+    const opponentPokemonSearch = document.getElementById('opponent-pokemon-search');
+    function filterPokemonSelectionCards(grid, query) {
+      if(!grid)return;
+      const q=String(query||'').trim().toLocaleLowerCase();
+      grid.querySelectorAll('[data-pokemon-key]').forEach(card=>{
+        const key=card.dataset.pokemonKey;
+        const p=pokemonBaseData[key];
+        const matches=!q || (p && pokemonSearchMatches(q,key,p));
+        card.style.display=matches?'':'none';
+      });
+    }
+    if(playerPokemonSearch)playerPokemonSearch.addEventListener('input',()=>filterPokemonSelectionCards(pokemonSelectionGrid,playerPokemonSearch.value));
+    if(opponentPokemonSearch)opponentPokemonSearch.addEventListener('input',()=>filterPokemonSelectionCards(opponentPokemonSelectionGrid,opponentPokemonSearch.value));
     const randomOpponentButton = document.getElementById('random-opponent-button');
     const opponentItemSelectionScreen = document.getElementById('opponent-item-selection-screen');
     const opponentItemSelectionGrid = document.getElementById('opponent-item-selection-grid');
@@ -1853,6 +1886,8 @@ let isBattleInProgress = false;
     }
     function customRenderEditor() {
       const p=pokemonBaseData[customPokemonSelect.value]; if(!p)return;
+      const pickerCurrent=document.getElementById('custom-pokemon-picker-current');
+      if(pickerCurrent)pickerCurrent.textContent=p.name;
       const evs=p.evs || {hp:0,atk:0,def:0,spa:0,spd:0,spe:0};
       customStatsGrid.innerHTML=customStatFields.map(([f,l])=>customField(l,evs[f]||0,`data-custom-ev="${f}" type="number" min="0" max="252" step="1"`)).join('');
       customStatsGrid.querySelectorAll('[data-custom-ev]').forEach(el=>el.addEventListener('input',customUpdateTotal));
@@ -1869,11 +1904,81 @@ let isBattleInProgress = false;
       const totalEl=document.getElementById('custom-ev-total'); if(totalEl)totalEl.textContent=total;
       if(totalEl)totalEl.style.color=total>510?'#dc2626':'#111';
     }
+    const customPokemonSearch = document.getElementById('custom-pokemon-search');
+    const customPokemonSuggestions = document.getElementById('custom-pokemon-suggestions');
+    const customPokemonPicker = document.getElementById('custom-pokemon-picker');
+    const customPokemonPickerTrigger = document.getElementById('custom-pokemon-picker-trigger');
+    function pokemonSearchMatches(query, key, pokemon) {
+      const q=String(query||'').trim().toLocaleLowerCase();
+      if(!q)return true;
+      const name=String(pokemon.name||'').toLocaleLowerCase();
+      const id=String(pokemon.id||key||'').toLocaleLowerCase();
+      return name.includes(q) || id.includes(q) || String(key).toLocaleLowerCase().includes(q);
+    }
+    function renderCustomPokemonSuggestions(query) {
+      const q=String(query||'').trim();
+      const matches=Object.entries(pokemonBaseData).filter(([key,p])=>pokemonSearchMatches(q,key,p));
+      customPokemonSuggestions.innerHTML='';
+      if(!matches.length){
+        customPokemonSuggestions.innerHTML='<div style="padding:10px;color:#666;font-size:.85rem;">候補が見つかりません。別の文字で検索してください。</div>';
+        customPokemonSuggestions.style.display='block';return;
+      }
+      matches.forEach(([key,p])=>{
+        const option=document.createElement('button');
+        option.type='button'; option.setAttribute('role','option');
+        option.setAttribute('aria-selected',String(key===customPokemonSelect.value));
+        option.style.cssText='display:block;width:100%;text-align:left;padding:10px;border:0;border-bottom:1px solid #eee;background:'+(key===customPokemonSelect.value?'#dbeafe':'#fff')+';color:#111;cursor:pointer;min-height:42px;';
+        option.textContent=p.name;
+        option.onclick=()=>{
+          customPokemonSelect.value=key;
+          customPokemonSearch.value='';
+          customPokemonPicker.style.display='none';
+          customPokemonSuggestions.style.display='none';
+          customPokemonPickerTrigger.setAttribute('aria-expanded','false');
+          customRenderEditor();
+        };
+        customPokemonSuggestions.appendChild(option);
+      });
+      customPokemonSuggestions.style.display='block';
+    }
+    function openCustomPokemonPicker(){
+      const isOpen=customPokemonPicker.style.display==='block';
+      if(isOpen){
+        customPokemonPicker.style.display='none';
+        customPokemonPickerTrigger.setAttribute('aria-expanded','false');
+        return;
+      }
+      customPokemonPicker.style.display='block';
+      customPokemonPickerTrigger.setAttribute('aria-expanded','true');
+      customPokemonSearch.value='';
+      renderCustomPokemonSuggestions('');
+      const currentOption=customPokemonSuggestions.querySelector('[aria-selected="true"]');
+      if(currentOption)currentOption.scrollIntoView({block:'nearest'});
+      customPokemonSearch.focus({preventScroll:true});
+    }
     customPokemonButton.onclick=()=>{
       customPokemonSelect.innerHTML=Object.entries(pokemonBaseData).map(([k,p])=>`<option value="${k}">${p.name}</option>`).join('');
+      customPokemonSearch.value=''; customPokemonPicker.style.display='none'; customPokemonSuggestions.style.display='none';
+      customPokemonPickerTrigger.setAttribute('aria-expanded','false');
       customModal.style.display='block'; customRenderEditor();
     };
-    customPokemonSelect.onchange=customRenderEditor;
+    customPokemonPickerTrigger.onclick=openCustomPokemonPicker;
+    document.getElementById('custom-pokemon-picker-done').onclick=()=>{
+      customPokemonPicker.style.display='none';
+      customPokemonPickerTrigger.setAttribute('aria-expanded','false');
+    };
+    customPokemonSelect.onchange=()=>customRenderEditor();
+    customPokemonSearch.addEventListener('input',()=>renderCustomPokemonSuggestions(customPokemonSearch.value));
+    customPokemonSearch.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){
+        customPokemonPicker.style.display='none';
+        customPokemonPickerTrigger.setAttribute('aria-expanded','false');
+      }
+      if(e.key==='Enter'){
+        const first=customPokemonSuggestions.querySelector('button');
+        if(first){e.preventDefault();first.click();}
+      }
+    });
     document.getElementById('custom-close-button').onclick=()=>customModal.style.display='none';
     document.getElementById('custom-save-button').onclick=()=>{
       const key=customPokemonSelect.value,p=pokemonBaseData[key]; if(!p)return;
@@ -2611,6 +2716,7 @@ function getShownName(pokemon){
         selectionScreen.style.display = 'block';
 
         pokemonSelectionGrid.innerHTML = '';
+        if(playerPokemonSearch)playerPokemonSearch.value='';
         for (const key in pokemonBaseData) {
             const p = pokemonBaseData[key];
             const card = document.createElement('div');
@@ -2800,6 +2906,7 @@ function handlePlayerItemSelect(itemName) {
         opponentSelectionScreen.style.display = 'block';
 
         opponentPokemonSelectionGrid.innerHTML = '';
+        if(opponentPokemonSearch)opponentPokemonSearch.value='';
          for (const key in pokemonBaseData) {
             const p = pokemonBaseData[key];
             const card = document.createElement('div');

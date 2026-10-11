@@ -10012,7 +10012,11 @@ function isMultiHitMove(move) {
 // 専用分岐がない連続技をここで処理する。
 async function handleMultiHit(attacker, defender, move) {
     let hits;
-    if (attacker.ability === 'スキルリンク') {
+    // トリプルアクセルは特性「スキルリンク」に関係なく最大3回。
+    // 通常の2～5回技だけをスキルリンクで5回に固定する。
+    if (move.name === 'トリプルアクセル') {
+        hits = 3;
+    } else if (attacker.ability === 'スキルリンク') {
         hits = 5;
     } else {
         const roll = Math.random();
@@ -10030,21 +10034,170 @@ async function handleMultiHit(attacker, defender, move) {
     for (let i = 0; i < hits; i++) {
         if (defender.currentHp <= 0) break;
 
-        const { damage, effectivenessMessage } = calculateDamage(move, attacker, defender);
+        // トリプルアクセルは2発目・3発目の命中判定も個別に行う。
+        // 1発目は handleAttack 側ですでに命中判定済み。
+        if (
+            move.name === 'トリプルアクセル' &&
+            i > 0 &&
+            attacker.ability !== 'ノーガード' &&
+            defender.ability !== 'ノーガード' &&
+            Math.random() * 100 >= getActualAccuracy(attacker, defender, move)
+        ) {
+            break;
+        }
+
+        // トリプルアクセルの威力は1発目20、2発目40、3発目60。
+        const hitMove = move.name === 'トリプルアクセル'
+            ? { ...move, power: 20 * (i + 1) }
+            : move;
+        const { damage, effectivenessMessage } = calculateDamage(hitMove, attacker, defender);
         if (i === 0 && effectivenessMessage) await showMessage(effectivenessMessage);
 
         const hitSubstitute = defender.hasSubstitute && !move.isSound;
-        const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+        const hpBeforeHit = defender.currentHp;
+        let actualDamage = damage;
+        let survivalMessage = '';
+
+        // 多段技でも、きあいのタスキ・がんじょう等の「一撃で倒されない」効果を
+        // 1発ごとに判定する。タスキ等でHP1になった後の次の hit は通常どおり処理する。
+        if (!hitSubstitute && hpBeforeHit > 0 && damage >= hpBeforeHit) {
+            const ignoreSash = attacker.item?.name === 'げいげきスコープ';
+            if (
+                defender.item?.name === 'きあいのタスキ' &&
+                !defender.item.used &&
+                hpBeforeHit === defender.maxHp &&
+                !ignoreSash
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                defender.item.used = true;
+                survivalMessage = `${defender.name} は きあいのタスキで もちこたえた！`;
+            } else if (
+                defender.ability === 'がんじょう' &&
+                hpBeforeHit === defender.maxHp
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は がんじょうで もちこたえた！`;
+            } else if (
+                defender.ability === 'きずなへんげ' &&
+                hpBeforeHit === defender.maxHp
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は きずなのちからで もちこたえた！`;
+            } else if (
+                defender.ability === 'かれないはな' &&
+                hpBeforeHit === defender.maxHp
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は まだかれない！`;
+            } else if (
+                defender.ability === 'トレーニング' &&
+                hpBeforeHit === defender.maxHp
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name}モードです`;
+            } else if (
+                defender.item?.name === 'きあいのハチマキ' &&
+                Math.random() < 0.33
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は きあいのハチマキで もちこたえた！`;
+            }
+        }
+
+        const result = await applyDamage(attacker, defender, actualDamage, hitMove, defenderUI);
         if (!result || result.hit === false) break;
+        if (survivalMessage) {
+            await showMessage(survivalMessage);
+            updateHpBars();
+        }
+
+        // 連続技では通常攻撃側の後処理を通らないため、接触時の特性効果を
+        // 各ヒットごとに処理する。みがわりに当たったヒットでは発動しない。
+        if (hitMove.isContact && !hitSubstitute && attacker.currentHp > 0) {
+            // 相手を倒したヒットでも、ゴツゴツメットの反動は発生する。
+            // 生存している相手への反動は applyDamage() 側で処理済み。
+            if (
+                defender.currentHp <= 0 &&
+                defender.item?.name === 'ゴツゴツメット' &&
+                attacker.ability !== 'マジックガード'
+            ) {
+                const helmetDamage = Math.max(1, Math.floor(attacker.maxHp / 6));
+                attacker.currentHp = Math.max(0, attacker.currentHp - helmetDamage);
+                await showMessage(`${defender.name} の ゴツゴツメット！`);
+                updateHpBars();
+            }
+
+            if (
+                attacker.currentHp > 0 &&
+                attacker.ability !== 'マジックガード' &&
+                (defender.ability === 'さめはだ' || defender.ability === 'てつのとげ')
+            ) {
+                const recoil = Math.max(1, Math.floor(attacker.maxHp / 8));
+                attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
+                await showMessage(`${defender.name} の ${defender.ability}！ ${attacker.name} は ダメージを うけた！`);
+                updateHpBars();
+            }
+
+            if (attacker.currentHp > 0 && attacker.status == null) {
+                const contactStatus = {
+                    'せいでんき': 'paralyze',
+                    'ほのおのからだ': 'burn',
+                    'どくのからだ': 'toxic'
+                }[defender.ability];
+                const blockedType = {
+                    paralyze: 'でんき',
+                    burn: 'ほのお',
+                    toxic: 'どく'
+                }[contactStatus];
+                if (
+                    contactStatus &&
+                    !attacker.types?.includes(blockedType) &&
+                    canInflictSecondaryStatus(attacker, contactStatus) &&
+                    Math.random() < 0.3
+                ) {
+                    attacker.status = contactStatus;
+                    const statusLabel = { paralyze: 'まひ', burn: 'やけど', toxic: 'もうどく' }[contactStatus];
+                    await showMessage(`${defender.name} の ${defender.ability}！`);
+                    await showMessage(`${attacker.name} は ${statusLabel}になった！`);
+                    updateStatusMarkers();
+                }
+            }
+
+            if (attacker.currentHp <= 0) {
+                await checkFainted(attacker, attacker === playerPokemon);
+                return true;
+            }
+        }
 
         landedHits++;
-        lastDamage = damage;
+        lastDamage = actualDamage;
         lastHitReachedPokemon = !hitSubstitute;
-        defender.lastDamageTaken = damage;
+        defender.lastDamageTaken = actualDamage;
         defender.lastDamageCategory = move.category;
 
+        // おうじゃのしるしは連続技の各ヒットごとに判定する。
+        // 技自体にひるみ効果がある場合は、持ち物による追加判定を行わない。
+        const hasFlinchEffect = (Array.isArray(move.secondary) ? move.secondary : (move.secondary ? [move.secondary] : []))
+            .some(effect => effect?.effect === 'flinch');
+        if (
+            attacker.item?.name === 'おうじゃのしるし' &&
+            move.category !== 'status' &&
+            defender.currentHp > 0 &&
+            !hasFlinchEffect &&
+            !defender.isFlinched &&
+            Math.random() < 0.33
+        ) {
+            defender.isFlinched = true;
+        }
+
         if (attacker.currentHp <= 0) {
-            await checkFainted(attacker, attacker === playerPokemon);
+            // applyDamage() はゴツゴツメット等で攻撃側が倒れた場合、
+            // すでに checkFainted() を呼び出している。
+            // ここで再度呼ぶと、交代・オンライン同期などの瀕死処理が
+            // 二重に進む可能性があるため、result.fainted を確認する。
+            if (!result.fainted) {
+                await checkFainted(attacker, attacker === playerPokemon);
+            }
             return true;
         }
         if (defender.currentHp <= 0) {
@@ -10061,17 +10214,6 @@ async function handleMultiHit(attacker, defender, move) {
             await handlePostAttackEffects(attacker, defender, move, isFirstAttacker, lastDamage);
         }
 
-        const hasFlinchEffect = (Array.isArray(move.secondary) ? move.secondary : (move.secondary ? [move.secondary] : []))
-            .some(effect => effect?.effect === 'flinch');
-        if (
-            attacker.item?.name === 'おうじゃのしるし' &&
-            move.category !== 'status' &&
-            defender.currentHp > 0 &&
-            !hasFlinchEffect &&
-            Math.random() < 0.33
-        ) {
-            defender.isFlinched = true;
-        }
     }
 
     return false;

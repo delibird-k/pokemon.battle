@@ -10221,10 +10221,17 @@ if (move.self && move.self.stats) {
         const berryHealed = await checkAndUseItem(defender);
         if(berryHealed) await new Promise(resolve => setTimeout(resolve, 1000));
         
-       if (move.name === 'げきりん' && !attacker.isRampaging) {
-    attacker.isRampaging = true;
-    attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
-}
+       // げきりんが無効化された場合（フェアリータイプなど）は、
+       // あばれる状態を開始しない。ダメージが0なのに連続使用状態へ入ると、
+       // 次ターンの技選択・ターン進行が噛み合わず停止することがある。
+       if (
+           move.name === 'げきりん' &&
+           !attacker.isRampaging &&
+           finalDamage > 0
+       ) {
+           attacker.isRampaging = true;
+           attacker.rampageTurns = Math.floor(Math.random() * 2) + 1;
+       }
 
 // ========================================================
 // とんぼがえり・ボルトチェンジ・クイックターン

@@ -409,7 +409,7 @@
         <div id="selection-screen" class="hidden p-4">
             <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline ">せんとうに だす ポケモンを えらんでくれ！</h2>
             <div style="max-width:520px;margin:0 auto 14px;">
-                <input id="player-pokemon-search" type="text" autocomplete="off" placeholder="ポケモン名で検索（例：リザードン、ガブリアス）" aria-label="自分のポケモンを検索" style="width:100%;padding:10px;border:2px solid #333;border-radius:6px;color:#111;box-sizing:border-box;">
+                <input id="player-pokemon-search" type="text" autocomplete="off" placeholder="ポケモン名で検索（例：リザ、ガブリ）" aria-label="自分のポケモンを検索" style="width:100%;padding:10px;border:2px solid #333;border-radius:6px;color:#111;box-sizing:border-box;">
                 <p style="font-size:.75rem;margin-top:4px;color:#fff;text-shadow:1px 1px #111;">名前の一部を入力すると、候補だけに絞り込まれます。</p>
             </div>
             <div id="pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -10047,6 +10047,7 @@ if(defender.currentHp <= 0){
 const hasFlinchEffect = move.secondary?.effect === 'flinch';
 
 if (
+    finalDamage > 0 &&
     attacker.item?.name === 'おうじゃのしるし' &&
     move.category !== 'status' &&
     defender.currentHp > 0 &&
@@ -10062,7 +10063,7 @@ if (
 // 技を使ったことによる自分の能力変化
 // みがわりに当たった場合でも発動する
 // ========================================================
-if (move.self && move.self.stats) {
+if (finalDamage > 0 && move.self && move.self.stats) {
     let messages = [];
 
     move.self.stats.forEach(s => {
@@ -10361,6 +10362,9 @@ defender.lastAttacker = attacker;
 
     async function handlePostAttackEffects(attacker, defender, move, isFirstAttacker, finalDamage) {
         const isPlayerAttacking = attacker === playerPokemon;
+
+        // 効果なし・無効化などでダメージが発生していない場合、追加効果は発動しない。
+        if (finalDamage <= 0) return;
         
         if (move.secondary && !defender.hasSubstitute) {
 
@@ -12744,7 +12748,7 @@ async function applyGeigekiScopeOnEnter(pokemon) {
     async function checkAndUseItem(pokemon) {
         if (pokemon.item && pokemon.item.name === "オボンの実" && !pokemon.item.used && pokemon.currentHp > 0 && pokemon.currentHp <= pokemon.maxHp / 2) {
             pokemon.item.used = true;
-            const healAmount = Math.floor(pokemon.maxHp / 4);
+            const healAmount = Math.floor(pokemon.maxHp / 2);
             pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + healAmount);
             await showMessage(`${pokemon.name} は オボンの実で かいふくした！`);
             updateHpBars();

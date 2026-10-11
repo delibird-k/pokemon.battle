@@ -1470,7 +1470,17 @@ function onlineCreateRoom() {
         setupOnlineConnection(conn, 'host');
     });
     onlinePeer.on('error', err => {
-        onlineLobbyStatus.textContent = '接続エラー：' + (err.type || 'unknown');
+        const errorType = err && err.type ? err.type : 'unknown';
+        // Peer IDの競合やサーバー接続失敗後、ボタンが disabled のままにならないようにする。
+        try { if (onlinePeer) onlinePeer.destroy(); } catch (e) {}
+        onlinePeer = null;
+        onlineConn = null;
+        onlineMode = false;
+        onlineRole = null;
+        onlineCreateButton.disabled = false;
+        onlineJoinButton.disabled = false;
+        onlineRoomCodeArea.style.display = 'none';
+        onlineLobbyStatus.textContent = 'ルーム作成エラー：' + errorType + '。もう一度お試しください。';
     });
 }
 
@@ -1495,7 +1505,16 @@ function onlineJoinRoom() {
         setupOnlineConnection(conn, 'guest');
     });
     onlinePeer.on('error', err => {
-        onlineLobbyStatus.textContent = '接続エラー：' + (err.type || 'unknown');
+        const errorType = err && err.type ? err.type : 'unknown';
+        try { if (onlineConn) onlineConn.close(); } catch (e) {}
+        try { if (onlinePeer) onlinePeer.destroy(); } catch (e) {}
+        onlineConn = null;
+        onlinePeer = null;
+        onlineMode = false;
+        onlineRole = null;
+        onlineCreateButton.disabled = false;
+        onlineJoinButton.disabled = false;
+        onlineLobbyStatus.textContent = 'ルーム参加エラー：' + errorType + '。IDを確認して再度お試しください。';
     });
 }
 
@@ -1525,14 +1544,23 @@ function setupOnlineConnection(conn, role) {
     });
     conn.on('data', data => handleOnlineData(data));
     conn.on('close', () => {
-        onlineWaitingForRemote = false;
+        // 接続が切れたときは、Peer/DataConnection と対戦中フラグも必ず片付ける。
+        // 画面だけ戻すと onlineMode が残り、次の対戦を正常に開始できないことがある。
         if (onlineMode) {
-            alert('相手との接続が切れました。');
+            onlineCleanup();
+            alert('相手との接続が切れました。対人戦を終了しました。');
             showOpeningScreen();
         }
     });
     conn.on('error', () => {
-        onlineLobbyStatus.textContent = '対戦相手との接続でエラーが発生しました。';
+        // 接続エラー後に入力だけロックされた状態で残らないようにする。
+        if (onlineMode) {
+            onlineCleanup();
+            alert('対戦相手との接続でエラーが発生しました。もう一度ルームを作成／参加してください。');
+            showOpeningScreen();
+        } else {
+            onlineLobbyStatus.textContent = '対戦相手との接続でエラーが発生しました。';
+        }
     });
 }
 
@@ -5640,115 +5668,6 @@ updateStatDisplay(
     updateMoves();
     enableMoves();
 }
-    // ============================================================
-// AI：通常ターンの交代判断
-// ============================================================
-function shouldOpponentSwitch() {
-
-    // 交代先を選ぶ
-    const nextIndex = chooseBestOpponentSwitch();
-
-    if (nextIndex === -1) {
-        return false;
-    }
-
-    const nextPokemon =
-        opponentTeam[nextIndex];
-
-    // 現在のポケモンがプレイヤーを確定KOできるなら
-    // 無理に交代しない
-    const currentBestAttack =
-        getAIBestAttack(
-            opponentPokemon,
-            playerPokemon
-        );
-
-    if (
-        currentBestAttack &&
-        currentBestAttack.damage >=
-        playerPokemon.currentHp
-    ) {
-        return false;
-    }
-
-    // 現在のポケモンが受ける最大ダメージ
-    const currentIncoming =
-        getAIBestAttack(
-            playerPokemon,
-            opponentPokemon
-        );
-
-    if (!currentIncoming) {
-        return false;
-    }
-
-    // 交代先が受ける最大ダメージ
-    const nextIncoming =
-        getAIBestAttack(
-            playerPokemon,
-            nextPokemon
-        );
-
-    // 交代先が出た瞬間に倒されるなら交代しない
-    if (
-        nextIncoming &&
-        nextIncoming.damage >=
-        nextPokemon.currentHp
-    ) {
-        return false;
-    }
-
-    // 現在のポケモンの攻撃性能
-    const currentOffense =
-        currentBestAttack
-            ? currentBestAttack.expected
-            : 0;
-
-    // 交代先の攻撃性能
-    const nextBestAttack =
-        getAIBestAttack(
-            nextPokemon,
-            playerPokemon
-        );
-
-    const nextOffense =
-        nextBestAttack
-            ? nextBestAttack.expected
-            : 0;
-
-    const currentDamage =
-        currentIncoming.expected;
-
-    const nextDamage =
-        nextIncoming
-            ? nextIncoming.expected
-            : 0;
-
-    // ========================================================
-    // 交代条件
-    // ========================================================
-    //
-    // 現在のポケモンがかなり不利
-    // ＋
-    // 交代先のほうが被ダメージを大きく抑えられる
-    // ＋
-    // 交代先にも攻撃手段がある
-    //
-    if (
-        currentDamage >=
-            opponentPokemon.currentHp * 0.30 &&
-        nextDamage <=
-            currentDamage * 0.65 &&
-        nextOffense >=
-            currentOffense * 0.85
-    ) {
-        return true;
-    }
-
-    return false;
-}
-
-
 // ============================================================
 // AI：通常ターンの交代実行
 // ============================================================

@@ -2120,7 +2120,7 @@ let isBattleInProgress = false;
     }
     const customTypeNames = {normal:'ノーマル',fire:'ほのお',water:'みず',electric:'でんき',grass:'くさ',ice:'こおり',fighting:'かくとう',poison:'どく',ground:'じめん',flying:'ひこう',psychic:'エスパー',bug:'むし',rock:'いわ',ghost:'ゴースト',dragon:'ドラゴン',dark:'あく',steel:'はがね',fairy:'フェアリー'};
     function customCloneMove(move){return JSON.parse(JSON.stringify(move));}
-    function customMoveId(name){return String(name||'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g,'');}
+    function customMoveId(name){return String(name||'').normalize('NFKC').toLowerCase().replace(/[\s_-]+/g,'').replace(/[^\p{L}\p{N}]/gu,'');}
     function customGetAllKnownMoves(){
       const map=new Map();
       Object.values(pokemonBaseData).forEach(p=>{(p.moves||[]).forEach(m=>{if(m&&m.name&&!map.has(m.name))map.set(m.name,customCloneMove(m));});});

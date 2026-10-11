@@ -295,6 +295,8 @@
 
             <div id="opening-stats" class="opening-stats"></div>
 
+            <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
+
             <button id="start-battle-button"
                     class="opening-button opening-battle-button">
                 ⚔ バトルをする
@@ -692,6 +694,7 @@ document.getElementById("reset-no-button");
     function updateOpeningStats() {
         openingStats.innerHTML = `
             <div>レート：<strong>${rating}</strong></div>
+            <div>レート変動：<strong>${ratingEnabled ? 'ON' : 'OFF'}</strong></div>
             <div>ランク：${getRank()}</div>
             <div>戦績：${winCount}勝 ${loseCount}敗</div>
             <div>連勝：${winStreak}　連敗：${loseStreak}</div>
@@ -1657,10 +1660,16 @@ function handleOnlineData(data) {
         sessionStorage.removeItem('pokemonBattleInProgress');
         if (guestWon) {
             winStreak++; loseStreak=0; winCount++;
-            rating += data.ratingDelta || 0;
+            if (ratingEnabled) {
+                const gain = Math.floor(Math.random() * 11) + 10;
+                rating += gain + winStreak * 3;
+            }
         } else {
             loseStreak++; winStreak=0; loseCount++;
-            rating = Math.max(1, rating + (data.ratingDelta || 0));
+            if (ratingEnabled) {
+                const loss = Math.floor(Math.random() * 11) + 10;
+                rating = Math.max(1, rating - loss - loseStreak * 2);
+            }
         }
         updateRating();
         saveMatchHistory(guestWon ? 'win' : 'lose', playerTeam, opponentTeam);
@@ -1750,6 +1759,24 @@ let selectedOpponentKey;
 let selectedOpponentItemName;
     let difficulty;
     let rating = Number(localStorage.getItem("rating")) || 1;
+    // レート変動設定は端末ごとに保存。未設定時は従来どおりON。
+    let ratingEnabled = localStorage.getItem("ratingEnabled") !== "false";
+    const ratingToggleButton = document.getElementById('rating-toggle-button');
+    function updateRatingToggleButton() {
+        if (!ratingToggleButton) return;
+        ratingToggleButton.textContent = `レート変動：${ratingEnabled ? 'ON' : 'OFF'}`;
+        ratingToggleButton.style.background = ratingEnabled ? '#bbf7d0' : '#e5e7eb';
+        ratingToggleButton.style.color = ratingEnabled ? '#14532d' : '#374151';
+        ratingToggleButton.setAttribute('aria-pressed', String(ratingEnabled));
+    }
+    if (ratingToggleButton) {
+        ratingToggleButton.onclick = () => {
+            ratingEnabled = !ratingEnabled;
+            localStorage.setItem('ratingEnabled', String(ratingEnabled));
+            updateRatingToggleButton();
+            updateOpeningStats();
+        };
+    }
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
@@ -3060,10 +3087,12 @@ function handleRefreshLoss() {
     const loss = Math.floor(Math.random() * 11) + 10;
     const streakPenalty = loseStreak * 2;
 
-    rating = Math.max(
-        1,
-        rating - loss - streakPenalty
-    );
+    if (ratingEnabled) {
+        rating = Math.max(
+            1,
+            rating - loss - streakPenalty
+        );
+    }
 
     // 敗北数を増やす
     loseCount++;
@@ -3094,9 +3123,10 @@ function updateRating() {
     localStorage.setItem("loseStreak", loseStreak);
 }
 
-// 起動時にも保存されているレート情報を表示する。
+// 起動時にも保存されているレート情報と変動設定を表示する。
 // 固定の「レート:1000」を表示したままにせず、ランク・勝敗・連勝/連敗まで反映する。
 updateRating();
+updateRatingToggleButton();
 
     function calculateStats(basePokemon) {
         const level = 50;
@@ -13129,8 +13159,8 @@ function endGame(playerWon) {
         sessionStorage.removeItem('pokemonBattleInProgress');
         disableMoves();
         const delta = playerWon ? (Math.floor(Math.random()*11)+10 + (winStreak + 1) * 3) : -(Math.floor(Math.random()*11)+10 + (loseStreak + 1) * 2);
-        if (playerWon) { winStreak++; loseStreak=0; winCount++; rating += delta; }
-        else { loseStreak++; winStreak=0; loseCount++; rating=Math.max(1,rating+delta); }
+        if (playerWon) { winStreak++; loseStreak=0; winCount++; if (ratingEnabled) rating += delta; }
+        else { loseStreak++; winStreak=0; loseCount++; if (ratingEnabled) rating=Math.max(1,rating+delta); }
         updateRating();
         saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
         onlineSendState(
@@ -13172,7 +13202,7 @@ function endGame(playerWon) {
         // 連勝ボーナス
         const streakBonus = winStreak * 3;
 
-        rating += gain + streakBonus;
+        if (ratingEnabled) rating += gain + streakBonus;
 
         winCount++;
 
@@ -13195,10 +13225,12 @@ function endGame(playerWon) {
         // 連敗ボーナス
         const streakPenalty = loseStreak * 2;
 
-        rating = Math.max(
-            1,
-            rating - loss - streakPenalty
-        );
+        if (ratingEnabled) {
+            rating = Math.max(
+                1,
+                rating - loss - streakPenalty
+            );
+        }
 
         loseCount++;
 

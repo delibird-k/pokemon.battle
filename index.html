@@ -181,6 +181,26 @@
         }
 
         .opening-battle-button { background: #fbbf24; }
+
+        /* バトルをする以外の6ボタンを横一列に6等分 */
+        .opening-button-row {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 14px;
+        }
+        .opening-button-row .opening-button {
+            margin-top: 0;
+            padding: 10px 2px;
+            font-size: 0.58rem;
+            line-height: 1.5;
+            word-break: break-all;
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
         .opening-history-button { background: #93c5fd; }
         .opening-reset-button { background: #fca5a5; }
         .opening-back-button { background: #d1d5db; }
@@ -269,6 +289,7 @@
         @media (max-width: 480px) {
             .opening-panel { padding: 22px 14px; }
             .opening-button { font-size: 0.72rem; }
+            .opening-button-row .opening-button { font-size: 0.5rem; padding: 8px 1px; min-height: 58px; }
             .history-row {
                 grid-template-columns: 42px minmax(0, 1fr) 88px;
                 font-size: 0.58rem;
@@ -295,34 +316,36 @@
 
             <div id="opening-stats" class="opening-stats"></div>
 
-            <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
-
-            <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタルルール：ON</button>
-
             <button id="start-battle-button"
                     class="opening-button opening-battle-button">
                 ⚔ バトルをする
             </button>
 
-            <button id="history-button"
-                    class="opening-button opening-history-button">
-                📜 履歴を見る
-            </button>
+            <div class="opening-button-row">
+                <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
 
-            <button id="customize-pokemon-button"
-                    class="opening-button" style="background:#c4b5fd;">
-                🛠 技・努力値・性格をカスタマイズ
-            </button>
+                <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタルルール：ON</button>
 
-            <button id="online-battle-button"
-                    class="opening-button" style="background:#7c3aed;color:white;">
-                👥 対人戦(PC推奨)
-            </button>
+                <button id="history-button"
+                        class="opening-button opening-history-button">
+                    📜 履歴を見る
+                </button>
 
-            <button id="opening-reset-button"
-                    class="opening-button opening-reset-button">
-                戦績とレートをリセット
-            </button>
+                <button id="customize-pokemon-button"
+                        class="opening-button" style="background:#c4b5fd;">
+                    🛠 技・努力値・性格をカスタマイズ
+                </button>
+
+                <button id="online-battle-button"
+                        class="opening-button" style="background:#7c3aed;color:white;">
+                    👥 対人戦(PC推奨)
+                </button>
+
+                <button id="opening-reset-button"
+                        class="opening-button opening-reset-button">
+                    戦績とレートをリセット
+                </button>
+            </div>
 
             <div class="copyright-disclaimer">
                 <div class="copyright-disclaimer-title">著作権・免責事項</div>
@@ -3854,8 +3877,8 @@ function selectRandomOpponentAndItem() {
     // 3匹それぞれのテラスタイプもランダムに決定し、選択画面を省略する。
     // ルールOFFなら通常どおり元タイプを設定する。
     if (teraRuleEnabled) {
-        selectedOpponentTeraTypes = selectedOpponentKeys.map(() =>
-            TERA_TYPES[Math.floor(Math.random() * TERA_TYPES.length)]
+        selectedOpponentTeraTypes = selectedOpponentKeys.map(key =>
+            pickOpponentTeraType(key)
         );
         finishTeraSelection('opponent');
     } else {
@@ -3921,6 +3944,37 @@ function handleOpponentItemSelect(itemName) {
     beginTeraSelection('opponent');
 }
     
+    // 相手のテラスタイプ候補：
+    //  (a) 自分の技に含まれるタイプ
+    //  (b) 元タイプの弱点(等倍超え)をすべて無効化・半減以下にできるタイプ
+    // のどちらかからランダムに選ぶ。候補が空なら元の1つ目のタイプ。
+    function pickOpponentTeraType(key) {
+        const data = pokemonBaseData[key] || {};
+        const origTypes = Array.isArray(data.types) ? data.types : [data.types].filter(Boolean);
+        const candidates = new Set();
+
+        // (a) 技のタイプ
+        (data.moves || []).forEach(m => {
+            if (m && TERA_TYPES.includes(m.type)) candidates.add(m.type);
+        });
+
+        // (b) 弱点を消せるタイプ
+        const weakTypes = TERA_TYPES.filter(att => {
+            let mult = 1;
+            origTypes.forEach(def => { mult *= (typeChart[att]?.[def] ?? 1); });
+            return mult > 1;
+        });
+        if (weakTypes.length > 0) {
+            TERA_TYPES.forEach(t => {
+                if (weakTypes.every(att => (typeChart[att]?.[t] ?? 1) <= 1)) candidates.add(t);
+            });
+        }
+
+        const list = [...candidates];
+        if (list.length === 0) return origTypes[0] || 'ノーマル';
+        return list[Math.floor(Math.random() * list.length)];
+    }
+
     function beginTeraSelection(side) {
         currentTeraSelectionSide = side;
         currentTeraSelectionIndex = 0;

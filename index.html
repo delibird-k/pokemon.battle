@@ -12744,7 +12744,7 @@ async function applyGeigekiScopeOnEnter(pokemon) {
     async function checkAndUseItem(pokemon) {
         if (pokemon.item && pokemon.item.name === "オボンの実" && !pokemon.item.used && pokemon.currentHp > 0 && pokemon.currentHp <= pokemon.maxHp / 2) {
             pokemon.item.used = true;
-            const healAmount = Math.floor(pokemon.maxHp / 2);
+            const healAmount = Math.floor(pokemon.maxHp / 4);
             pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp + healAmount);
             await showMessage(`${pokemon.name} は オボンの実で かいふくした！`);
             updateHpBars();

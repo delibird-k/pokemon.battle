@@ -1108,9 +1108,14 @@ function onlineFinishGuestMessage(text) {
     return t;
 }
 
-function onlineSendState(phase = 'event', messageOverride = null) {
+function onlineSendState(phase = 'event', messageOverride = null, messageAlreadyGuestView = false) {
     if (onlineRole !== 'host' || !onlineConn || !playerTeam.length) return;
     const rawMessage = messageOverride !== null ? messageOverride : (messageText.textContent || '');
+    // 行動したポケモンが参加側だと分かっているログは、名前が両者で同じ場合でも
+    // 名前だけで陣営を推測せず、参加側視点の文面をそのまま送る。
+    const guestViewMessage = messageAlreadyGuestView
+        ? rawMessage
+        : onlineTranslateMessageForGuest(rawMessage, playerPokemon, opponentPokemon);
     onlineSend({
         type: 'state',
         phase,
@@ -1121,7 +1126,7 @@ function onlineSendState(phase = 'event', messageOverride = null) {
         currentTurn,
         weather,
         field,
-        message: onlineFinishGuestMessage(onlineTranslateMessageForGuest(rawMessage, playerPokemon, opponentPokemon))
+        message: onlineFinishGuestMessage(guestViewMessage)
     });
 }
 
@@ -9347,7 +9352,11 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         }
 
         await showAncientBoostActivationMessage(attacker);
-        await showMessage(`${getShownName(attacker)} の ${move.name}！`);
+        await showMessage(
+            `${getShownName(attacker)} の ${move.name}！`,
+            1500,
+            difficulty === 'online' && onlineRole === 'host' && attacker === opponentPokemon
+        );
 // ねごと
 if (move.name === "ねごと") {
 
@@ -13259,7 +13268,7 @@ function endGame(playerWon) {
     }, 1800);
 }
 
-    function showMessage(text, duration = 1500) {
+    function showMessage(text, duration = 1500, messageAlreadyGuestView = false) {
     return new Promise(resolve => {
         messageText.style.display = '';
         messageText.textContent = text;
@@ -13267,7 +13276,7 @@ function endGame(playerWon) {
         // ホストは演出途中のメッセージとHP状態を逐次ゲストへ送る。
         // これによりゲスト側が「試合が終わるまで何も起きない」状態になるのを防ぐ。
         if (onlineMode && onlineRole === 'host' && onlineConn && onlineConn.open && playerTeam.length) {
-            onlineSendState('event', text);
+            onlineSendState('event', text, messageAlreadyGuestView);
         }
 
         setTimeout(resolve, duration);

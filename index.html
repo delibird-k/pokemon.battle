@@ -1775,12 +1775,12 @@ let isBattleInProgress = false;
     }
 
     const items = {
+        'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
         'こだわりハチマキ': { name: 'こだわりハチマキ', description: '物理技の威力が1.5倍。交代するまで技が固定。'},
         'こだわりメガネ': { name: 'こだわりメガネ', description: '特殊技の威力が1.5倍。交代するまで技が固定。'},
-        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.2倍。'},
-        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.2倍。'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.2倍。技は固定されない。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.2倍。技は固定されない。'},
         'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.5倍。交代するまで技が固定。'},
-        'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/2回復。'},
@@ -5471,6 +5471,8 @@ async function executePlayerSwitch(newIndex) {
     movesContainer.style.display = "none";
 
 const oldPokemon = playerPokemon;
+// こだわり系アイテムの技固定は、交代した時点で解除する。
+oldPokemon.choiceLockedMove = null;
 
 await showMessage(
     `${getShownName(oldPokemon)} を ひっこめた！`

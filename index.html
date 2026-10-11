@@ -1038,6 +1038,8 @@ let opponentPokemon;
 
 let playerTeam = [];
 let opponentTeam = [];
+// 1試合の勝敗・レート・履歴を二重登録しないためのガード。
+let battleEndProcessed = false;
 
 let playerActiveIndex = 0;
 let opponentActiveIndex = 0;
@@ -1733,6 +1735,9 @@ function handleOnlineData(data) {
         return;
     }
     if (data.type === 'result' && onlineRole === 'guest') {
+        // 結果パケットが重複しても、戦績・レート・履歴は一度だけ更新する。
+        if (battleEndProcessed) return;
+        battleEndProcessed = true;
         onlineWaitingForRemote = false;
         disableMoves();
         battleMenu.style.display = 'none';
@@ -1742,16 +1747,12 @@ function handleOnlineData(data) {
         sessionStorage.removeItem('pokemonBattleInProgress');
         if (guestWon) {
             winStreak++; loseStreak=0; winCount++;
-            if (ratingEnabled) {
-                const gain = Math.floor(Math.random() * 11) + 10;
-                rating += gain + winStreak * 3;
-            }
         } else {
             loseStreak++; winStreak=0; loseCount++;
-            if (ratingEnabled) {
-                const loss = Math.floor(Math.random() * 11) + 10;
-                rating = Math.max(1, rating - loss - loseStreak * 2);
-            }
+        }
+        // ホストが確定したレート変動を使い、双方で別々の乱数計算をしない。
+        if (Number.isFinite(Number(data.ratingDelta))) {
+            rating = Math.max(1, rating + Number(data.ratingDelta));
         }
         updateRating();
         saveMatchHistory(guestWon ? 'win' : 'lose', playerTeam, opponentTeam);
@@ -1912,13 +1913,13 @@ let isBattleInProgress = false;
     }
 
     const items = {
-        'きあいのタスキ': { name: 'きあいのタスキ', description: 'HP1耐える。'},
+        'きあいのタスキ': { name: 'きあいのタスキ', description: '75%の確率でHP1で耐える。'},
         'こだわりハチマキ': { name: 'こだわりハチマキ', description: '物理技の威力が1.5倍。交代するまで技が固定。'},
         'こだわりメガネ': { name: 'こだわりメガネ', description: '特殊技の威力が1.5倍。交代するまで技が固定。'},
-        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.2倍。'},
-        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.2倍。'},
-        'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.5倍。交代するまで技が固定。'},
-        'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら1/6のダメージ'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.3倍。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.3倍。'},
+        'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.2倍。交代するまで技が固定。'},
+        'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら最大HPの1/8のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/4回復。'},
         'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/16回復。'},
@@ -1959,19 +1960,19 @@ let isBattleInProgress = false;
         Blaziken: { name: "バシャーモ", id: "blaziken", types: ["ほのお","かくとう"], baseHp: 80, baseAttack: 120, baseDefense: 70, baseSpAttack: 110, baseSpDefense: 70, baseSpeed: 80, ability: "かそく", evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり",moves: [{ name: "フレアドライブ", power: 120, pp: 15, type: "ほのお", category: "physical", accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'burn' } },{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} }, {name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'freeze' }},{ name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }] }, 
         Breloom: { name: "キノガッサ", id: "breloom", types: ["くさ", "かくとう"], baseHp: 60, baseAttack: 130, baseDefense: 80, baseSpAttack: 60, baseSpDefense: 60, baseSpeed: 70, ability: "テクニシャン", evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive", nature: "いじっぱり", moves: [{ name: "たねばくだん", power: 80, pp: 15, type: "くさ", category: "physical", accuracy: 100 }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} }, { name: "マッハパンチ", power: 40, pp: 30, type: "かくとう", category: "physical", accuracy: 100, priority: 1, isContact: true }, { name: "きのこのほうし", type: "くさ", pp: 20, category: "status", accuracy: 100 }] },
         Mawile: { name: "クチート", id: "mawile", types: ["はがね", "フェアリー"], baseHp: 50, baseAttack: 85, baseDefense: 85, baseSpAttack: 55, baseSpDefense: 55, baseSpeed: 50, ability: "いかく",evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 4, spe: 0 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },{name: "アイアンヘッド", type: "はがね", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 30, effect: 'flinch'}}, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true},{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
-        Sharpedo: { name: "サメハダー", id: "sharpedo", types: ["みず", "あく"], baseHp: 70, baseAttack: 120, baseDefense: 40, baseSpAttack: 95, baseSpDefense: 40, baseSpeed: 95, ability: "かそく",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "アクアブレイク", power: 85, pp: 10, type: "みず" , category: "physical", accuracy: 100, isContact: true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } },{ name: "かみくだく", power: 80, pp: 15, type: "あく", category: "physical", accuracy: 100, isContact: true,isburb:true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } }, { name: "こおりのキバ", power: 65, pp: 15, type: "こおり", category: "physical", accuracy: 95, isContact: true,isburb:true, secondary: { chance: 10, effect: 'flinch' }, secondary: { chance: 10, effect: 'status', status: 'freeze' } },{ name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }] },
+        Sharpedo: { name: "サメハダー", id: "sharpedo", types: ["みず", "あく"], baseHp: 70, baseAttack: 120, baseDefense: 40, baseSpAttack: 95, baseSpDefense: 40, baseSpeed: 95, ability: "かそく",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "アクアブレイク", power: 85, pp: 10, type: "みず" , category: "physical", accuracy: 100, isContact: true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } },{ name: "かみくだく", power: 80, pp: 15, type: "あく", category: "physical", accuracy: 100, isContact: true,isburb:true, secondary: { chance: 20, effect: 'stat', stat: 'defense', stage: -1 } }, { name: "こおりのキバ", power: 65, pp: 15, type: "こおり", category: "physical", accuracy: 95, isContact: true,isburb:true, secondary: [{ chance: 10, effect: 'flinch' }, { chance: 10, effect: 'status', status: 'freeze' }] },{ name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }] },
         Glalie: { name: "オニゴーリ", id: "glalie", types: ["こおり"], baseHp: 80, baseAttack: 80, baseDefense: 80, baseSpAttack: 80, baseSpDefense: 80, baseSpeed: 80, ability: "ムラッけ",evs: { hp: 172, atk: 0, def: 0, spa: 86, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "フリーズドライ", power: 70, pp: 20, type: "こおり", category: "special", accuracy: 100, secondary: { chance: 20, effect: 'status', status: 'freeze' }}, { name: "ぜったいれいど", type: "こおり", category: "special", power: 0, pp: 8, accuracy: 30 },{ name: "みがわり", pp: 15, type: "ノーマル", category: "status", accuracy: 101 }, { name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }] }, 
         Salamence: { name: "ボーマンダ", id: "salamence", types: ["ドラゴン", "ひこう"], baseHp: 95, baseAttack: 135, baseDefense: 80, baseSpAttack: 110, baseSpDefense: 80, baseSpeed: 100, ability: "いかく",evs: { hp: 196, atk: 12, def: 4, spa: 0, spd: 172, spe: 124 },ai:"aggressive",nature: "ようき", moves: [{ name: "すてみタックル", power: 120, pp: 15, type: "ノーマル", category: "physical", accuracy: 100 , isContact: true }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 }, { name: "りゅうのまい", type: "ドラゴン", pp: 20, category: "status", accuracy: 101 }, { name: "はねやすめ", type: "ひこう", pp: 8, category: "status", accuracy: 101 }] },
         metagross: { name: "メタグロス", id: "metagross", types: ["はがね", "エスパー"], baseHp: 80, baseAttack: 135, baseDefense: 130, baseSpAttack: 95, baseSpDefense: 90, baseSpeed: 70, ability: "クリアボディ",evs: { hp: 28, atk: 236, def: 0, spa: 0, spd: 4, spe: 236 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "バレットパンチ", power: 40, pp: 30, type: "はがね", category: "physical", accuracy: 100, priority: 1, isContact: true },{ name: "しねんのずつき", power: 80, pp: 15, type: "エスパー", category: "physical", accuracy: 90, isContact: true, secondary: { chance: 20, effect: 'flinch' } }, { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true, secondary: { chance: 10, effect: 'status', status: 'freeze' }}] },
         Latias: { name: "ラティアス", id: "latias", types: ["ドラゴン", "エスパー"], baseHp: 80, baseAttack: 80, baseDefense: 90, baseSpAttack: 110, baseSpDefense: 130, baseSpeed: 110, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 4, spa: 0 , spd: 0, spe: 252 },ai:"defensive", nature: "のんき", moves: [{ name: "ミストボール", power: 95, pp: 8, type: "エスパー", category: "special", accuracy: 100, secondary: { chance: 50, effect: 'stat', stat: 'spAttack', stage: -1 } },{ name: "はどうだん", power: 80, pp: 20, type: "かくとう", category: "special", accuracy: 101 },{ name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 }, { name: "じこさいせい", type: "ノーマル", pp: 8, category: "status", accuracy: 101 }] },
         Latios: { name: "ラティオス", id: "latios", types: ["ドラゴン", "エスパー"], baseHp: 80, baseAttack: 90, baseDefense: 80, baseSpAttack: 130, baseSpDefense: 110, baseSpeed: 110, ability: "ふゆう",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "りゅうせいぐん", power: 130, pp: 5, type: "ドラゴン", category: "special", accuracy: 90, self: { stats: [{effect: 'stat', stat: 'spAttack', stage: -2}]} },{ name: "ラスターパージ", power: 95, pp: 8, type: "エスパー", category: "special", accuracy: 100, secondary: { chance: 50, effect: 'stat', stat: 'spDefense', stage: -1 } },{ name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }},{ name: "10まんボルト", power: 90, pp: 15, type: "でんき", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'paralyze' } }] },
         Bastiodon: { name: "トリデプス", id: "bastiodon", types: ["いわ", "はがね"], baseHp: 60, baseAttack: 52, baseDefense: 168, baseSpAttack: 47, baseSpDefense: 138, baseSpeed: 30, ability: "がんじょう",evs: { hp: 252, atk: 0, def: 76, spa: 0, spd: 180, spe: 0 },ai:"aggressive", nature: "なまいき",moves: [{ name: "じわれ", power: 0, pp: 8, type: "じめん", category: "physical", accuracy: 30 },{name: "メタルバースト", type: "はがね", pp: 20, category: "status", accuracy: 100}, { name: "ねむる", type: "エスパー", pp: 8, category: "status", accuracy: 101 }, { name: "ねごと", type: "ノーマル", pp: 16, category: "status", accuracy: 101 }] },
-        garchomp: { name: "ガブリアス", id: "garchomp", types: ["ドラゴン", "じめん"], baseHp: 108, baseAttack: 130, baseDefense: 95, baseSpAttack: 80, baseSpDefense: 85, baseSpeed: 102, ability: "さめはだ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true },{ name: "ほのおのキバ", power: 65, pp: 15, type: "ほのお", category: "physical", accuracy: 95, isContact: true, secondary: { chance: 10, effect: 'flinch' }, secondary: { chance: 10, effect: 'status', status: 'burn' } },{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
+        garchomp: { name: "ガブリアス", id: "garchomp", types: ["ドラゴン", "じめん"], baseHp: 108, baseAttack: 130, baseDefense: 95, baseSpAttack: 80, baseSpDefense: 85, baseSpeed: 102, ability: "さめはだ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "げきりん", power: 120, pp: 10, type: "ドラゴン", category: "physical", accuracy: 100, isContact: true },{ name: "ほのおのキバ", power: 65, pp: 15, type: "ほのお", category: "physical", accuracy: 95, isContact: true, secondary: [{ chance: 10, effect: 'flinch' }, { chance: 10, effect: 'status', status: 'burn' }] },{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
         Lucario: { name: "ルカリオ", id: "lucario", types: ["かくとう", "はがね"], baseHp: 70, baseAttack: 110, baseDefense: 70, baseSpAttack: 115, baseSpDefense: 70, baseSpeed: 90, ability: "せいしんりょく",evs: { hp: 0, atk: 0, def: 4, spa: 252, spd: 0, spe: 252 },ai:"aggressive",nature: "ひかえめ", moves: [{ name: "はどうだん", power: 80, pp: 15, type: "かくとう", category: "special", accuracy: 101 },{ name: "ラスターカノン", power: 80, pp: 10, type: "はがね", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } },  { name: "りゅうのはどう", power: 85, pp: 10, type: "ドラゴン", category: "special", accuracy: 100 },{ name: "しんくうは", power: 40, pp: 30, type: "かくとう", category: "special", accuracy: 100, priority: 1}] },
         Hippowdon: { name: "カバルドン", id: "hippowdon", types: ["じめん"], baseHp: 108, baseAttack: 112, baseDefense: 118, baseSpAttack: 68, baseSpDefense: 72, baseSpeed: 48, ability: "すなおこし",evs: { hp: 228, atk: 0, def: 140, spa: 0, spd: 140, spe: 0 },ai:"aggressive",nature: "わんぱく", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name:"ステルスロック", type:"いわ", category:"status", pp:10, accuracy:101},{ name:"なまける", type:"ノーマル", category:"status", pp:10, accuracy:101},{ name:"あくび", type:"ノーマル", category:"status", pp:10, accuracy:101},] },
         togekiss: { name: "トゲキッス", id: "togekiss", types: ["フェアリー", "ひこう"], baseHp: 85, baseAttack: 50, baseDefense: 95, baseSpAttack: 120, baseSpDefense: 115, baseSpeed: 80, ability: "てんのめぐみ",evs: { hp: 252, atk: 0, def: 0, spa: 4, spd: 0, spe: 252 },  ai: "aggressive",nature: "ひかえめ", moves: [{ name: "エアスラッシュ", power: 75, pp: 15, type: "ひこう", category: "special", accuracy: 95, secondary: { chance: 30, effect: 'flinch' } }, { name: "マジカルシャイン", power: 80, pp: 10, type: "フェアリー", category: "special", accuracy: 100 }, { name: "かえんほうしゃ", power: 90, pp: 15, type: "ほのお", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'burn' } }, { name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
-        Rotom: { name: "水ロトム", id: "rotom-wash", types: ["でんき", "みず"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 220, spa: 36, spd: 4, spe: 0},ai:"aggressive",nature: "ずぶとい", moves: [{ name: "ハイドロポンプ", power: 120, pp: 5, type: "みず", category: "special", accuracy: 80 },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
-        rotom2: { name: "ヒートロトム", id: "rotom-heat", types: ["でんき", "ほのお"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 130, spa: 130, spd: 0, spe: 0 },  ai: "aggressive",nature: "ひかえめ", moves: [{ name: "オーバーヒート", power: 120, pp: 5, type: "ほのお", category: "special", accuracy: 80, self: { stats: [{stat: 'spAttack', stage: -2}]} }, { name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 }, { name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
+        Rotom: { name: "水ロトム", id: "rotom-wash", types: ["でんき", "みず"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 218, spa: 36, spd: 4, spe: 0},ai:"aggressive",nature: "ずぶとい", moves: [{ name: "ハイドロポンプ", power: 120, pp: 5, type: "みず", category: "special", accuracy: 80 },{ name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "めざめるパワー氷", power: 60, pp: 10, type: "こおり", category: "special", accuracy: 100 }] },
+        rotom2: { name: "ヒートロトム", id: "rotom-heat", types: ["でんき", "ほのお"], baseHp: 50, baseAttack: 65, baseDefense: 107, baseSpAttack: 105, baseSpDefense: 107, baseSpeed: 86, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 128, spa: 130, spd: 0, spe: 0 },  ai: "aggressive",nature: "ひかえめ", moves: [{ name: "オーバーヒート", power: 120, pp: 5, type: "ほのお", category: "special", accuracy: 80, self: { stats: [{stat: 'spAttack', stage: -2}]} }, { name: "ボルトチェンジ", power: 70, pp: 15, type: "でんき", category: "special", accuracy: 100 }, { name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "でんじは", type: "でんき", pp: 20, category: "status", accuracy: 90 }] },
         Heatran: { name: "ヒードラン", id: "heatran" , types: ["ほのお","はがね"],baseHp: 91, baseAttack: 90, baseDefense: 106, baseSpAttack: 130, baseSpDefense: 106, baseSpeed: 77, ability: "ほのおのからだ", evs: { hp: 212, atk: 0, def: 76, spa: 60, spd: 156, spe: 4 },ai:"aggressive", nature: "ずぶとい", moves:[{ name: "マグマストーム", power: 110, pp: 5, type: "ほのお", category: "special", accuracy: 75,isTrapMove: true},{ name: "パワージェム", power: 80, pp: 10, type: "いわ", category: "special", accuracy: 100 },{ name: "おにび", type: "ほのお", pp: 15, category: "status", accuracy: 85 }, { name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 }]},
         Cresselia: { name: "クレセリア", id: "cresselia" , types: ["エスパー"],baseHp: 120, baseAttack: 70, baseDefense: 120, baseSpAttack: 75, baseSpDefense: 130, baseSpeed: 85, ability: "ふゆう",evs: { hp: 252, atk: 0, def: 252, spa: 0, spd: 4, spe: 0 }, ai:"defensive",nature: "ずぶとい", moves:[{ name: "ムーンフォース", power: 95, pp: 15, type: "フェアリー", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 } },{ name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 },{ name: "つきのひかり", type: "フェアリー", pp: 8, category: "status", accuracy: 101 },{ name: "どくどく", type: "どく", pp: 20, category: "status", accuracy: 90 }]},
         zoroarkhisui: { name: "ゾロアーク", id: "zoroark-hisui", types: ["ノーマル","ゴースト"], baseHp: 55, baseAttack: 100, baseDefense: 60, baseSpAttack: 125, baseSpDefense: 60, baseSpeed: 110, ability: "イリュージョン", evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai: "aggressive", nature: "おくびょう", moves: [{ name: "うらみつらみ", power: 75, pp: 10, type: "ゴースト", category: "special", accuracy: 100, secondary: { chance: 100, effect: 'stat', stat: 'attack', stage: -1 } }, { name: "ハイパーボイス", power: 90, pp: 10, type: "ノーマル", category: "special", accuracy: 100},{ name: "きあいだま", power: 120, pp: 5, type: "かくとう", category: "special", accuracy: 70, secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 } }, { name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
@@ -1981,7 +1982,7 @@ let isBattleInProgress = false;
         Landorus: { name: "化ランドロス", id: "landorus", types: ["じめん","ひこう"], baseHp: 89, baseAttack: 125, baseDefense: 90, baseSpAttack: 115, baseSpDefense: 80, baseSpeed: 101, ability: "ちからずく", evs: { hp: 100, atk: 0, def: 100, spa: 52, spd: 4, spe: 252 },ai: "aggressive", nature: "ひかえめ", moves: [{ name: "だいちのちから", power: 90, pp: 10, type: "じめん", category: "special", accuracy: 100 }, { name: "サイコキネシス", power: 90, pp: 10, type: "エスパー", category: "special", accuracy: 100 }, { name: "ヘドロウェーブ", power: 95, pp: 15, type: "どく", category: "special", accuracy: 100 }, { name: "わるだくみ", type: "あく", pp: 20, category: "status", accuracy: 101 }] },
         landorus: { name: "霊ランドロス", id: "landorus-therian", types: ["じめん","ひこう"], baseHp: 89, baseAttack: 145, baseDefense: 90, baseSpAttack: 105, baseSpDefense: 80, baseSpeed: 91, ability: "いかく",evs: { hp: 0, atk: 252, def: 4, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "わんぱく", moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name:"ステルスロック", type:"いわ", category:"status", pp:10, accuracy:101},{ name: "とんぼがえり", power: 70, pp: 15, type: "むし", category: "physical", accuracy: 100, isContact: true },{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }] },
         Greninja: { name: "ゲッコウガ", id: "greninja", types: ["みず", "あく"], baseHp: 72, baseAttack: 95, baseDefense: 67, baseSpAttack: 103, baseSpDefense: 71, baseSpeed: 122, ability: "へんげんじざい",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },ai:"aggressive", nature: "ひかえめ",moves: [{name: "みずしゅりけん", type: "みず", category: "special", power: 20, pp: 15, accuracy: 100, priority:1 },{ name: "あくのはどう", power: 80, pp: 15, type: "あく", category: "special", accuracy: 100, secondary: { chance: 20, effect: 'flinch' } }, { name: "れいとうビーム", power: 90, pp: 15, type: "こおり", category: "special", accuracy: 100 ,secondary: { chance: 20, effect: 'status', status: 'freeze' }},  { name: "ヘドロウェーブ", power: 95, pp: 10, type: "どく", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'status', status: 'poison' } }] },
-        aegislash: { name: "ギルガルド",id: "aegislash",types: ["はがね","ゴースト"],baseHp: 60,baseAttack: 50,baseDefense: 150,baseSpAttack: 50,baseSpDefense: 150,baseSpeed: 60,ability: "バトルスイッチ",nature: "れいせい",evs: {hp: 252,atk: 252,def: 4,spa: 0, spd: 4,spe: 0},ai: "aggressive",moves: [{name: "アイアンヘッド", type: "はがね", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 30, effect: 'flinch'}},{ name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true},{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name:"キングシールド",type:"はがね",category:"status",pp:10,accuracy:101,priority:4},]},
+        aegislash: { name: "ギルガルド",id: "aegislash",types: ["はがね","ゴースト"],baseHp: 60,baseAttack: 50,baseDefense: 150,baseSpAttack: 50,baseSpDefense: 150,baseSpeed: 60,ability: "バトルスイッチ",nature: "れいせい",evs: {hp: 252,atk: 252,def: 4,spa: 0, spd: 0,spe: 0},ai: "aggressive",moves: [{name: "アイアンヘッド", type: "はがね", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 30, effect: 'flinch'}},{ name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true},{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name:"キングシールド",type:"はがね",category:"status",pp:10,accuracy:101,priority:4},]},
         Primarina: { name: "アシレーヌ", id: "primarina", types: ["みず", "フェアリー"], baseHp: 80, baseAttack: 74, baseDefense: 74, baseSpAttack: 126, baseSpDefense: 116, baseSpeed: 60, ability: "げきりゅう",evs: { hp: 252, atk: 0, def: 4, spa: 252, spd: 0, spe: 0},ai:"aggressive", nature: "ひかえめ",moves: [{name: "うたかたのアリア", type: "みず", category: "special", power: 90, pp: 10, accuracy: 100, isSound:true },{ name: "ムーンフォース", power: 95, pp: 15, type: "フェアリー", category: "special", accuracy: 100, secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 } },{ name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true },{ name: "クイックターン", power: 70, pp: 15, type: "みず", category: "physical", accuracy: 100, isContact: true },] },
         mimikyu: { name: "ミミッキュ", id: "mimikyu" , types: ["ゴースト","フェアリー"],baseHp: 55, baseAttack: 90, baseDefense: 80, baseSpAttack: 50, baseSpDefense: 105, baseSpeed: 96, ability: "ばけのかわ",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves:[{ name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },{name: "シャドークロー", type: "ゴースト", category: "physical", power: 70, pp: 15, accuracy: 100, isContact: true, critPriority:1 },{ name: "かげうち", power: 40, pp: 40, type: "ゴースト", category: "physical", accuracy: 100, priority: 1, isContact: true},{ name: "つるぎのまい", type: "ノーマル", pp: 20, category: "status", accuracy: 100 }]},
         TapuLele: { name: "カプ・テテフ", id: "tapulele" , types: ["エスパー","フェアリー"],baseHp: 70, baseAttack: 85, baseDefense: 75, baseSpAttack: 130, baseSpDefense: 115, baseSpeed: 95, ability: "サイコメイカー",evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 }, ai:"aggressive",nature: "ひかえめ", moves:[{ name: "サイコキネシス", power: 90, pp: 10, type: "エスパー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spDefense', stage: -1 }  },{ name: "ムーンフォース", power: 95, pp: 10, type: "フェアリー", category: "special", accuracy: 100,secondary: { chance: 10, effect: 'stat', stat: 'spAttack', stage: -1 }  },{ name: "めざめるパワー炎", power: 60, pp: 10, type: "ほのお", category: "special", accuracy: 100 },{ name: "めいそう", type: "エスパー", pp: 20, category: "status", accuracy: 101 }]},
@@ -1996,7 +1997,7 @@ let isBattleInProgress = false;
         Urshifu1: { name: "悪ウーラオス", id: "urshifu", types: ["かくとう", "あく"], baseHp: 100, baseAttack: 130, baseDefense: 100, baseSpAttack: 60, baseSpDefense: 63, baseSpeed: 97, ability: "ふかしのこぶし",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "あんこくきょうだ", power: 80, pp: 5, type: "あく", category: "physical", accuracy: 100,critPriority:3 }, { name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{name: "れいとうパンチ", type: "こおり", category: "physical", power: 75, pp: 15, accuracy: 100, isContact: true,secondary: { chance: 20, effect: 'status', status: 'freeze' } }, { name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}] },
         Glastrier: { name: "ブリザポス", id: "glastrier", types: ["こおり"], baseHp: 100, baseAttack: 145, baseDefense: 130, baseSpAttack: 65, baseSpDefense: 110, baseSpeed: 30, ability: "しろのいななき",evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 4, spe: 0 },ai:"aggressive",nature: "しんちょう", moves: [{name: "つららおとし", type: "こおり", category: "physical", power: 85, pp: 10, accuracy: 90,secondary: {chance: 30, effect: 'flinch'} },{ name: "インファイト", power: 120, pp: 5, type: "かくとう", category: "physical", accuracy: 100, isContact: true, self: { stats: [{effect: 'stat', stat: 'spDefense', stage: -1}, {stat: 'defense', stage: -1}]} },{ name: "ヘビーボンバー", power: 100, pp: 10, type: "はがね", category: "physical", accuracy: 100, isContact: true }, { name: "10まんばりき", power: 95, pp: 10, type: "じめん", category: "physical", accuracy: 95, isContact: true,}] },
         Ursaluna: { name: "ガチグマ", id: "ursaluna", types: ["じめん", "ノーマル"], baseHp: 130, baseAttack: 140, baseDefense: 105, baseSpAttack: 45, baseSpDefense: 80, baseSpeed: 50, ability: "こんじょう",evs: { hp: 140, atk: 252, def: 0, spa: 0, spd: 116, spe: 0 },ai:"aggressive", nature: "いじっぱり",moves: [ { name: "じしん", power: 100, pp: 10, type: "じめん", category: "physical", accuracy: 100 },{ name: "からげんき", power: 70, pp: 15, type: "ノーマル", category: "physical", accuracy: 100 },{ name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },{ name: "まもる", pp: 8, type: "ノーマル", category: "status", accuracy: 101, priority: 4 } ] },
-        UrsalunaBloodmoon: { name: "暁ガチグマ", id: "ursaluna-bloodmoon", types: ["じめん", "ノーマル"], baseHp: 113, baseAttack: 70, baseDefense: 120, baseSpAttack: 135, baseSpDefense: 65, baseSpeed: 52, ability: "しんがん", evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 252, spe: 0 }, ai: "aggressive", nature: "ひかえめ", moves: [ { name: "ブラッドムーン", power: 140, pp: 5, type: "ノーマル", category: "special", accuracy: 100, isBloodMoon: true }, { name: " ハイパーボイス", power: 90, pp: 10, type: "ノーマル", category: "special", accuracy: 100, isSound: true },{ name: "だいちのちから", power: 90, pp: 10, type: "じめん", category: "special", accuracy: 100, secondary: { chance: 10, effect: "stat", stat: "spDefense", stage: -1 } }, { name: "しんくうは", power: 40, pp: 40, type: "かくとう", category: "special", accuracy: 100,priority:1}] },
+        UrsalunaBloodmoon: { name: "暁ガチグマ", id: "ursaluna-bloodmoon", types: ["じめん", "ノーマル"], baseHp: 113, baseAttack: 70, baseDefense: 120, baseSpAttack: 135, baseSpDefense: 65, baseSpeed: 52, ability: "しんがん", evs: { hp: 4, atk: 0, def: 0, spa: 252, spd: 252, spe: 0 }, ai: "aggressive", nature: "ひかえめ", moves: [ { name: "ブラッドムーン", power: 140, pp: 5, type: "ノーマル", category: "special", accuracy: 100, isBloodMoon: true }, { name: "ハイパーボイス", power: 90, pp: 10, type: "ノーマル", category: "special", accuracy: 100, isSound: true },{ name: "だいちのちから", power: 90, pp: 10, type: "じめん", category: "special", accuracy: 100, secondary: { chance: 10, effect: "stat", stat: "spDefense", stage: -1 } }, { name: "しんくうは", power: 40, pp: 40, type: "かくとう", category: "special", accuracy: 100,priority:1}] },
         Basculegion: { name: "イダイトウ♂", id: "basculegion", types: ["みず", "ゴースト"],baseHp: 120, baseAttack: 112, baseDefense: 65, baseSpAttack: 80, baseSpDefense: 75, baseSpeed: 78,  ability: "てきおうりょく",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "ようき", moves: [{name: "ウェーブタックル", type: "みず", category: "physical", power: 120, pp: 10, accuracy: 100, isContact: true }, { name: "おはかまいり", power: 150, pp: 10, type: "ゴースト", category: "physical", accuracy: 100 }, { name: "アクアジェット", power: 40, pp: 30, type: "みず", category: "physical", accuracy: 100, priority: 1, isContact: true },  { name: "こうそくいどう", type: "エスパー", pp: 20, category: "status", accuracy: 101 }]},
         Meowscarada: { name: "マスカーニャ", id: "meowscarada", types: ["くさ", "あく"], baseHp: 76, baseAttack: 110, baseDefense: 70, baseSpAttack: 81, baseSpDefense: 70, baseSpeed: 123, ability: "へんげんじざい",evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },ai:"aggressive",nature: "いじっぱり", moves: [{ name: "トリックフラワー", power: 70, pp: 10, type: "くさ", category: "physical", accuracy: 101, critPriority:3 }, { name: "じゃれつく", power: 90, pp: 10, type: "フェアリー" , category: "physical", accuracy: 90, isContact: true, secondary: { chance: 10, effect: 'stat', stat: 'attack', stage: -1 } },{ name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}, {name: "トリプルアクセル", type: "こおり", category: "physical", power: 40, pp: 10, accuracy: 90, isContact: true }] },
         Kingambit: { name: "ドドゲザン", id: "kingambit" , types: ["あく","はがね"],baseHp: 100, baseAttack: 135, baseDefense: 120, baseSpAttack: 60, baseSpDefense: 85, baseSpeed: 50, ability: "そうだいしょう", evs: { hp: 252, atk: 252, def: 4, spa: 0, spd: 0, spe: 0 },  ai: "aggressive",nature:"いじっぱり",moves:[{ name: "ドゲザン", power: 85, pp: 10, type: "あく", category: "physical", accuracy: 101, isContact:true },{name: "アイアンヘッド", type: "はがね", category: "physical", power: 80, pp: 15, accuracy: 100, isContact: true, secondary: {chance: 30, effect: 'flinch'}},{ name: "かわらわり", power: 75, pp: 15, type: "かくとう", category: "physical", accuracy: 100, isContact:true },{ name: "ふいうち", power: 70, pp: 5, type: "あく", category: "physical", accuracy: 100, priority: 1, isContact: true}]},
@@ -2736,7 +2737,7 @@ let isBattleInProgress = false;
       setTimeout(()=>location.reload(),500);
     };
 
-    const typeChart = { ノーマル: { いわ: 0.5, ゴースト: 0, はがね: 0.5 }, ほのお: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 2, Icc: 2, むし: 2, いわ: 0.5, ドラゴン: 0.5, はがね: 2 }, みず: { ほのお: 2, みず: 0.5, くさ: 0.5, じめん: 2, いわ: 2, ドラゴン: 0.5 }, でんき: { みず: 2, でんき: 0.5, くさ: 0.5, じめん: 0, ひこう: 2, ドラゴン: 0.5 }, くさ: { ほのお: 0.5, みず: 2, くさ: 0.5, どく: 0.5, じめん: 2, ひこう: 0.5, むし: 0.5, いわ: 2, ドラゴン: 0.5, はがね: 0.5 }, こおり: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 0.5, Icc: 0.5,じめん: 2, ひこう: 2, ドラゴン: 2, はがね: 0.5 }, かくとう: { ノーマル: 2, Norma1:2, こおり: 2, Icc: 2, どく: 0.5, ひこう: 0.5, エスパー: 0.5, むし: 0.5, いわ: 2, ゴースト: 0, あく: 2, はがね: 2, フェアリー: 0.5 }, どく: { くさ: 2, どく: 0.5, じめん: 0.5, いわ: 0.5, ゴースト: 0.5, はがね: 0, フェアリー: 2 }, じめん: { ほのお: 2, でんき: 2, くさ: 0.5, どく: 2, ひこう: 0, むし: 0.5, いわ: 2, はがね: 2 }, ひこう: { でんき: 0.5, くさ: 2, かくとう: 2, むし: 2, いわ: 0.5, はがね: 0.5 }, エスパー: { かくとう: 2, どく: 2, エスパー: 0.5, あく: 0, はがね: 0.5 }, むし: { ほのお: 0.5, くさ: 2, かくとう: 0.5, どく: 0.5, ひこう: 0.5, エスパー: 2, ゴースト: 0.5, あく: 2, はがね: 0.5, フェアリー: 0.5 }, いわ: { ほのお: 2, こおり: 2, Icc: 2, かくとう: 0.5, じめん: 0.5, ひこう: 2, むし: 2, はがね: 0.5 }, ゴースト: { ノーマル: 0, Norma1:0, エスパー: 2, ゴースト: 2, あく: 0.5 }, ドラゴン: { ドラゴン: 2, はがね: 0.5, フェアリー: 0 }, あく: { かくとう: 0.5, エスパー: 2, ゴースト: 2, あく: 0.5, フェアリー: 0.5 }, はがね: { ほのお: 0.5, みず: 0.5, でんき: 0.5, こおり: 2, Icc: 2, いわ: 2, はがね: 0.5, フェアリー: 2 }, フェアリー: { ほのお: 0.5, かくとう: 2, どく: 0.5, ドラゴン: 2, あく: 2, はがね: 0.5 }, 神: {ノーマル: 2, ほのお: 2, みず: 2, でんき: 2, くさ: 2, こおり: 2, Icc: 2, かくとう: 2, どく: 2, じめん: 2, ひこう: 2, エスパー: 2, むし: 2, いわ: 2, ゴースト: 2, ドラゴン: 2, あく: 2, はがね: 2, フェアリー: 2, 神: 2 }, Z: {ノーマル: 0, ほのお: 0, みず: 0, でんき: 0, くさ: 0, こおり: 0, Icc: 0, かくとう: 0, どく: 0, じめん: 0, ひこう: 0, エスパー: 0, むし: 0, いわ: 0, ゴースト: 0, ドラゴン: 0, あく: 0, はがね: 0, フェアリー: 0, 神: 0 }};
+    const typeChart = { ノーマル: { いわ: 0.5, ゴースト: 0, はがね: 0.5 }, ほのお: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 2, むし: 2, いわ: 0.5, ドラゴン: 0.5, はがね: 2 }, みず: { ほのお: 2, みず: 0.5, くさ: 0.5, じめん: 2, いわ: 2, ドラゴン: 0.5 }, でんき: { みず: 2, でんき: 0.5, くさ: 0.5, じめん: 0, ひこう: 2, ドラゴン: 0.5 }, くさ: { ほのお: 0.5, みず: 2, くさ: 0.5, どく: 0.5, じめん: 2, ひこう: 0.5, むし: 0.5, いわ: 2, ドラゴン: 0.5, はがね: 0.5 }, こおり: { ほのお: 0.5, みず: 0.5, くさ: 2, こおり: 0.5, じめん: 2, ひこう: 2, ドラゴン: 2, はがね: 0.5 }, かくとう: { ノーマル: 2, こおり: 2, どく: 0.5, ひこう: 0.5, エスパー: 0.5, むし: 0.5, いわ: 2, ゴースト: 0, あく: 2, はがね: 2, フェアリー: 0.5 }, どく: { くさ: 2, どく: 0.5, じめん: 0.5, いわ: 0.5, ゴースト: 0.5, はがね: 0, フェアリー: 2 }, じめん: { ほのお: 2, でんき: 2, くさ: 0.5, どく: 2, ひこう: 0, むし: 0.5, いわ: 2, はがね: 2 }, ひこう: { でんき: 0.5, くさ: 2, かくとう: 2, むし: 2, いわ: 0.5, はがね: 0.5 }, エスパー: { かくとう: 2, どく: 2, エスパー: 0.5, あく: 0, はがね: 0.5 }, むし: { ほのお: 0.5, くさ: 2, かくとう: 0.5, どく: 0.5, ひこう: 0.5, エスパー: 2, ゴースト: 0.5, あく: 2, はがね: 0.5, フェアリー: 0.5 }, いわ: { ほのお: 2, こおり: 2, かくとう: 0.5, じめん: 0.5, ひこう: 2, むし: 2, はがね: 0.5 }, ゴースト: { ノーマル: 0, エスパー: 2, ゴースト: 2, あく: 0.5 }, ドラゴン: { ドラゴン: 2, はがね: 0.5, フェアリー: 0 }, あく: { かくとう: 0.5, エスパー: 2, ゴースト: 2, あく: 0.5, フェアリー: 0.5 }, はがね: { ほのお: 0.5, みず: 0.5, でんき: 0.5, こおり: 2, いわ: 2, はがね: 0.5, フェアリー: 2 }, フェアリー: { ほのお: 0.5, かくとう: 2, どく: 0.5, ドラゴン: 2, あく: 2, はがね: 0.5 }, 神: {ノーマル: 2, ほのお: 2, みず: 2, でんき: 2, くさ: 2, こおり: 2, かくとう: 2, どく: 2, じめん: 2, ひこう: 2, エスパー: 2, むし: 2, いわ: 2, ゴースト: 2, ドラゴン: 2, あく: 2, はがね: 2, フェアリー: 2, 神: 2 }, Z: {ノーマル: 0, ほのお: 0, みず: 0, でんき: 0, くさ: 0, こおり: 0, かくとう: 0, どく: 0, じめん: 0, ひこう: 0, エスパー: 0, むし: 0, いわ: 0, ゴースト: 0, ドラゴン: 0, あく: 0, はがね: 0, フェアリー: 0, 神: 0 }};
 
     const natures = {
     がんばりや: {up: null, down: null},
@@ -3253,7 +3254,7 @@ function useZMove(pokemon){
         instance.statStages = { attack: 0, defense: 0, spAttack: 0, spDefense: 0, speed: 0 };
         instance.status = null;
         instance.statusTurns = 0;
-        auroraVeil: 0;
+        instance.auroraVeil = 0;
         instance.yawnTurns = 0;
         instance.isUsingSleepTalk = false;
         instance.lastDamageTaken = 0;
@@ -3875,6 +3876,7 @@ function handleOpponentItemSelect(itemName) {
 }
     
 function startGame(difficultyLevel) {
+    battleEndProcessed = false;
     difficulty = difficultyLevel;
 
     // 新しい試合なのでステルスロックをリセット
@@ -6472,9 +6474,12 @@ turnCounter.textContent = `ターン: ${currentTurn}`;
 function getAIMoveTypes(move, attacker) {
     if (!move) return [];
 
-    let types = Array.isArray(move.type)
-        ? [...move.type]
-        : [move.type];
+    // 実戦処理と同じく、技のタイプが動的に変化していればそちらを優先する。
+    let types = move.dynamicAppliedType
+        ? [move.dynamicAppliedType]
+        : Array.isArray(move.type)
+            ? [...move.type]
+            : [move.type];
 
     // スカイスキン
     if (
@@ -6566,36 +6571,20 @@ function getAITypeEffectiveness(move, attackerOrDefender, maybeDefender) {
         }
 
         let multiplier = 1;
+        const ignoresGhostImmunity =
+            (attacker?.ability === "きもったま" || attacker?.ability === "しんがん") &&
+            (moveType === "ノーマル" || moveType === "かくとう");
 
         for (const defenderType of defenderTypes) {
-            multiplier *=
-                typeChart[moveType]?.[defenderType] ?? 1;
-        }
-
-        // きもったま
-        if (
-            multiplier === 0 &&
-            attacker?.ability === "きもったま" &&
-            defenderTypes.includes("ゴースト") &&
-            (
-                moveType === "ノーマル" ||
-                moveType === "かくとう"
-            )
-        ) {
-            multiplier = 1;
-        }
-
-        // しんがん：ノーマル・かくとう技でゴーストに攻撃可能
-        if (
-            multiplier === 0 &&
-            attacker?.ability === "しんがん" &&
-            defenderTypes.includes("ゴースト") &&
-            (
-                moveType === "ノーマル" ||
-                moveType === "かくとう"
-            )
-        ) {
-            multiplier = 1;
+            // ゴースト無効だけを無視し、複合タイプ側の耐性・弱点は維持する。
+            // 例：ノーマル技＋きもったま vs ゴースト／いわ は 1 × 0.5 = 0.5。
+            const typeMultiplier =
+                move.name === "フリーズドライ" && moveType === "こおり" && defenderType === "みず"
+                    ? 2
+                    : ignoresGhostImmunity && defenderType === "ゴースト"
+                        ? 1
+                        : (typeChart[moveType]?.[defenderType] ?? 1);
+            multiplier *= typeMultiplier;
         }
 
         best = Math.max(best, multiplier);
@@ -6621,10 +6610,14 @@ function getAIEffectiveStat(pokemon, statName) {
             pokemon.statStages?.[statName] ?? 0
         );
 
-    return Math.max(
-        1,
-        stat * getStatModifier(stage)
-    );
+    let effective = Math.max(1, stat * getStatModifier(stage));
+    if (statName === 'speed') {
+        if (pokemon.status === 'paralyze') effective *= 0.5;
+        if (pokemon.item?.name === 'こだわりスカーフ') effective *= 1.2;
+        if (isAncientBoostActive(pokemon) && getAncientBoostStat(pokemon) === 'speed') effective *= 1.5;
+        if (pokemon.ability === 'ききかいひ') effective *= 1.25;
+    }
+    return Math.max(1, effective);
 }
 
 
@@ -6656,22 +6649,14 @@ function getAIAccuracy(move) {
 // ============================================================
 
 function getAIDamage(move, attacker, defender) {
-    if (
-    move.isBloodMoon &&
-    attacker.bloodMoonBlocked
-) {
-    return 0;
-}
+    // CPUの候補技が未設定／不正な場合も、評価処理を例外で止めない。
+    if (!move || !attacker || !defender) return 0;
 
-    if (
-        !move ||
-        move.category === "status" ||
-        !move.power
-    ) {
+    if (move.isBloodMoon && attacker.bloodMoonBlocked) {
         return 0;
     }
 
-    if (!attacker || !defender) {
+    if (move.category === "status" || !move.power) {
         return 0;
     }
 
@@ -6902,8 +6887,8 @@ function getAIDamage(move, attacker, defender) {
     // 持ち物による火力補正（AIのダメージ予測にも反映）
     if (attacker.item?.name === "こだわりハチマキ" && move.category === "physical") damage *= 1.5;
     if (attacker.item?.name === "こだわりメガネ" && move.category === "special") damage *= 1.5;
-    if (attacker.item?.name === "ちからのハチマキ" && move.category === "physical") damage *= 1.2;
-    if (attacker.item?.name === "ものしりメガネ" && move.category === "special") damage *= 1.2;
+    if (attacker.item?.name === "ちからのハチマキ" && move.category === "physical") damage *= 1.3;
+    if (attacker.item?.name === "ものしりメガネ" && move.category === "special") damage *= 1.3;
 
     // STAB
     const attackerTypes =
@@ -8748,11 +8733,69 @@ function getOpponentMove() {
         return Math.max(1, damage);
     }
 
+    async function applyDamageWithSurvival(attacker, defender, damage, move, defenderUI) {
+        const hpBeforeHit = defender.currentHp;
+        const hitSubstitute = defender.hasSubstitute && !move.isSound;
+        const blockedByProtect = defender.isProtected && attacker.ability !== 'ふかしのこぶし';
+        let actualDamage = damage;
+        let survivalMessage = '';
+
+        if (!hitSubstitute && !blockedByProtect && hpBeforeHit > 0 && damage >= hpBeforeHit) {
+            const ignoreSash = attacker.item?.name === 'げいげきスコープ';
+            if (
+                defender.item?.name === 'きあいのタスキ' &&
+                !defender.item.used &&
+                hpBeforeHit === defender.maxHp &&
+                !ignoreSash &&
+                Math.random() < 0.75
+            ) {
+                actualDamage = hpBeforeHit - 1;
+                defender.item.used = true;
+                survivalMessage = `${defender.name} は きあいのタスキで もちこたえた！`;
+            } else if (defender.ability === 'がんじょう' && hpBeforeHit === defender.maxHp) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は がんじょうで もちこたえた！`;
+            } else if (defender.ability === 'きずなへんげ' && hpBeforeHit === defender.maxHp) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は きずなのちからで もちこたえた！`;
+            } else if (defender.ability === 'かれないはな' && hpBeforeHit === defender.maxHp) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は まだかれない！`;
+            } else if (defender.ability === 'トレーニング' && hpBeforeHit === defender.maxHp) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name}モードです`;
+            } else if (defender.item?.name === 'きあいのハチマキ' && Math.random() < 0.3) {
+                actualDamage = hpBeforeHit - 1;
+                survivalMessage = `${defender.name} は きあいのハチマキで もちこたえた！`;
+            }
+        }
+
+        const result = await applyDamage(attacker, defender, actualDamage, move, defenderUI);
+        if (survivalMessage && result && result.hit !== false) {
+            await showMessage(survivalMessage);
+            updateHpBars();
+        }
+        return { ...(result || {}), damage: actualDamage, survivalMessage };
+    }
+
     async function handleAttack(attacker, defender, move, isFirstAttacker) {
         const isPlayerAttacking = attacker === playerPokemon;
         const defenderUI = isPlayerAttacking ? opponent : player;
 
         const hpBeforeDamage = defender.currentHp;
+        const accuracyCheckedMultiHitMoves = [
+            'スケイルショット', 'げきりゅうれんげきけん', 'みずしゅりけん',
+            'めったざし', 'ドラゴンアロー', 'ダブルパンツァー', 'すいりゅうれんだ'
+        ];
+        if (accuracyCheckedMultiHitMoves.includes(move.name)) {
+            const accuracy = getActualAccuracy(attacker, defender, move);
+            const hits = attacker.ability === 'ノーガード' || defender.ability === 'ノーガード' ||
+                accuracy > 100 || Math.random() * 100 < accuracy;
+            if (!hits) {
+                await showMessage('しかし こうげきは はずれた！');
+                return false;
+            }
+        }
 if (move.isDynamicType) {
 
     const typePool = [
@@ -8849,8 +8892,11 @@ if (move.name === 'スケイルショット') {
     if (attacker.ability === 'スキルリンク') {
         hits = 5;
     } else {
-        const rand = Math.random(); 
-        hits = 5;
+        const rand = Math.random();
+        if (rand < 0.35) hits = 2;
+        else if (rand < 0.70) hits = 3;
+        else if (rand < 0.85) hits = 4;
+        else hits = 5;
     }
 
     await showMessage(`${attacker.name} の スケイルショット！`);
@@ -8862,18 +8908,19 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
 if (defender.currentHp <= 0) {
     if (await checkFainted(defender, defender === playerPokemon, attacker)) return true;
-    return false;
+    break;
 }
 
     defender.lastDamageTaken = damage;
@@ -8898,17 +8945,12 @@ if (defender.currentHp <= 0) {
 
     const isPlayerDefender = defender === playerPokemon;
 
-if (defender.currentHp <= 0) {
-    const isPlayerDefender = defender === playerPokemon;
-    if (await checkFainted(defender, isPlayerDefender)) return true;
-    return false;
-}
 attacker.statStages.speed = Math.min(
     6,
     attacker.statStages.speed + 1
 );
-attacker.statStages.defense = Math.min(
-    6,
+attacker.statStages.defense = Math.max(
+    -6,
     attacker.statStages.defense - 1
 );
 
@@ -8928,6 +8970,10 @@ updateStatDisplay(
     opponentPokemon,
     document.getElementById('opponent-stat-display')
 );
+if (defender.currentHp <= 0) {
+    if (await checkFainted(defender, isPlayerDefender, attacker)) return true;
+    return false;
+}
     return false;
 }
 if (move.name === 'げきりゅうれんげきけん') {
@@ -8949,12 +8995,13 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9084,15 +9131,8 @@ if (move.name === 'トリプルアクセル') {
 
     let hits;
 
-    if (attacker.ability === 'スキルリンク') {
-        hits = 3;
-    } else {
-        const rand = Math.random();
-        if (rand < 0.1) hits = 0 ;
-        else if (rand < 0.2) hits = 1;
-        else if (rand < 0.3) hits = 2;
-        else hits = 3;
-    }
+    // トリプルアクセルは3回まで。スキルリンクで回数は変化しない。
+    hits = 3;
     await showMessage(`${attacker.name} の トリプルアクセル！`);
 
     // ⭐ へんげんじざい
@@ -9116,15 +9156,23 @@ if (move.name === 'トリプルアクセル') {
 
     for (let i = 0; i < hits; i++) {
     if (defender.currentHp <= 0) break;
+    if (
+        attacker.ability !== 'ノーガード' &&
+        defender.ability !== 'ノーガード' &&
+        Math.random() * 100 >= getActualAccuracy(attacker, defender, move)
+    ) break;
 
-    const { damage } = calculateDamage(move, attacker, defender);
+    const hitMove = { ...move, power: 20 * (i + 1) };
+    const { damage, effectivenessMessage } = calculateDamage(hitMove, attacker, defender);
+    if (i === 0 && effectivenessMessage) await showMessage(effectivenessMessage);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, hitMove, defenderUI);
 
-if (!result) break; // まもる用
+if (!result || result.hit === false) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9151,7 +9199,8 @@ if (defender.currentHp <= 0) {
     await new Promise(r => setTimeout(r, delay));
 }
 
-    await showMessage(`${totalHits}かい あたった！`);
+    if (totalHits === 0) await showMessage('しかし こうげきは はずれた！');
+    else await showMessage(`${totalHits}かい あたった！`);
 
     const isPlayerDefender = defender === playerPokemon;
 
@@ -9171,9 +9220,9 @@ if (move.name === 'みずしゅりけん') {
         hits = 5;
     } else {
         const rand = Math.random();
-        if (rand < 0.05) hits = 2;
-        else if (rand < 0.1) hits = 3;
-        else if (rand < 0.15) hits = 4;
+        if (rand < 0.35) hits = 2;
+        else if (rand < 0.70) hits = 3;
+        else if (rand < 0.85) hits = 4;
         else hits = 5;
     }
         await showMessage(`${attacker.name} の みずしゅりけん！`);
@@ -9203,12 +9252,13 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9270,12 +9320,13 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9357,12 +9408,13 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9421,12 +9473,13 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9490,12 +9543,13 @@ for (let i = 0; i < hits; i++) {
 
     const { damage } = calculateDamage(move, attacker, defender);
 
-    const result = await applyDamage(attacker, defender, damage, move, defenderUI);
+    const result = await applyDamageWithSurvival(attacker, defender, damage, move, defenderUI);
 
 if (!result) break; // まもる用
 totalHits++;
 if (attacker.currentHp <= 0) {
-    if (await checkFainted(attacker, attacker === playerPokemon)) return true;
+    // applyDamageWithSurvival/applyDamage already handles fainting caused by contact effects.
+    if (!result.fainted && await checkFainted(attacker, attacker === playerPokemon)) return true;
     return true;
 }
 
@@ -9985,6 +10039,7 @@ if (move.category === 'status') {
 
         function getActualAccuracy(attacker, defender, move) {
     let acc = move.accuracy;
+    if (acc === undefined || acc === null) return 101;
 
     // けむりだま × げいげきスコープ
     if (
@@ -10066,7 +10121,8 @@ async function handleMultiHit(attacker, defender, move) {
                 defender.item?.name === 'きあいのタスキ' &&
                 !defender.item.used &&
                 hpBeforeHit === defender.maxHp &&
-                !ignoreSash
+                !ignoreSash &&
+                Math.random() < 0.75
             ) {
                 actualDamage = hpBeforeHit - 1;
                 defender.item.used = true;
@@ -10097,7 +10153,7 @@ async function handleMultiHit(attacker, defender, move) {
                 survivalMessage = `${defender.name}モードです`;
             } else if (
                 defender.item?.name === 'きあいのハチマキ' &&
-                Math.random() < 0.33
+                Math.random() < 0.3
             ) {
                 actualDamage = hpBeforeHit - 1;
                 survivalMessage = `${defender.name} は きあいのハチマキで もちこたえた！`;
@@ -10111,64 +10167,8 @@ async function handleMultiHit(attacker, defender, move) {
             updateHpBars();
         }
 
-        // 連続技では通常攻撃側の後処理を通らないため、接触時の特性効果を
-        // 各ヒットごとに処理する。みがわりに当たったヒットでは発動しない。
-        if (hitMove.isContact && !hitSubstitute && attacker.currentHp > 0) {
-            // 相手を倒したヒットでも、ゴツゴツメットの反動は発生する。
-            // 生存している相手への反動は applyDamage() 側で処理済み。
-            if (
-                defender.currentHp <= 0 &&
-                defender.item?.name === 'ゴツゴツメット' &&
-                attacker.ability !== 'マジックガード'
-            ) {
-                const helmetDamage = Math.max(1, Math.floor(attacker.maxHp / 6));
-                attacker.currentHp = Math.max(0, attacker.currentHp - helmetDamage);
-                await showMessage(`${defender.name} の ゴツゴツメット！`);
-                updateHpBars();
-            }
-
-            if (
-                attacker.currentHp > 0 &&
-                attacker.ability !== 'マジックガード' &&
-                (defender.ability === 'さめはだ' || defender.ability === 'てつのとげ')
-            ) {
-                const recoil = Math.max(1, Math.floor(attacker.maxHp / 8));
-                attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
-                await showMessage(`${defender.name} の ${defender.ability}！ ${attacker.name} は ダメージを うけた！`);
-                updateHpBars();
-            }
-
-            if (attacker.currentHp > 0 && attacker.status == null) {
-                const contactStatus = {
-                    'せいでんき': 'paralyze',
-                    'ほのおのからだ': 'burn',
-                    'どくのからだ': 'toxic'
-                }[defender.ability];
-                const blockedType = {
-                    paralyze: 'でんき',
-                    burn: 'ほのお',
-                    toxic: 'どく'
-                }[contactStatus];
-                if (
-                    contactStatus &&
-                    !attacker.types?.includes(blockedType) &&
-                    canInflictSecondaryStatus(attacker, contactStatus) &&
-                    Math.random() < 0.3
-                ) {
-                    attacker.status = contactStatus;
-                    const statusLabel = { paralyze: 'まひ', burn: 'やけど', toxic: 'もうどく' }[contactStatus];
-                    await showMessage(`${defender.name} の ${defender.ability}！`);
-                    await showMessage(`${attacker.name} は ${statusLabel}になった！`);
-                    updateStatusMarkers();
-                }
-            }
-
-            if (attacker.currentHp <= 0) {
-                await checkFainted(attacker, attacker === playerPokemon);
-                return true;
-            }
-        }
-
+        // 接触ダメージ・接触時の状態異常は applyDamage() 側で処理済み。
+        // ここではヒット数と追加効果の進行だけを管理する。
         landedHits++;
         lastDamage = actualDamage;
         lastHitReachedPokemon = !hitSubstitute;
@@ -10211,7 +10211,15 @@ async function handleMultiHit(attacker, defender, move) {
         await showMessage(`${landedHits}かい あたった！`);
         // 追加効果は技全体で1回だけ判定し、みがわりに当たっただけなら発動させない。
         if (lastHitReachedPokemon && defender.currentHp > 0) {
-            await handlePostAttackEffects(attacker, defender, move, isFirstAttacker, lastDamage);
+            // handleMultiHit() には isFirstAttacker 引数がないため、
+            // 実際の攻撃側から判定する（未定義変数による連続技後の例外を防ぐ）。
+            await handlePostAttackEffects(
+                attacker,
+                defender,
+                move,
+                attacker === playerPokemon,
+                lastDamage
+            );
         }
 
     }
@@ -10363,7 +10371,8 @@ for(let hit = 0; hit < hitCount; hit++){
         defender.item.name === 'きあいのタスキ' &&
         !defender.item.used &&
         hpBeforeHit === defender.maxHp &&
-        !ignoreSash
+        !ignoreSash &&
+        Math.random() < 0.75
     ) {
         defender.item.used = true;
         defender.currentHp = 1;
@@ -10775,28 +10784,64 @@ defender.lastAttacker = attacker;
 
     updateHpBars();
 
-    // 瀕死処理は handleAttack 側で一度だけ行う。
-    // ここで checkFainted を呼ぶと、攻撃処理の途中で交代が発生して
-    // その後の処理と二重進行してしまう。
+    // 接触技の追加効果は、連続技の各ヒットでも一度ずつ処理する。
+    // みがわりに当たった場合は上の分岐で戻るため、ここには到達しない。
+    if (move.isContact) {
+        // ゴツゴツメット：マジックガードなら間接ダメージを受けない。
+        if (
+            defender.item?.name === 'ゴツゴツメット' &&
+            attacker.ability !== 'マジックガード'
+        ) {
+            const helmetDamage = Math.max(1, Math.floor(attacker.maxHp / 8));
+            attacker.currentHp = Math.max(0, attacker.currentHp - helmetDamage);
+            await showMessage(`${defender.name} の ゴツゴツメット！`);
+            updateHpBars();
+            if (attacker.currentHp > 0 && await checkAndUseItem(attacker)) {
+                updateHpBars();
+            }
+        }
+
+        // さめはだ・てつのとげも、接触した各ヒットで判定する。
+        if (
+            attacker.currentHp > 0 &&
+            attacker.ability !== 'マジックガード' &&
+            (defender.ability === 'さめはだ' || defender.ability === 'てつのとげ')
+        ) {
+            const recoil = Math.max(1, Math.floor(attacker.maxHp / 8));
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
+            await showMessage(`${defender.name} の ${defender.ability}！ ${attacker.name} は ダメージを うけた！`);
+            updateHpBars();
+            if (attacker.currentHp > 0 && await checkAndUseItem(attacker)) {
+                updateHpBars();
+            }
+        }
+
+        // せいでんき・ほのおのからだ・どくのからだ。
+        if (attacker.currentHp > 0 && attacker.status == null) {
+            const contactStatus = {
+                'せいでんき': 'paralyze',
+                'ほのおのからだ': 'burn',
+                'どくのからだ': 'toxic'
+            }[defender.ability];
+            if (contactStatus && canInflictSecondaryStatus(attacker, contactStatus) && Math.random() < 0.3) {
+                attacker.status = contactStatus;
+                const statusLabel = { paralyze: 'まひ', burn: 'やけど', toxic: 'もうどく' }[contactStatus];
+                await showMessage(`${defender.name} の ${defender.ability}！`);
+                await showMessage(`${attacker.name} は ${statusLabel}になった！`);
+                updateStatusMarkers();
+            }
+        }
+    }
+
+    // 接触効果で攻撃側が倒れた場合も、瀕死処理は一度だけ行う。
+    if (attacker.currentHp <= 0) {
+        await checkFainted(attacker, attacker === playerPokemon);
+        return { hit: true, fainted: true };
+    }
+
+    // 防御側の瀕死処理は呼び出し元に任せる。
     if (defender.currentHp <= 0) {
         return { hit: true, fainted: true };
-    } 
-        // ⭐ 接触ダメージ
-    if (move.isContact) {
-        if (defender.item?.name === 'ゴツゴツメット') {
-            const recoil = Math.floor(attacker.maxHp / 6);
-            attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
-            await showMessage(`${attacker.name} は ゴツゴツメットで ダメージをうけた！`);
-        }
-
-        updateHpBars();
-
-        // ⭐ ここが今回の本質
-        if (attacker.currentHp <= 0) {
-            const isPlayerAttacker = attacker === playerPokemon;
-            await checkFainted(attacker, isPlayerAttacker);
-            return { hit: true, fainted: true };
-        }
     }
 
     return { hit: true, fainted: false };
@@ -10990,85 +11035,9 @@ if (move.name === "ミイラしばり" && defender.currentHp > 0) {
     await showMessage(`${defender.name} は ミイラに しばりつけられた！`);
 }
         
-        if (move.isContact && defender.ability === 'さめはだ' && attacker.ability !== 'マジックガード' && !defender.hasSubstitute) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await showMessage(`${defender.name} の さめはだ！ ${attacker.name}は ダメージを うけた！`);
-            attacker.currentHp = Math.max(0, attacker.currentHp - Math.floor(attacker.maxHp / 8));
-            updateHpBars();
-            if(await checkAndUseItem(attacker)) await new Promise(resolve => setTimeout(resolve, 1000));
-            if (await checkFainted(attacker, isPlayerAttacking)) return true;
-        }
-if (move.isContact && defender.ability === 'てつのとげ' && attacker.ability !== 'マジックガード' && !defender.hasSubstitute) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await showMessage(`${defender.name} の てつのとげ！ ${attacker.name}は ダメージを うけた！`);
-            attacker.currentHp = Math.max(0, attacker.currentHp - Math.floor(attacker.maxHp / 8));
-            updateHpBars();
-            if(await checkAndUseItem(attacker)) await new Promise(resolve => setTimeout(resolve, 1000));
-            if (await checkFainted(attacker, isPlayerAttacking)) return true;
-        }
+        // 接触時の持ち物・特性は applyDamage() で各ヒットにつき一度だけ処理する。
+        // ここで再処理すると通常技でも二重発動し、連続技では過剰発動する。
 
-        // ⭐ 特性：せいでんき（接触時 30%でまひ）
-if (
-    move.isContact &&
-    defender.ability === 'せいでんき' &&
-    !defender.hasSubstitute &&                  // みがわり貫通なし
-    attacker.status === null &&                 // すでに状態異常ならNG
-    !attacker.types.includes("でんき")        // 電気タイプは麻痺しない
-) {
-    if (Math.random() < 0.33) { // 30%
-        attacker.status = 'paralyze';
-        await showMessage(`${defender.name} の せいでんき！`);
-        await showMessage(`しびれてしまった！`);
-        updateStatusMarkers();
-    }
-}
-
-// ⭐ 特性：せいでんき（接触時 30%でまひ）
-if (
-    move.isContact &&
-    defender.ability === 'ほのおのからだ' &&
-    !defender.hasSubstitute &&                  // みがわり貫通なし
-    attacker.status === null &&                 // すでに状態異常ならNG
-    !attacker.types.includes("ほのお")        // 電気タイプは麻痺しない
-) {
-    if (Math.random() < 0.33) { // 30%
-        attacker.status = 'burn';
-        await showMessage(`${defender.name} の ほのおのからだ！`);
-        await showMessage(`やけどしてしまった！`);
-        updateStatusMarkers();
-    }
-}
-
-if (
-    move.isContact &&
-    defender.ability === 'どくのからだ' &&
-    !defender.hasSubstitute &&                  // みがわり貫通なし
-    attacker.status === null &&                 // すでに状態異常ならNG
-    !attacker.types.includes("どく")        // 電気タイプは麻痺しない
-) {
-    if (Math.random() < 0.33) { // 30%
-        attacker.status = 'toxic';
-        await showMessage(`${defender.name} の どくのからだ！`);
-        await showMessage(`もうどくを浴びてしまった！`);
-        updateStatusMarkers();
-    }
-}
-
-        
-        if (move.isContact && defender.item && defender.item.name === 'ゴツゴツメット') {
-            const helmetDamage = Math.floor(attacker.maxHp / 6);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            await showMessage(`${defender.name} の ゴツゴツメット！`);
-            attacker.currentHp = Math.max(0, attacker.currentHp - helmetDamage);
-            updateHpBars();
-
-            if (await checkAndUseItem(attacker)) 
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-            if (await checkFainted(attacker, isPlayerAttacking)) 
-                return true;
-        }
-        
         if (attacker.isRampaging && attacker.rampageTurns <= 0) {
             attacker.isRampaging = false;
             attacker.isConfused = true;
@@ -11253,21 +11222,21 @@ if (
             message = `${defender.name} の こうげきが がくっと さがった！`; break;
             case 'ビルドアップ': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 1); attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); message = `${attacker.name} の こうげきと ぼうぎょが あがった！`; break;
             case 'めいそう': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.spDefense + 1); message = `${attacker.name} の とくこうと とくぼうが あがった！`; break;
-            case 'コスモパワー': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.sDefense + 1); message = `${attacker.name} の ぼうぎょと とくぼうが あがった！`; break;
+            case 'コスモパワー': attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.spDefense + 1); message = `${attacker.name} の ぼうぎょと とくぼうが あがった！`; break;
             case 'わるだくみ': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 2); message = `${attacker.name} の とくこうが ぐーんと あがった！`; break;
             case 'こうそくいどう': attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 2); message = `${attacker.name} の すばやさが ぐーんと あがった！`; break;
             case 'ちょうのまい': attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 1); attacker.statStages.spDefense = Math.min(6, attacker.statStages.spDefense + 1); attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 1); message = `${attacker.name} の とくこうと とくぼうと すばやさが あがった！`; break;
             case 'しょうりのまい': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 1); attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 1); message = `${attacker.name} の こうげきと ぼうぎょと すばやさが あがった！`; break;
             case 'からをやぶる': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 2); attacker.statStages.spAttack = Math.min(6, attacker.statStages.spAttack + 2); attacker.statStages.speed = Math.min(6, attacker.statStages.speed + 2); attacker.statStages.defense = Math.max(-6, attacker.statStages.defense - 1); attacker.statStages.spDefense = Math.max(-6, attacker.statStages.spDefense - 1);  message = `${attacker.name} の こうげきと とくこうと すばやさが ぐーんとあがって ぼうぎょと とくぼうが さがった！`; break;
             case 'のろい': attacker.statStages.attack = Math.min(6, attacker.statStages.attack + 1); attacker.statStages.defense = Math.min(6, attacker.statStages.defense + 1); attacker.statStages.speed = Math.max(-6, attacker.statStages.speed - 1); message = `${attacker.name} の すばやさが さがり こうげきと ぼうぎょが あがった！`; break;
-            case 'おにび': if (!defender.types.includes("ほのお") && defender.status === null) { defender.status = 'burn'; message = `あいて の ${defender.name} は やけどを おった！`; } else { message = `しかし うまくきまらなかった！`; } break;
-            case 'さいみんじゅつ': if(defender.status === null) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
-            case 'Zさいみんじゅつ': if (defender.status === null) { defender.status = 'sleep'; message = `あいて の ${defender.name} は ねむった！`; } else { message = `しかし うまくきまらなかった！`; } break;
-            case 'どくどく': if (!defender.types.includes("どく") && !defender.types.includes("はがね") && defender.status === null) { defender.status = 'toxic'; message = `あいて の ${defender.name} は もうどくを あびた！`; } else { message = `しかし うまくきまらなかった！`; } break;
-            case 'でんじは': if (!defender.types.includes("でんき") && !defender.types.includes("じめん") && defender.status === null) { defender.status = 'paralyze'; message = `あいて の ${defender.name} は まひに なった！`; } else { message = `しかし うまくきまらなかった！`; } break;
-            case 'へびにらみ': if (!defender.types.includes("でんき") && defender.status === null) { defender.status = 'paralyze'; message = `あいて の ${defender.name} は まひに なった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'おにび': if (!defender.hasSubstitute && canInflictSecondaryStatus(defender, 'burn')) { defender.status = 'burn'; message = `あいて の ${defender.name} は やけどを おった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'さいみんじゅつ': if (!defender.hasSubstitute && canInflictSecondaryStatus(defender, 'sleep')) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'Zさいみんじゅつ': if (!defender.hasSubstitute && canInflictSecondaryStatus(defender, 'sleep')) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'どくどく': if (!defender.hasSubstitute && canInflictSecondaryStatus(defender, 'toxic')) { defender.status = 'toxic'; defender.toxicCounter = 1; message = `あいて の ${defender.name} は もうどくを あびた！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'でんじは': if (!defender.hasSubstitute && !defender.types.includes("じめん") && canInflictSecondaryStatus(defender, 'paralyze')) { defender.status = 'paralyze'; message = `あいて の ${defender.name} は まひに なった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'へびにらみ': if (!defender.hasSubstitute && canInflictSecondaryStatus(defender, 'paralyze')) { defender.status = 'paralyze'; message = `あいて の ${defender.name} は まひに なった！`; } else { message = `しかし うまくきまらなかった！`; } break;
             case 'ねむりごな' :
-            case 'きのこのほうし': if(!defender.types.includes("くさ") && defender.status === null) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
+            case 'きのこのほうし': if (!defender.hasSubstitute && !defender.types.includes("くさ") && canInflictSecondaryStatus(defender, 'sleep')) { defender.status = 'sleep'; defender.statusTurns = Math.floor(Math.random() * 3) + 2; message = `あいて の ${defender.name} は ねむってしまった！`; } else { message = `しかし うまくきまらなかった！`; } break;
             case 'オーロラベール':
 
     if (weather.type !== 'snow') {
@@ -11530,14 +11499,14 @@ for (const pokemon of [playerPokemon, opponentPokemon]) {
         if(weather.type === 'sandstorm') {
             await showMessage('すなあらしが ふきあれる！');
             if(!playerPokemon.types.includes('いわ') && !playerPokemon.types.includes('じめん') && !playerPokemon.types.includes('はがね') && playerPokemon.currentHp > 0) {
-                 playerPokemon.currentHp -= Math.floor(playerPokemon.maxHp / 16);
+                 playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp - Math.floor(playerPokemon.maxHp / 16));
                  playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp); 
                  await showMessage(`${playerPokemon.name}は すなあらしで ダメージを うけた！`);
                  updateHpBars();
                  if (await checkFainted(playerPokemon, true)) return true;
             }
              if(!opponentPokemon.types.includes('いわ') && !opponentPokemon.types.includes('じめん') && !opponentPokemon.types.includes('はがね') && opponentPokemon.currentHp > 0) {
-                 opponentPokemon.currentHp -= Math.floor(opponentPokemon.maxHp / 16);
+                 opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp - Math.floor(opponentPokemon.maxHp / 16));
                  opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp);
                  await showMessage(`あいての ${opponentPokemon.name}は すなあらしで ダメージを うけた！`);
                  updateHpBars();
@@ -11562,13 +11531,13 @@ for (const pokemon of [playerPokemon, opponentPokemon]) {
 if(weather.type === 'snow') {
             await showMessage('ゆきが ふっている！');
             if(!playerPokemon.types.includes('こおり') && playerPokemon.currentHp > 0) {
-                 playerPokemon.currentHp -= Math.floor(playerPokemon.maxHp / 16);
+                 playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp - Math.floor(playerPokemon.maxHp / 16));
                  await showMessage(`${playerPokemon.name}は さむさで ダメージを うけた！`);
                  updateHpBars();
                  if (await checkFainted(playerPokemon, true)) return true;
             }
              if(!opponentPokemon.types.includes('こおり') && opponentPokemon.currentHp > 0) {
-                 opponentPokemon.currentHp -= Math.floor(opponentPokemon.maxHp / 16);
+                 opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp - Math.floor(opponentPokemon.maxHp / 16));
                  await showMessage(`あいての ${opponentPokemon.name}は さむさで ダメージを うけた！`);
                  updateHpBars();
                  if (await checkFainted(opponentPokemon, false)) return true;
@@ -13120,9 +13089,9 @@ function chooseBestOpponentSwitch() {
         if (isAncientBoostActive(pokemon) && getAncientBoostStat(pokemon) === "speed") speed *= 1.5;
         if (pokemon.status === 'paralyze') speed *= 0.5;
         if (pokemon.item && pokemon.item.name === 'こだわりスカーフ') {
-            speed *= 1.5;
+            speed *= 1.2;
         }
-        if (pokemon.ability && pokemon.ability.name === 'ききかいひ') {
+        if (pokemon.ability === 'ききかいひ') {
             speed *= 1.25;
         }
         return speed;
@@ -13246,10 +13215,10 @@ const defStageFix = (stage) =>
     };
 }
 
-        if (defender.ability === 'ふゆう' && move.type === 'じめん') return { damage: 0, effectivenessMessage: `${defender.name} の ふゆう` };
-        if (defender.ability === 'れいたい' && move.type === 'かくとう') return { damage: 0, effectivenessMessage: `${defender.name} の れいたい` };
-        if (defender.ability === 'ちくでん' && move.type === 'でんき') return { damage: 0, healing: Math.floor(defender.maxHp / 4) };
-        if (defender.ability === 'コンデンサー' && move.type === 'でんき') return { damage: 0, effectivenessMessage: `${defender.name} の コンデンサー` };
+        if (defender.ability === 'ふゆう' && attackTypes.includes('じめん')) return { damage: 0, effectivenessMessage: `${defender.name} の ふゆう` };
+        if (defender.ability === 'れいたい' && attackTypes.includes('かくとう')) return { damage: 0, effectivenessMessage: `${defender.name} の れいたい` };
+        if (defender.ability === 'ちくでん' && attackTypes.includes('でんき')) return { damage: 0, healing: Math.floor(defender.maxHp / 4) };
+        if (defender.ability === 'コンデンサー' && attackTypes.includes('でんき')) return { damage: 0, effectivenessMessage: `${defender.name} の コンデンサー` };
 
         let attackStat, defenseStat;
         if (move.category === 'physical') {
@@ -13335,7 +13304,7 @@ if (defender.ability === "わざわいのうつわ") {
 }
 
         let movePower = move.power;
-        if ( move.name === "からげんき" && ( attacker.status === "burn" ||attacker.status === "poison" ||attacker.status === "toxic" ||attacker.status === "paralysis" )) { movePower *= 2; }
+        if ( move.name === "からげんき" && ( attacker.status === "burn" ||attacker.status === "poison" ||attacker.status === "toxic" ||attacker.status === "paralyze" )) { movePower *= 2; }
         if ( move.name === "ふっとう" && ( attacker.status === "burn" )) { movePower *= 2; }
         if (move.name === "てんびんのさいだん") {
 
@@ -13355,12 +13324,12 @@ if (defender.ability === "わざわいのうつわ") {
         movePower += Math.floor(difference * 100);
     }
 }
-        if ((attacker.ability === 'もうか' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'ほのお') || (attacker.ability === 'げきりゅう' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'みず') || (attacker.ability === 'しんりょく' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'くさ') || (attacker.ability === 'むしのしらせ' && attacker.currentHp / attacker.maxHp <= 1/3 && move.type === 'むし')) movePower *= 1.5;
+        if ((attacker.ability === 'もうか' && attacker.currentHp / attacker.maxHp <= 1/3 && attackTypes.includes('ほのお')) || (attacker.ability === 'げきりゅう' && attacker.currentHp / attacker.maxHp <= 1/3 && attackTypes.includes('みず')) || (attacker.ability === 'しんりょく' && attacker.currentHp / attacker.maxHp <= 1/3 && attackTypes.includes('くさ')) || (attacker.ability === 'むしのしらせ' && attacker.currentHp / attacker.maxHp <= 1/3 && attackTypes.includes('むし'))) movePower *= 1.5;
         if (attacker.ability === 'テクニシャン' && move.power <= 60) movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'こだわりハチマキ' && move.category === 'physical') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'こだわりメガネ' && move.category === 'special') movePower *= 1.5;
-        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.2;
-        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.2;
+        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.3;
+        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.3;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
         if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'そうだいしょう' && move.category && move.power <= 2000) movePower *= 1.3;
@@ -13373,7 +13342,7 @@ if (defender.ability === "わざわいのうつわ") {
         if (attacker.ability === 'きれあじ' && move.category && move.power <= 2000) movePower *= 1.5;
         if (attacker.ability === 'ブレインフォース' && move.category && move.power <= 2000) movePower *= 1.25;
         if (attacker.ability === 'アナライズ' && move.category === 'special') movePower *= 1.3;
-        if (attacker.ability === 'りゅうのあご' && move.type === 'ドラゴン') movePower *= 1.5;
+        if (attacker.ability === 'りゅうのあご' && attackTypes.includes('ドラゴン')) movePower *= 1.5;
         if (attacker.ability === 'マルチタイプ' && move.power <= 70) movePower *= 1.5;
         if (attacker.ability === "スカイスキン" && move.type === "ノーマル" && move.category !== "status") {movePower *= 1.2;}
 
@@ -13396,13 +13365,13 @@ if (
 }
 
 if (weather.type === 'rain') {
-    if (move.type === 'みず') movePower *= 1.5;
-    if (move.type === 'ほのお') movePower *= 0.5;
+    if (attackTypes.includes('みず')) movePower *= 1.5;
+    if (attackTypes.includes('ほのお')) movePower *= 0.5;
 };
 if (field.type === 'psyco') {
 
     // エスパー技強化
-    if (move.type === 'エスパー') {
+    if (attackTypes.includes('エスパー')) {
         movePower *= 1.6;
     }
 
@@ -13415,7 +13384,7 @@ if (field.type === 'psyco') {
 if (field.type === 'grass') {
 
     // エスパー技強化
-    if (move.type === 'くさ') {
+    if (attackTypes.includes('くさ')) {
         movePower *= 1.5;
     }
 
@@ -13437,59 +13406,49 @@ if (field.type === 'grass') {
 }
 
         if (defender.ability === 'マルチスケイル' && defender.currentHp === defender.maxHp && !defender.hasSubstitute) damage *= 0.5;
-        if (defender.ability === 'あついしぼう' && (move.type === 'ほのお' || move.type === 'こおり')) damage *= 0.5;
+        if (defender.ability === 'あついしぼう' && (attackTypes.includes('ほのお') || attackTypes.includes('こおり'))) damage *= 0.5;
         
-       let typeMultiplier;
-
-if (
-    move.name === "フリーズドライ" &&
-    defender.types.includes("みず")
-) {
-    // フリーズドライは みずタイプに効果抜群
-    typeMultiplier = 2;
-} else {
-    const typeMultipliers = attackTypes.map(type =>
-        calculateTypeEffectiveness(type, defender.types)
-    );
-
-    typeMultiplier = Math.max(...typeMultipliers);
-}
+       // 攻撃タイプが複数ある技は各タイプの相性を掛け合わせる。
+// フリーズドライは、こおり技に対するみずタイプの耐性を弱点に置き換える。
+const typeMultiplier = attackTypes.reduce((moveMultiplier, attackingType) => {
+    const againstDefender = (Array.isArray(defender.types) ? defender.types : []).reduce((defMultiplier, defendingType) => {
+        const multiplier = move.name === "フリーズドライ" && attackingType === "こおり" && defendingType === "みず"
+            ? 2
+            : (typeChart[attackingType]?.[defendingType] ?? 1);
+        return defMultiplier * multiplier;
+    }, 1);
+    return moveMultiplier * againstDefender;
+}, 1);
        let actualTypeMultiplier = typeMultiplier;
 
 if (
-    attacker.ability === "きもったま" &&
+    (attacker.ability === "きもったま" || attacker.ability === "しんがん") &&
     defender.types.includes("ゴースト") &&
-    (
-        attackType === "ノーマル" ||
-        attackType === "かくとう"
-    ) &&
+    attackTypes.some(type => type === "ノーマル" || type === "かくとう") &&
     typeMultiplier === 0
-){
-    actualTypeMultiplier = 1;
-}
-
-if (
-    attacker.ability === "しんがん" &&
-    defender.types.includes("ゴースト") &&
-    (
-        attackType === "ノーマル" ||
-        attackType === "かくとう"
-    ) &&
-    typeMultiplier === 0
-){
-    actualTypeMultiplier = 1;
+) {
+    // ゴーストタイプの無効だけを無視し、複合タイプ側の耐性・弱点は残す。
+    actualTypeMultiplier = attackTypes.reduce((moveMultiplier, attackingType) => {
+        const againstDefender = defender.types.reduce((defMultiplier, defendingType) => {
+            const multiplier = defendingType === "ゴースト" && (attackingType === "ノーマル" || attackingType === "かくとう")
+                ? 1
+                : (typeChart[attackingType]?.[defendingType] ?? 1);
+            return defMultiplier * multiplier;
+        }, 1);
+        return moveMultiplier * againstDefender;
+    }, 1);
 }
 
         if(isCrit) {
              damage = Math.floor(damage * 1.5 );
              effectivenessMessage = 'きゅうしょにあたった！';
         }
-        else if (typeMultiplier > 1) effectivenessMessage = "こうかは ばつぐんだ！";
-        else if (typeMultiplier < 1 && typeMultiplier > 0) effectivenessMessage = "こうかは いまひとつの ようだ...";
-        else if (typeMultiplier === 0 && actualTypeMultiplier === 0) effectivenessMessage = "こうかが ない みたいだ...";
+        else if (actualTypeMultiplier > 1) effectivenessMessage = "こうかは ばつぐんだ！";
+        else if (actualTypeMultiplier < 1 && actualTypeMultiplier > 0) effectivenessMessage = "こうかは いまひとつの ようだ...";
+        else if (actualTypeMultiplier === 0) effectivenessMessage = "こうかが ない みたいだ...";
 
         damage = Math.floor(damage * actualTypeMultiplier);
-        if (attacker.ability === 'ブレインフォース' && typeMultiplier > 1) {
+        if (attacker.ability === 'ブレインフォース' && actualTypeMultiplier > 1) {
             damage = Math.floor(damage * 1.25);
         }
         damage = Math.floor(damage * (Math.random() * (1.0 - 0.85) + 0.85));
@@ -13521,7 +13480,7 @@ if (move.name === "ソウルドレイン") {
 }
 
 const finalDamage =
-    Math.max(typeMultiplier > 0 ? 1 : 0, damage);
+    Math.max(actualTypeMultiplier > 0 ? 1 : 0, damage);
 
 return {
     damage: finalDamage,
@@ -13561,14 +13520,17 @@ return {
             opponent.hpBar.style.width = `${opponentHpPercent}%`;
             updateHpBarColor(opponent.hpBar, opponentHpPercent);
         }
-        const opponentHpPercent =
-    (opponentPokemon.currentHp / opponentPokemon.maxHp) * 100;
-
-document.getElementById("opponent-current-hp").textContent =
-    ` ${Math.round(opponentHpPercent)}% `;
-
-document.getElementById("opponent-max-hp").textContent = "";
-    updateSubstituteMarkers();
+        const opponentCurrentHpEl = document.getElementById("opponent-current-hp");
+        const opponentMaxHpEl = document.getElementById("opponent-max-hp");
+        if (opponentPokemon) {
+            const opponentHpPercent = (opponentPokemon.currentHp / opponentPokemon.maxHp) * 100;
+            if (opponentCurrentHpEl) opponentCurrentHpEl.textContent = ` ${Math.round(opponentHpPercent)}% `;
+            if (opponentMaxHpEl) opponentMaxHpEl.textContent = "";
+        } else {
+            if (opponentCurrentHpEl) opponentCurrentHpEl.textContent = "";
+            if (opponentMaxHpEl) opponentMaxHpEl.textContent = "";
+        }
+        updateSubstituteMarkers();
     }
     
     function updateHpBarColor(bar, percent) {
@@ -13580,19 +13542,12 @@ document.getElementById("opponent-max-hp").textContent = "";
     const playerSub = document.getElementById('player-substitute');
     const opponentSub = document.getElementById('opponent-substitute');
 
-    if (playerPokemon.hasSubstitute) {
-        playerSub.style.display = 'inline-block';
-    } else {
-        playerSub.style.display = 'none';
-    }
-
-    if (opponentPokemon.hasSubstitute) {
-        opponentSub.style.display = 'inline-block';
-    } else {
-        opponentSub.style.display = 'none';
-    }
+    if (playerSub) playerSub.style.display = playerPokemon?.hasSubstitute ? 'inline-block' : 'none';
+    if (opponentSub) opponentSub.style.display = opponentPokemon?.hasSubstitute ? 'inline-block' : 'none';
 }
 function endGame(playerWon) {
+    if (battleEndProcessed) return;
+    battleEndProcessed = true;
 
     if (difficulty === "online" && onlineRole === "host") {
         sessionStorage.removeItem('pokemonBattleInProgress');
@@ -13606,7 +13561,7 @@ function endGame(playerWon) {
             'result',
             playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…'
         );
-        onlineSend({type:'result', guestWon:!playerWon, ratingDelta:-delta});
+        onlineSend({type:'result', guestWon:!playerWon, ratingDelta: ratingEnabled ? -delta : 0});
         messageText.textContent = playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…';
         setTimeout(() => { onlineCleanup(); showOpeningScreen(); }, 1800);
         return;

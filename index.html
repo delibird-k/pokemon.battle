@@ -1995,8 +1995,8 @@ let isBattleInProgress = false;
         'きあいのタスキ': { name: 'きあいのタスキ', description: '75%の確率でHP1で耐える。'},
         'こだわりハチマキ': { name: 'こだわりハチマキ', description: '物理技の威力が1.5倍。交代するまで技が固定。'},
         'こだわりメガネ': { name: 'こだわりメガネ', description: '特殊技の威力が1.5倍。交代するまで技が固定。'},
-        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.3倍。'},
-        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.3倍。'},
+        'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.2倍。'},
+        'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.2倍。'},
         'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.5倍。交代するまで技が固定。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら最大HPの1/8のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
@@ -7162,8 +7162,8 @@ function getAIDamage(move, attacker, defender) {
     // 持ち物による火力補正（AIのダメージ予測にも反映）
     if (attacker.item?.name === "こだわりハチマキ" && move.category === "physical") damage *= 1.5;
     if (attacker.item?.name === "こだわりメガネ" && move.category === "special") damage *= 1.5;
-    if (attacker.item?.name === "ちからのハチマキ" && move.category === "physical") damage *= 1.3;
-    if (attacker.item?.name === "ものしりメガネ" && move.category === "special") damage *= 1.3;
+    if (attacker.item?.name === "ちからのハチマキ" && move.category === "physical") damage *= 1.2;
+    if (attacker.item?.name === "ものしりメガネ" && move.category === "special") damage *= 1.2;
 
     // STAB
     const attackerTypes =
@@ -13603,8 +13603,8 @@ if (defender.ability === "わざわいのうつわ") {
         if (attacker.ability === 'テクニシャン' && move.power <= 60) movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'こだわりハチマキ' && move.category === 'physical') movePower *= 1.5;
         if (attacker.item && attacker.item.name === 'こだわりメガネ' && move.category === 'special') movePower *= 1.5;
-        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.3;
-        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.3;
+        if (attacker.item && attacker.item.name === 'ちからのハチマキ' && move.category === 'physical') movePower *= 1.2;
+        if (attacker.item && attacker.item.name === 'ものしりメガネ' && move.category === 'special') movePower *= 1.2;
         if (attacker.item && attacker.item.name === 'なにも持たせない' && move.power <= 2000) movePower *= 1;
         if (attacker.ability === 'ちからずく' && move.category && move.power <= 2000) movePower *= 1.3;
         if (attacker.ability === 'そうだいしょう' && move.category && move.power <= 2000) movePower *= 1.3;

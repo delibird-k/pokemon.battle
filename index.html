@@ -394,9 +394,11 @@
     <h3 style="font-weight:900;margin:8px 0;">技の変更（4枠）</h3>
     <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。候補は「現在の技」「おすすめ（使用率上位）」です。おすすめ技が登録済みのポケモンは、インターネット接続なしで使えます。</p>
     <p id="custom-moves-source" style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">技候補を読み込みます…</p>
+    <p style="font-size:.7rem;line-height:1.6;color:#475569;margin:0 0 8px;">通信できるときに取得した技・習得データはこのブラウザの IndexedDB に保存されます。保存済みデータは通信がない場合も使用できます。初めて開くポケモンのデータは、事前にオンラインで一度読み込む必要があります。</p>
     <div id="custom-moves-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:12px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">現在の技データ</h3>
     <div id="custom-moves-reference" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:16px;"></div>
+    <button id="custom-api-refresh-button" type="button" class="opening-button" style="background:#bae6fd;flex:1;">保存済みAPIデータを消去して再取得</button>
     <button id="custom-save-button" class="opening-button opening-battle-button" style="flex:1;">保存する</button>
       <button id="custom-reset-one-button" class="opening-button opening-history-button" style="flex:1;">このポケモンの設定を初期状態に戻す</button>
       <button id="custom-close-button" class="opening-button opening-back-button" style="flex:1;">閉じる</button>
@@ -600,6 +602,81 @@ class="border-2 border-gray-800 rounded p-1 bg-gray-300 hover:bg-gray-400">
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // ============================================================
+    // オフライン対応：PokéAPI / 使用率データを IndexedDB に保存
+    // 取得済みデータは30日間キャッシュ優先。期限切れなら通信で更新し、
+    // 通信に失敗した場合は保存済みデータを利用する。
+    // ============================================================
+    const POKE_CACHE_DB = 'pokemon-battle-pokeapi-cache-v1';
+    const POKE_CACHE_STORE = 'json-responses';
+    const POKE_CACHE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+    const pokeMemoryCache = new Map();
+    let pokeDbPromise = null;
+    function pokeOpenCacheDb() {
+        if (pokeDbPromise) return pokeDbPromise;
+        pokeDbPromise = new Promise((resolve, reject) => {
+            if (!('indexedDB' in window)) { reject(new Error('IndexedDB is unavailable')); return; }
+            const request = indexedDB.open(POKE_CACHE_DB, 1);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains(POKE_CACHE_STORE)) db.createObjectStore(POKE_CACHE_STORE, { keyPath: 'url' });
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+            request.onblocked = () => reject(new Error('IndexedDB open blocked'));
+        }).catch(error => { pokeDbPromise = null; throw error; });
+        return pokeDbPromise;
+    }
+    async function pokeCacheRead(url) {
+        if (pokeMemoryCache.has(url)) return pokeMemoryCache.get(url);
+        try {
+            const db = await pokeOpenCacheDb();
+            const row = await new Promise((resolve, reject) => {
+                const tx = db.transaction(POKE_CACHE_STORE, 'readonly');
+                const req = tx.objectStore(POKE_CACHE_STORE).get(url);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+            if (row && Object.prototype.hasOwnProperty.call(row, 'data')) {
+                pokeMemoryCache.set(url, row);
+                return row;
+            }
+        } catch (e) { /* IndexedDB が使えない環境ではネットワーク取得にフォールバック */ }
+        return null;
+    }
+    async function pokeCacheWrite(url, data) {
+        const row = { url, data, savedAt: Date.now() };
+        pokeMemoryCache.set(url, row);
+        try {
+            const db = await pokeOpenCacheDb();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(POKE_CACHE_STORE, 'readwrite');
+                tx.objectStore(POKE_CACHE_STORE).put(row);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+            });
+        } catch (e) { /* メモリキャッシュは引き続き利用 */ }
+    }
+    async function customFetchJson(url) {
+        const cached = await pokeCacheRead(url);
+        const isFresh = cached && Number(cached.savedAt) && (Date.now() - cached.savedAt < POKE_CACHE_MAX_AGE);
+        if (isFresh) return cached.data;
+        try {
+            const response = await fetch(url, { cache: 'no-cache' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            await pokeCacheWrite(url, data);
+            return data;
+        } catch (error) {
+            if (cached) return cached.data;
+            throw error;
+        }
+    }
+    // GitHub Pages 等の HTTPS 配信では、画面本体と静的アセットも Service Worker で保存。
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
     // --- DOM Elements ---
     const gameContainer = document.getElementById('game-container');
     const openingScreen = document.getElementById('opening-screen');
@@ -1958,6 +2035,38 @@ let isBattleInProgress = false;
     const customMovesReference = document.getElementById('custom-moves-reference');
     const customMovesEditor = document.getElementById('custom-moves-editor');
     const customMovesSource = document.getElementById('custom-moves-source');
+    const customApiRefreshButton = document.getElementById('custom-api-refresh-button');
+    if (customApiRefreshButton) customApiRefreshButton.addEventListener('click', async () => {
+      if (!window.confirm('保存済みのPokéAPI・使用率データを消去して、オンラインから再取得しますか？\n通信できない場合、保存済みデータは復元できません。')) return;
+      customApiRefreshButton.disabled = true;
+      customApiRefreshButton.textContent = 'データを消去しています…';
+      try {
+        pokeMemoryCache.clear();
+        if ('indexedDB' in window) {
+          const db = await pokeOpenCacheDb();
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction(POKE_CACHE_STORE, 'readwrite');
+            tx.objectStore(POKE_CACHE_STORE).clear();
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB clear aborted'));
+          });
+        }
+        customLearnsetCache.clear();
+        customMoveCache.clear();
+        customUsageRows = null;
+        customUsagePromise = null;
+        const key = customPokemonSelect.value;
+        const p = pokemonBaseData[key];
+        if (key && p) await customRenderMoveEditor(key, p);
+        customMovesSource.textContent = 'キャッシュを消去しました。オンラインで再取得します。';
+      } catch (error) {
+        customMovesSource.textContent = 'キャッシュの消去に失敗しました。ページを再読み込みして再試行してください。';
+      } finally {
+        customApiRefreshButton.disabled = false;
+        customApiRefreshButton.textContent = '保存済みAPIデータを消去して再取得';
+      }
+    });
     let customMoveSelects = [];
     let customUsageRows = null;
     const customMoveCache = new Map();
@@ -1987,18 +2096,17 @@ let isBattleInProgress = false;
       if(!speciesId)return null;
       if(customLearnsetCache.has(speciesId))return customLearnsetCache.get(speciesId);
       const tryFetch=async(slug)=>{
-        const res=await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(slug)}/`,{cache:'force-cache'});
-        if(!res.ok)return null;
-        return res.json();
+        try { return await customFetchJson(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(slug)}/`); }
+        catch(e) { return null; }
       };
       try{
         let data=await tryFetch(speciesId);
         if(!data){
           // species 経由で標準フォルムを探す（例: aegislash → aegislash-shield）
           const base=speciesId.split('-')[0];
-          const sres=await fetch(`https://pokeapi.co/api/v2/pokemon-species/${encodeURIComponent(base)}/`,{cache:'force-cache'});
-          if(sres.ok){
-            const sp=await sres.json();
+          let sp=null;
+          try { sp=await customFetchJson(`https://pokeapi.co/api/v2/pokemon-species/${encodeURIComponent(base)}/`); } catch(e) {}
+          if(sp){
             const names=(sp.varieties||[]).map(v=>v.pokemon?.name).filter(Boolean);
             const hit=names.find(n=>customSlugKey(n)===customSlugKey(speciesId))||(sp.varieties||[]).find(v=>v.is_default)?.pokemon?.name;
             if(hit)data=await tryFetch(hit);
@@ -2273,8 +2381,7 @@ let isBattleInProgress = false;
         const urls=['https://poke.itlibra.com/opendata/usage-nationaldex.json','https://poke.itlibra.com/opendata/usage-nationaldexou.json'];
         for(const url of urls){
           try{
-            const res=await fetch(url,{cache:'force-cache'}); if(!res.ok)continue;
-            const data=await res.json();
+            const data=await customFetchJson(url);
             const rawRows=Array.isArray(data)?data:(data.pokemon??data.results??data.data??[]);
             const rows=Array.isArray(rawRows)?rawRows:(rawRows&&typeof rawRows==='object'?Object.values(rawRows):[]);
             if(rows.length){customUsageRows=rows;return rows;}
@@ -2303,9 +2410,7 @@ let isBattleInProgress = false;
       if(known){customMoveCache.set(id,customCloneMove(known));return customCloneMove(known);}
       try{
         const apiSlug=String(moveId||'').toLowerCase().trim().replace(/_/g,'-');
-        const res=await fetch(`https://pokeapi.co/api/v2/move/${encodeURIComponent(apiSlug)}/`);
-        if(!res.ok)return null;
-        const d=await res.json();
+        const d=await customFetchJson(`https://pokeapi.co/api/v2/move/${encodeURIComponent(apiSlug)}/`);
         const ja=(d.names||[]).find(x=>x.language?.name==='ja')?.name;
         const localMove=ja?customKnownMoveLibrary.get(ja):null;
         if(localMove){customMoveCache.set(id,customCloneMove(localMove));customMoveCache.set(localMove.name,customCloneMove(localMove));return customCloneMove(localMove);}
@@ -2409,7 +2514,7 @@ let isBattleInProgress = false;
       const renderSoon=()=>{if(renderTimer)return;renderTimer=setTimeout(()=>{renderTimer=null;if(!stale())render();},250);};
       const countText=()=>`現在の技${groups.current.size}／おすすめ${groups.usage.size}`;
       render();
-      customMovesSource.textContent='このポケモンが覚えられる技を確認しています…';
+      customMovesSource.textContent='このポケモンが覚えられる技を確認しています…（取得したAPIデータはこの端末に保存され、次回以降はオフラインでも再利用されます）';
       // ① おすすめ（埋め込みの使用率／定番技）
       const embedded=CHAMPIONS_MOVE_USAGE[key];
       const added=[];

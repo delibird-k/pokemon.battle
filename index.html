@@ -3321,6 +3321,10 @@ function selectRandomPlayerPokemon() {
 
         for (const key in items) {
             const item = items[key];
+
+            // 同じチーム内では、すでに選んだ持ち物を重複して選べない
+            if (selectedPlayerItemNames.includes(item.name)) continue;
+
             const card = document.createElement('button');
             card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
             card.onclick = () => handlePlayerItemSelect(item.name);
@@ -3519,6 +3523,9 @@ function selectRandomOpponentAndItem() {
     for (const key in items) {
 
         const item = items[key];
+
+        // 相手チーム内でも、すでに選んだ持ち物は候補から除外する
+        if (selectedOpponentItemNames.includes(item.name)) continue;
 
         const card = document.createElement('button');
 

@@ -4773,7 +4773,17 @@ button.onmouseout = () => {
 
         megaBtn.onclick = () => {
             playerPokemon.pendingMega = true;
-            showMessage("どの技で メガシンカする？");
+            const megaPrompt = "どの技で メガシンカする？";
+
+            // 対人戦では、この選択中メッセージをホストから state として送らない。
+            // showMessage() は host の画面状態を guest に配信し、phase='event' によって
+            // 参加側の技選択を閉じてしまうため、ここでは自分の画面だけを更新する。
+            if (onlineMode && (onlineRole === 'host' || onlineRole === 'guest')) {
+                messageText.style.display = '';
+                messageText.textContent = megaPrompt;
+            } else {
+                showMessage(megaPrompt);
+            }
         };
 
         movesContainer.appendChild(megaBtn);

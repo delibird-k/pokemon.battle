@@ -297,6 +297,8 @@
 
             <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
 
+            <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタルルール：ON</button>
+
             <button id="start-battle-button"
                     class="opening-button opening-battle-button">
                 ⚔ バトルをする
@@ -451,6 +453,12 @@
             </div>
         </div>
         
+        <div id="tera-selection-screen" class="hidden p-4" style="display:none;">
+            <h2 id="tera-selection-title" class="text-center text-lg md:text-2xl mb-2 text-outline">テラスタイプを えらんでくれ！</h2>
+            <p id="tera-selection-progress" class="text-center text-sm mb-4 text-outline"></p>
+            <div id="tera-selection-grid" class="flex flex-wrap justify-center items-center gap-3"></div>
+        </div>
+
         <div id="difficulty-selection-screen" class="hidden p-4">
             <h2 class="text-center text-lg md:text-2xl mb-4 text-outline">あいての つよさを えらんでくれ！</h2>
             <div id="difficulty-selection-grid" class="flex flex-wrap justify-center items-center gap-4">
@@ -772,6 +780,7 @@ document.getElementById("reset-no-button");
         openingStats.innerHTML = `
             <div>レート：<strong>${rating}</strong></div>
             <div>レート変動：<strong>${ratingEnabled ? 'ON' : 'OFF'}</strong></div>
+            <div>テラスタルルール：<strong>${teraRuleEnabled ? 'ON' : 'OFF'}</strong></div>
             <div>ランク：${getRank()}</div>
             <div>戦績：${winCount}勝 ${loseCount}敗</div>
             <div>連勝：${winStreak}　連敗：${loseStreak}</div>
@@ -892,8 +901,10 @@ document.getElementById("reset-no-button");
         onlineBattleStartSent = false;
         selectedPlayerKeys = [];
         selectedPlayerItemNames = [];
+        selectedPlayerTeraTypes = [];
         selectedOpponentKeys = [];
         selectedOpponentItemNames = [];
+        selectedOpponentTeraTypes = [];
         currentPlayerItemIndex = 0;
         currentOpponentItemIndex = 0;
         selectedPlayerKey = undefined;
@@ -1044,11 +1055,17 @@ let battleEndProcessed = false;
 let playerActiveIndex = 0;
 let opponentActiveIndex = 0;
 
+const TERA_TYPES = ['ノーマル','ほのお','みず','でんき','くさ','こおり','かくとう','どく','じめん','ひこう','エスパー','むし','いわ','ゴースト','ドラゴン','あく','はがね','フェアリー'];
+
 let selectedPlayerKeys = [];
 let selectedPlayerItemNames = [];
+let selectedPlayerTeraTypes = [];
 
 let selectedOpponentKeys = [];
 let selectedOpponentItemNames = [];
+let selectedOpponentTeraTypes = [];
+let currentTeraSelectionIndex = 0;
+let currentTeraSelectionSide = 'player';
 let currentPlayerItemIndex = 0;
 let currentOpponentItemIndex = 0;
 
@@ -1081,13 +1098,18 @@ function onlineSanitizePokemon(pokemon) {
     }));
 }
 
-function onlineMakeTeam(keys, itemNames) {
+function onlineMakeTeam(keys, itemNames, teraTypes = []) {
     return keys.map((key, index) => {
         const pokemon = createPokemonInstance(pokemonBaseData[key]);
         pokemon.item = { name: itemNames[index], used: false };
         pokemon.usedZMove = false;
         pokemon.pendingMega = false;
         pokemon.megaEvolved = false;
+        pokemon.originalTypes = Array.isArray(pokemon.types) ? [...pokemon.types] : [pokemon.types].filter(Boolean);
+        pokemon.teraType = (teraTypes[index] && TERA_TYPES.includes(teraTypes[index])) ? teraTypes[index] : (pokemon.originalTypes[0] || 'ノーマル');
+        pokemon.teraActive = false;
+        pokemon.teraUsed = false;
+        pokemon.pendingTera = false;
         applyIllusion(pokemon);
         initZData(pokemon);
         return pokemon;
@@ -1095,7 +1117,7 @@ function onlineMakeTeam(keys, itemNames) {
 }
 
 function onlineTeamPayload() {
-    return { keys: [...selectedPlayerKeys], items: [...selectedPlayerItemNames] };
+    return { keys: [...selectedPlayerKeys], items: [...selectedPlayerItemNames], teraTypes: [...selectedPlayerTeraTypes], teraRuleEnabled: !!teraRuleEnabled };
 }
 
 function onlineWaitForAction() {
@@ -1424,6 +1446,7 @@ function onlineGuestSendMove(moveIndex, options = {}) {
     // 1人用と同じ「メガシンカしてから技を出す」流れを
     // ホスト側でも再現できるよう、選択内容をそのまま送る。
     const useMega = !!playerPokemon.pendingMega;
+    const useTera = !!playerPokemon.pendingTera;
 
     onlineWaitingForRemote = true;
     onlineGuestActedTurn = currentTurn;
@@ -1434,6 +1457,8 @@ function onlineGuestSendMove(moveIndex, options = {}) {
         actionType: 'move',
         moveIndex,
         useMega,
+        useTera,
+        teraType: playerPokemon.teraType,
         useZMove: !!options.useZMove
     });
 
@@ -1462,6 +1487,8 @@ function onlineGuestSendZMove(moveIndex) {
         actionType: 'move',
         moveIndex,
         useMega: !!playerPokemon.pendingMega,
+        useTera: !!playerPokemon.pendingTera,
+        teraType: playerPokemon.teraType,
         useZMove: true
     });
 
@@ -1499,6 +1526,8 @@ function onlineShowOnly(screen) {
     opponentSelectionScreen.style.display = 'none';
     opponentItemSelectionScreen.style.display = 'none';
     difficultySelectionScreen.style.display = 'none';
+    const teraSelectionScreen = document.getElementById('tera-selection-screen');
+    if (teraSelectionScreen) teraSelectionScreen.style.display = 'none';
     battleScreen.style.display = 'none';
     if (typeof onlineLobby !== 'undefined' && onlineLobby) {
         onlineLobby.style.display = 'none';
@@ -1509,6 +1538,8 @@ function onlineShowOnly(screen) {
         selectionScreen.style.display = 'block';
     } else if (screen === 'items') {
         itemSelectionScreen.style.display = 'block';
+    } else if (screen === 'tera') {
+        if (teraSelectionScreen) teraSelectionScreen.style.display = 'block';
     } else if (screen === 'battle') {
         battleScreen.style.display = 'block';
     }
@@ -1662,6 +1693,7 @@ function onlineTryStartHostBattle() {
     onlineBattleStartSent = true;
     selectedOpponentKeys = [...onlineRemoteTeamData.keys];
     selectedOpponentItemNames = [...onlineRemoteTeamData.items];
+    selectedOpponentTeraTypes = Array.isArray(onlineRemoteTeamData.teraTypes) ? [...onlineRemoteTeamData.teraTypes] : [];
     onlineShowWaiting('あなたと相手の両方の選出が完了しました。対戦を開始します…');
     onlineSend({type:'battle-start', team: onlineTeamPayload()});
 
@@ -1695,6 +1727,10 @@ function handleOnlineData(data) {
     if (data.type === 'battle-start' && onlineRole === 'guest') {
         selectedOpponentKeys = [...data.team.keys];
         selectedOpponentItemNames = [...data.team.items];
+        selectedOpponentTeraTypes = Array.isArray(data.team.teraTypes) ? [...data.team.teraTypes] : [];
+        // 対人戦のテラスタルルールはルーム作成者（ホスト）の設定を共通ルールとする。
+        teraRuleEnabled = data.team.teraRuleEnabled !== false;
+        updateTeraRuleToggleButton();
         onlineStartGuestBattle(data.team);
         return;
     }
@@ -1766,8 +1802,8 @@ function onlineSubmitLocalTeam() {
         alert('対戦相手との接続がまだできていません。');
         return;
     }
-    if (selectedPlayerKeys.length !== 3 || selectedPlayerItemNames.length !== 3) {
-        alert('ポケモン3匹と持ち物3つを選んでください。');
+    if (selectedPlayerKeys.length !== 3 || selectedPlayerItemNames.length !== 3 || (teraRuleEnabled && selectedPlayerTeraTypes.length !== 3)) {
+        alert('ポケモン3匹・持ち物3つ・テラスタイプ3つを選んでください。');
         return;
     }
 
@@ -1787,8 +1823,8 @@ function onlineSubmitLocalTeam() {
 }
 
 function onlineStartGuestBattle(hostTeam) {
-    playerTeam = onlineMakeTeam(selectedPlayerKeys, selectedPlayerItemNames);
-    opponentTeam = onlineMakeTeam(hostTeam.keys, hostTeam.items);
+    playerTeam = onlineMakeTeam(selectedPlayerKeys, selectedPlayerItemNames, selectedPlayerTeraTypes);
+    opponentTeam = onlineMakeTeam(hostTeam.keys, hostTeam.items, hostTeam.teraTypes || []);
     playerActiveIndex=0; opponentActiveIndex=0;
     playerPokemon=playerTeam[0]; opponentPokemon=opponentTeam[0];
     difficulty='online';
@@ -1860,6 +1896,26 @@ let selectedOpponentItemName;
             updateOpeningStats();
         };
     }
+
+    // テラスタルルールは端末ごとに保存。未設定時はON。オンラインではホストの設定を採用する。
+    let teraRuleEnabled = localStorage.getItem('teraRuleEnabled') !== 'false';
+    const teraRuleToggleButton = document.getElementById('tera-rule-toggle-button');
+    function updateTeraRuleToggleButton() {
+        if (!teraRuleToggleButton) return;
+        teraRuleToggleButton.textContent = `テラスタルルール：${teraRuleEnabled ? 'ON' : 'OFF'}`;
+        teraRuleToggleButton.style.background = teraRuleEnabled ? '#bbf7d0' : '#e5e7eb';
+        teraRuleToggleButton.style.color = teraRuleEnabled ? '#14532d' : '#374151';
+        teraRuleToggleButton.setAttribute('aria-pressed', String(teraRuleEnabled));
+    }
+    if (teraRuleToggleButton) {
+        teraRuleToggleButton.onclick = () => {
+            teraRuleEnabled = !teraRuleEnabled;
+            localStorage.setItem('teraRuleEnabled', String(teraRuleEnabled));
+            updateTeraRuleToggleButton();
+            updateOpeningStats();
+        };
+    }
+    updateTeraRuleToggleButton();
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
@@ -3249,6 +3305,12 @@ function useZMove(pokemon){
     // The rest of the script is restored here...
     function createPokemonInstance(pokemonData) {
         const instance = calculateStats(pokemonData);
+        // テラスタル用：元のタイプとテラスタイプを個体ごとに保持する。
+        instance.originalTypes = Array.isArray(instance.types) ? [...instance.types] : [instance.types].filter(Boolean);
+        instance.teraType = instance.originalTypes[0] || 'ノーマル';
+        instance.teraActive = false;
+        instance.teraUsed = false;
+        instance.pendingTera = false;
         instance.currentHp = instance.maxHp;
         instance.statModifiers = { attack: 1 };
         instance.statStages = { attack: 0, defense: 0, spAttack: 0, spDefense: 0, speed: 0 };
@@ -3633,12 +3695,7 @@ function handlePlayerItemSelect(itemName) {
         return;
     }
 
-    if (onlineMode) {
-        onlineSubmitLocalTeam();
-        return;
-    }
-
-    showOpponentSelection();
+    beginTeraSelection('player');
 }
     
     function showOpponentSelection() {
@@ -3793,7 +3850,17 @@ function selectRandomOpponentAndItem() {
         'random'
     ];
 
-    showDifficultySelection();
+    // CPUチームをランダム選択した場合、テラスタルルールONなら
+    // 3匹それぞれのテラスタイプもランダムに決定し、選択画面を省略する。
+    // ルールOFFなら通常どおり元タイプを設定する。
+    if (teraRuleEnabled) {
+        selectedOpponentTeraTypes = selectedOpponentKeys.map(() =>
+            TERA_TYPES[Math.floor(Math.random() * TERA_TYPES.length)]
+        );
+        finishTeraSelection('opponent');
+    } else {
+        beginTeraSelection('opponent');
+    }
 }
     
     function showOpponentItemSelection() {
@@ -3850,10 +3917,72 @@ function handleOpponentItemSelect(itemName) {
         return;
     }
 
-    // 3匹分選び終わった
-    showDifficultySelection();
+    // 3匹分選び終わったら、相手チームのテラスタイプを1匹ずつ設定する。
+    beginTeraSelection('opponent');
 }
     
+    function beginTeraSelection(side) {
+        currentTeraSelectionSide = side;
+        currentTeraSelectionIndex = 0;
+        const keys = side === 'player' ? selectedPlayerKeys : selectedOpponentKeys;
+        const target = side === 'player' ? selectedPlayerTeraTypes : selectedOpponentTeraTypes;
+        target.length = 0;
+        // ルールOFF時は元タイプを割り当てて画面を飛ばす。オンラインでも両端末が同じ設定になる。
+        if (!teraRuleEnabled) {
+            target.push(...keys.map(key => { const p = pokemonBaseData[key]; return (p && p.types && p.types[0]) || 'ノーマル'; }));
+            finishTeraSelection(side);
+            return;
+        }
+        showTeraSelection();
+    }
+
+    function showTeraSelection() {
+        const side = currentTeraSelectionSide;
+        const keys = side === 'player' ? selectedPlayerKeys : selectedOpponentKeys;
+        const target = side === 'player' ? selectedPlayerTeraTypes : selectedOpponentTeraTypes;
+        const key = keys[currentTeraSelectionIndex];
+        const base = pokemonBaseData[key];
+        const screen = document.getElementById('tera-selection-screen');
+        const title = document.getElementById('tera-selection-title');
+        const progress = document.getElementById('tera-selection-progress');
+        const grid = document.getElementById('tera-selection-grid');
+        if (!screen || !title || !progress || !grid || !base) return;
+        if (onlineMode) onlineShowOnly('tera');
+        else {
+            [selectionScreen, itemSelectionScreen, opponentSelectionScreen, opponentItemSelectionScreen, difficultySelectionScreen].forEach(el => { if (el) el.style.display = 'none'; });
+            screen.style.display = 'block';
+        }
+        title.textContent = `${side === 'player' ? '自分' : '相手'}：${base.name}の テラスタイプを えらんでくれ！`;
+        progress.textContent = `${currentTeraSelectionIndex + 1} / 3匹目`;
+        grid.innerHTML = '';
+        const originalType = (base.types && base.types[0]) || 'ノーマル';
+        TERA_TYPES.forEach(type => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = `nes-container bg-white p-3 text-center cursor-pointer item-card w-28 ${type === originalType ? 'ring-2 ring-cyan-500' : ''}`;
+            card.style.color = '#111';
+            card.innerHTML = `<p class="font-bold">${type}</p>${type === originalType ? '<p class="text-xs mt-1">元タイプ</p>' : ''}`;
+            card.onclick = () => {
+                target.push(type);
+                currentTeraSelectionIndex++;
+                if (currentTeraSelectionIndex < 3) showTeraSelection();
+                else finishTeraSelection(side);
+            };
+            grid.appendChild(card);
+        });
+    }
+
+    function finishTeraSelection(side) {
+        const screen = document.getElementById('tera-selection-screen');
+        if (screen) screen.style.display = 'none';
+        if (side === 'player') {
+            if (onlineMode) { onlineSubmitLocalTeam(); return; }
+            showOpponentSelection();
+            return;
+        }
+        showDifficultySelection();
+    }
+
     function showDifficultySelection() {
         opponentSelectionScreen.style.display = 'none';
         opponentItemSelectionScreen.style.display = 'none';
@@ -3877,6 +4006,10 @@ function handleOpponentItemSelect(itemName) {
     
 function startGame(difficultyLevel) {
     battleEndProcessed = false;
+    if (!teraRuleEnabled) {
+        selectedPlayerTeraTypes = selectedPlayerKeys.map(key => (pokemonBaseData[key]?.types || ['ノーマル'])[0]);
+        selectedOpponentTeraTypes = selectedOpponentKeys.map(key => (pokemonBaseData[key]?.types || ['ノーマル'])[0]);
+    }
     difficulty = difficultyLevel;
 
     // 新しい試合なのでステルスロックをリセット
@@ -3901,6 +4034,7 @@ function startGame(difficultyLevel) {
         pokemon.usedZMove = false;
         pokemon.pendingMega = false;
         pokemon.megaEvolved = false;
+        if (selectedPlayerTeraTypes[index] && TERA_TYPES.includes(selectedPlayerTeraTypes[index])) pokemon.teraType = selectedPlayerTeraTypes[index];
 
         applyIllusion(pokemon);
         initZData(pokemon);
@@ -3929,6 +4063,7 @@ function startGame(difficultyLevel) {
         pokemon.usedZMove = false;
         pokemon.pendingMega = false;
         pokemon.megaEvolved = false;
+        if (selectedOpponentTeraTypes[index] && TERA_TYPES.includes(selectedOpponentTeraTypes[index])) pokemon.teraType = selectedOpponentTeraTypes[index];
 
         applyIllusion(pokemon);
         initZData(pokemon);
@@ -4780,6 +4915,31 @@ function determineOpponentItem(pokemon) {
 );
         enableMoves();
     }
+    async function teraEvolve(pokemon, isPlayer) {
+        if (!teraRuleEnabled || !pokemon || pokemon.teraUsed || pokemon.teraActive) return false;
+        const allowedTypes = ['ノーマル','ほのお','みず','でんき','くさ','こおり','かくとう','どく','じめん','ひこう','エスパー','むし','いわ','ゴースト','ドラゴン','あく','はがね','フェアリー'];
+        if (!allowedTypes.includes(pokemon.teraType)) {
+            pokemon.teraType = (pokemon.originalTypes || pokemon.types || ['ノーマル'])[0] || 'ノーマル';
+        }
+        if (!Array.isArray(pokemon.originalTypes) || !pokemon.originalTypes.length) {
+            pokemon.originalTypes = Array.isArray(pokemon.types) ? [...pokemon.types] : [pokemon.types].filter(Boolean);
+        }
+        pokemon.teraActive = true;
+        pokemon.pendingTera = false;
+        // テラスタルは1試合に片側1回。チーム全員に使用済みフラグを同期する。
+        const sideTeam = isPlayer ? playerTeam : opponentTeam;
+        (Array.isArray(sideTeam) ? sideTeam : [pokemon]).forEach(member => {
+            if (member) member.teraUsed = true;
+        });
+        pokemon.teraUsed = true;
+        // 防御タイプはテラスタイプ単独になる。元タイプはSTAB計算用に保持する。
+        pokemon.types = [pokemon.teraType];
+        if (isPlayer) updateMoves();
+        updateHpBars();
+        await showMessage(`${getShownName(pokemon)} は テラスタルした！ ${pokemon.teraType}タイプに へんかした！`);
+        return true;
+    }
+
     async function megaEvolve(pokemon,isPlayer){
 
     if(!canMegaEvolve(pokemon)) return;
@@ -4924,7 +5084,7 @@ function updateMoves() {
 moveTooltip.innerHTML = "";
 
     // 最初は技を隠してメニューを表示
-if (!playerPokemon.pendingMega) {
+if (!playerPokemon.pendingMega && !playerPokemon.pendingTera) {
     battleMenu.style.display = "grid";
     movesContainer.style.display = "none";
 }
@@ -4994,6 +5154,47 @@ button.onmouseout = () => {
 
         movesContainer.appendChild(button);
     });
+
+// テラスタル：設定済みのテラスタイプを固定し、変更できないようにする。
+if (
+    teraRuleEnabled &&
+    !playerPokemon.teraUsed &&
+    !playerPokemon.teraActive &&
+    !playerPokemon.pendingTera
+) {
+    const teraBtn = document.createElement('button');
+    const lockedTeraType =
+        playerPokemon.teraType ||
+        (playerPokemon.originalTypes || playerPokemon.types || ['ノーマル'])[0] ||
+        'ノーマル';
+
+    teraBtn.textContent = `テラスタル（${lockedTeraType}）`;
+    teraBtn.className =
+        'border-2 border-cyan-500 bg-cyan-100 text-gray-900 rounded p-1';
+
+    teraBtn.onclick = () => {
+        if (isBattleInProgress || (onlineMode && onlineWaitingForRemote)) return;
+
+        // チーム設定時に決めたテラスタイプで発動を予約する
+        playerPokemon.pendingTera = true;
+        updateMoves();
+
+        battleMenu.style.display = 'none';
+        movesContainer.style.display = 'grid';
+
+        messageText.textContent =
+            `${playerPokemon.name} は ${lockedTeraType}タイプに テラスタルする準備をした！ 技を選んでください。`;
+    };
+
+    movesContainer.appendChild(teraBtn);
+} else if (playerPokemon.teraActive) {
+    const teraInfo = document.createElement('div');
+    teraInfo.className =
+        'col-span-2 text-center text-xs font-bold text-cyan-800 p-1';
+    teraInfo.textContent =
+        `テラスタル中：${playerPokemon.teraType}タイプ`;
+    movesContainer.appendChild(teraInfo);
+}
 
     // メガ進化
     if (canMegaEvolve(playerPokemon)) {
@@ -5110,6 +5311,10 @@ btn.onmouseout = () => {
     moveBackButton.className =
         "col-span-2 border-2 border-gray-800 rounded p-1 bg-gray-200 hover:bg-gray-300";
     moveBackButton.onclick = () => {
+        if (playerPokemon.pendingTera) {
+            playerPokemon.pendingTera = false;
+            messageText.textContent = 'テラスタルを とりやめた！';
+        }
         returnToBattleMenu();
     };
     movesContainer.appendChild(moveBackButton);
@@ -6146,6 +6351,11 @@ if (difficulty === "online" && onlineRole === "host") {
         if (remoteAction.useMega && canMegaEvolve(opponentPokemon) && !opponentPokemon.megaEvolved) {
             opponentPokemon.pendingMega = true;
         }
+        if (teraRuleEnabled && remoteAction.useTera && !opponentPokemon.teraUsed && !opponentPokemon.teraActive) {
+            const validTeraTypes = ['ノーマル','ほのお','みず','でんき','くさ','こおり','かくとう','どく','じめん','ひこう','エスパー','むし','いわ','ゴースト','ドラゴン','あく','はがね','フェアリー'];
+            if (validTeraTypes.includes(remoteAction.teraType)) opponentPokemon.teraType = remoteAction.teraType;
+            opponentPokemon.pendingTera = true;
+        }
     }
 } else if (
     difficulty !== "easy" &&
@@ -6165,6 +6375,11 @@ if (!opponentSwitched) {
         opponentPokemon.choiceLockedMove = opponentMove.name;
     }
 }
+if (teraRuleEnabled && difficulty !== "online" && !opponentSwitched && !opponentPokemon.teraUsed && !opponentPokemon.teraActive) {
+    // CPUも設定されたテラスタイプで発動する。攻撃強化だけでなく防御目的の発動も可能にする。
+    const aiTeraChance = difficulty === 'hard' ? 0.35 : difficulty === 'normal' ? 0.15 : 0;
+    if (Math.random() < aiTeraChance) opponentPokemon.pendingTera = true;
+}
 if (
     difficulty !== "online" &&
     !opponentSwitched &&
@@ -6181,6 +6396,13 @@ if (playerPokemon.pendingMega) {
 if (opponentPokemon.pendingMega) {
     await megaEvolve(opponentPokemon, false);
     opponentPokemon.pendingMega = false;
+}
+
+if (playerPokemon.pendingTera) {
+    await teraEvolve(playerPokemon, true);
+}
+if (opponentPokemon.pendingTera) {
+    await teraEvolve(opponentPokemon, false);
 }
 
 if (
@@ -6537,10 +6759,9 @@ function getAITypeEffectiveness(move, attackerOrDefender, maybeDefender) {
     const moveTypes =
         getAIMoveTypes(move, attacker);
 
-    const defenderTypes =
-        Array.isArray(defender.types)
-            ? defender.types
-            : [defender.types];
+    const defenderTypes = defender.teraActive
+        ? [defender.teraType]
+        : (Array.isArray(defender.types) ? defender.types : [defender.types]);
 
     let best = 0;
 
@@ -13400,18 +13621,35 @@ if (field.type === 'grass') {
 
         let damage = Math.floor(Math.floor(Math.floor(2 * level / 5 + 2) * movePower * attackStat / defenseStat) / 50) + 2;
 
-        if (attackTypes.some(type => attacker.types.includes(type))) {
-    const stabMultiplier = attacker.ability === 'てきおうりょく' ? 2 : 1.5;
-    damage = Math.floor(damage * stabMultiplier);
-}
+        const originalAttackerTypes = attacker.teraActive && Array.isArray(attacker.originalTypes)
+            ? attacker.originalTypes
+            : (Array.isArray(attacker.types) ? attacker.types : [attacker.types].filter(Boolean));
+        const hasOriginalStab = attackTypes.some(type => originalAttackerTypes.includes(type));
+        const hasTeraStab = !!attacker.teraActive && attackTypes.includes(attacker.teraType);
+        if (hasOriginalStab || hasTeraStab) {
+            let stabMultiplier = 1.5;
+            if (attacker.ability === 'てきおうりょく') {
+                stabMultiplier = hasTeraStab && originalAttackerTypes.includes(attacker.teraType)
+                    ? 2.25
+                    : (hasOriginalStab ? 2 : 1.5);
+            } else if (hasTeraStab && originalAttackerTypes.includes(attacker.teraType)) {
+                stabMultiplier = 2;
+            } else if (hasTeraStab) {
+                stabMultiplier = 1.5;
+            }
+            damage = Math.floor(damage * stabMultiplier);
+        }
 
         if (defender.ability === 'マルチスケイル' && defender.currentHp === defender.maxHp && !defender.hasSubstitute) damage *= 0.5;
         if (defender.ability === 'あついしぼう' && (attackTypes.includes('ほのお') || attackTypes.includes('こおり'))) damage *= 0.5;
         
        // 攻撃タイプが複数ある技は各タイプの相性を掛け合わせる。
 // フリーズドライは、こおり技に対するみずタイプの耐性を弱点に置き換える。
+const defenderTypesForDamage = defender.teraActive
+    ? [defender.teraType]
+    : (Array.isArray(defender.types) ? defender.types : [defender.types].filter(Boolean));
 const typeMultiplier = attackTypes.reduce((moveMultiplier, attackingType) => {
-    const againstDefender = (Array.isArray(defender.types) ? defender.types : []).reduce((defMultiplier, defendingType) => {
+    const againstDefender = defenderTypesForDamage.reduce((defMultiplier, defendingType) => {
         const multiplier = move.name === "フリーズドライ" && attackingType === "こおり" && defendingType === "みず"
             ? 2
             : (typeChart[attackingType]?.[defendingType] ?? 1);
@@ -13423,13 +13661,13 @@ const typeMultiplier = attackTypes.reduce((moveMultiplier, attackingType) => {
 
 if (
     (attacker.ability === "きもったま" || attacker.ability === "しんがん") &&
-    defender.types.includes("ゴースト") &&
+    defenderTypesForDamage.includes("ゴースト") &&
     attackTypes.some(type => type === "ノーマル" || type === "かくとう") &&
     typeMultiplier === 0
 ) {
     // ゴーストタイプの無効だけを無視し、複合タイプ側の耐性・弱点は残す。
     actualTypeMultiplier = attackTypes.reduce((moveMultiplier, attackingType) => {
-        const againstDefender = defender.types.reduce((defMultiplier, defendingType) => {
+        const againstDefender = defenderTypesForDamage.reduce((defMultiplier, defendingType) => {
             const multiplier = defendingType === "ゴースト" && (attackingType === "ノーマル" || attackingType === "かくとう")
                 ? 1
                 : (typeChart[attackingType]?.[defendingType] ?? 1);

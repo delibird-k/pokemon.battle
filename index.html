@@ -392,7 +392,7 @@
     <h3 style="font-weight:900;margin:8px 0;">努力値（合計 <span id="custom-ev-total">0</span> / 510）</h3>
     <div id="custom-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:16px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">技の変更（4枠）</h3>
-    <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。使用率順位はポケモンチャンピオンズ（シングル）の集計に基づきます。データ未登録のポケモンはインターネット接続が必要です。</p>
+    <p style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">各枠の技を選び直せます。候補は「現在の技」「おすすめ（使用率上位）」です。おすすめ技が登録済みのポケモンは、インターネット接続なしで使えます。</p>
     <p id="custom-moves-source" style="font-size:.72rem;line-height:1.6;color:#555;margin-bottom:8px;">技候補を読み込みます…</p>
     <div id="custom-moves-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:12px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">現在の技データ</h3>
@@ -2022,7 +2022,7 @@ let isBattleInProgress = false;
     // ============================================================
     // 使用率データ（ポケモンチャンピオンズ・シングル／GameWith掲載、集計日 8/31 シーズンM-5）
     //   キー = pokemonBaseData のキー。技は使用率の高い順（[技名, 使用率%]）。
-    //   ここに追加するだけで、そのポケモンの技候補が使用率上位10技になります（未登録のポケモンは従来のネット取得にフォールバック）。
+    //   ここに追加するだけで、そのポケモンの技候補（現在の技と合わせて合計20技）になります（未登録のポケモンは従来のネット取得にフォールバック）。
     // ============================================================
     const CHAMPIONS_MOVE_USAGE = {
       garchomp: [['じしん',99.2],['ステルスロック',50.5],['スケイルショット',46.7],['つるぎのまい',31.6],['ドラゴンテール',30.2],['げきりん',30.1],['がんせきふうじ',29.2],['どくづき',16.0],['いわなだれ',13.8],['ほのおのキバ',10.7]]
@@ -2073,75 +2073,110 @@ let isBattleInProgress = false;
       ,'パワーウィップ':{name:'パワーウィップ',power:120,pp:10,type:'くさ',category:'physical',accuracy:85,isContact:true}
       ,'ブレイズキック':{name:'ブレイズキック',power:85,pp:10,type:'ほのお',category:'physical',accuracy:90,isContact:true,critPriority:1,secondary:{chance:10,effect:'status',status:'burn'}}
       ,'マジカルフレイム':{name:'マジカルフレイム',power:75,pp:10,type:'ほのお',category:'special',accuracy:100,secondary:{chance:100,effect:'stat',stat:'spAttack',stage:-1}}
+      ,'つばめがえし':{name:'つばめがえし',power:60,pp:20,type:'ひこう',category:'physical',accuracy:101,isContact:true}
+      ,'でんこうせっか':{name:'でんこうせっか',power:40,pp:30,type:'ノーマル',category:'physical',accuracy:100,priority:1,isContact:true}
+      ,'アイアンテール':{name:'アイアンテール',power:100,pp:15,type:'はがね',category:'physical',accuracy:75,isContact:true,secondary:{chance:30,effect:'stat',stat:'defense',stage:-1}}
+      ,'アクアテール':{name:'アクアテール',power:90,pp:10,type:'みず',category:'physical',accuracy:90,isContact:true}
+      ,'エアカッター':{name:'エアカッター',power:60,pp:25,type:'ひこう',category:'special',accuracy:95,critPriority:1}
+      ,'グロウパンチ':{name:'グロウパンチ',power:50,pp:20,type:'かくとう',category:'physical',accuracy:100,isContact:true,secondary:{chance:100,effect:'stat',stat:'attack',stage:1,self:true}}
+      ,'サイコショック':{name:'サイコショック',power:80,pp:10,type:'エスパー',category:'special',accuracy:100}
+      ,'シグナルビーム':{name:'シグナルビーム',power:75,pp:15,type:'むし',category:'special',accuracy:100,secondary:{chance:10,effect:'confuse'}}
+      ,'シードボム':{name:'シードボム',power:80,pp:15,type:'くさ',category:'physical',accuracy:100}
+      ,'スカイアッパー':{name:'スカイアッパー',power:85,pp:15,type:'かくとう',category:'physical',accuracy:90,isContact:true}
+      ,'ナイトバースト':{name:'ナイトバースト',power:85,pp:10,type:'あく',category:'special',accuracy:95,secondary:{chance:40,effect:'stat',stat:'spDefense',stage:-1}}
+      ,'ドラムアタック':{name:'ドラムアタック',power:80,pp:10,type:'くさ',category:'physical',accuracy:100,secondary:{chance:100,effect:'stat',stat:'speed',stage:-1}}
+      ,'ドリルライナー':{name:'ドリルライナー',power:80,pp:10,type:'じめん',category:'physical',accuracy:95,isContact:true,critPriority:1}
+      ,'ブレイブバード':{name:'ブレイブバード',power:120,pp:15,type:'ひこう',category:'physical',accuracy:100,isContact:true}
+      ,'ベノムショック':{name:'ベノムショック',power:65,pp:10,type:'どく',category:'special',accuracy:100}
+      ,'ぼうふう':{name:'ぼうふう',power:110,pp:10,type:'ひこう',category:'special',accuracy:70,secondary:{chance:30,effect:'confuse'}}
+      ,'じならし':{name:'じならし',power:60,pp:20,type:'じめん',category:'physical',accuracy:100,secondary:{chance:100,effect:'stat',stat:'speed',stage:-1}}
+      ,'たたりめ':{name:'たたりめ',power:65,pp:10,type:'ゴースト',category:'special',accuracy:100}
+      ,'つじぎり':{name:'つじぎり',power:70,pp:5,type:'あく',category:'physical',accuracy:100,isContact:true,critPriority:1}
+      ,'ヘドロこうげき':{name:'ヘドロこうげき',power:120,pp:5,type:'どく',category:'physical',accuracy:100,secondary:{chance:30,effect:'status',status:'poison'}}
+      ,'からてチョップ':{name:'からてチョップ',power:50,pp:25,type:'かくとう',category:'physical',accuracy:100,isContact:true,critPriority:1}
+      ,'ドレインパンチ':{name:'ドレインパンチ',power:75,pp:10,type:'かくとう',category:'physical',accuracy:100,isContact:true}
+      ,'ブラストバーン':{name:'ブラストバーン',power:150,pp:5,type:'ほのお',category:'special',accuracy:90,self:{stats:[{effect:'stat',stat:'spAttack',stage:-3}]}}
+      ,'でんげきは':{name:'でんげきは',power:60,pp:20,type:'でんき',category:'special',accuracy:101}
+      ,'ねっさのだいち':{name:'ねっさのだいち',power:70,pp:10,type:'じめん',category:'special',accuracy:100,secondary:{chance:30,effect:'status',status:'burn'}}
+      ,'バークアウト':{name:'バークアウト',power:55,pp:15,type:'あく',category:'special',accuracy:95,secondary:{chance:100,effect:'stat',stat:'spAttack',stage:-1}}
+      ,'シャドーパンチ':{name:'シャドーパンチ',power:60,pp:20,type:'ゴースト',category:'physical',accuracy:101,isContact:true}
+      ,'こごえるかぜ':{name:'こごえるかぜ',power:55,pp:15,type:'こおり',category:'special',accuracy:95,secondary:{chance:100,effect:'stat',stat:'speed',stage:-1}}
+      ,'みずのはどう':{name:'みずのはどう',power:60,pp:20,type:'みず',category:'special',accuracy:100,secondary:{chance:20,effect:'confuse'}}
+      ,'ドわすれ':{name:'ドわすれ',pp:20,type:'エスパー',category:'status',accuracy:101,apiTarget:'user',apiStatChanges:[{stat:'special-defense',change:2}]}
+      ,'ボディパージ':{name:'ボディパージ',pp:15,type:'はがね',category:'status',accuracy:101,apiTarget:'user',apiStatChanges:[{stat:'speed',change:2}]}
+      ,'エレキネット':{name:'エレキネット',power:55,pp:15,type:'でんき',category:'special',accuracy:95,secondary:{chance:100,effect:'stat',stat:'speed',stage:-1}}
+      ,'ドレインキッス':{name:'ドレインキッス',power:50,pp:10,type:'フェアリー',category:'special',accuracy:100}
     };
     // 仮データ：使用率の実測値ではなく、一般的によく使われる定番技（ガブリアス以外）。GameWithなどの実データが手に入ったら CHAMPIONS_MOVE_USAGE に [技名,使用率] で追加すると置き換わります。
     const CHAMPIONS_PROVISIONAL_MOVES = {
- "Venusaur": "ギガドレイン,ヘドロばくだん,やどりぎのたね,ねむりごな,どくどく,こうごうせい,エナジーボール,ウッドハンマー,じしん,だいちのちから",
- "charizard": "かえんほうしゃ,フレアドライブ,じしん,はねやすめ,りゅうのまい,エアスラッシュ,オーバーヒート,げきりん,だいもんじ,ねっぷう",
- "Ninetales": "オーロラベール,ふぶき,ムーンフォース,れいとうビーム,こおりのつぶて,わるだくみ,マジカルシャイン,シャドーボール,めいそう,まもる",
- "slowbro": "シェルアームズ,なまける,サイコキネシス,れいとうビーム,かえんほうしゃ,どくどく,わるだくみ,ヘドロばくだん,ヘドロウェーブ,ねむる",
- "gengar": "シャドーボール,ヘドロばくだん,きあいだま,ヘドロウェーブ,みがわり,わるだくみ,10まんボルト,かげうち,おにび,まもる",
- "Kangaskhan": "ふいうち,じしん,すてみタックル,ほのおのパンチ,れいとうパンチ,じゃれつく,からげんき,おんがえし,ギガインパクト,まもる",
- "Starmie": "ハイドロポンプ,サイコキネシス,れいとうビーム,10まんボルト,じこさいせい,アクアジェット,しねんのずつき,アイススピナー,ねっとう,まもる",
- "Gyarados": "りゅうのまい,たきのぼり,かみくだく,じしん,げきりん,アクアジェット,こおりのキバ,ストーンエッジ,まもる,ハイドロポンプ",
- "snorlax": "のしかかり,じしん,ねむる,ねごと,あくび,のろい,からげんき,れいとうパンチ,ほのおのパンチ,ギガインパクト",
- "zapdos": "10まんボルト,ボルトチェンジ,ねっぷう,はねやすめ,エアスラッシュ,めざめるパワー氷,ほうでん,でんじは,まもる,かみなり",
- "dragonite": "りゅうのまい,しんそく,じしん,アイススピナー,ドラゴンクロー,はねやすめ,げきりん,ほのおのパンチ,かみなりパンチ,まもる",
- "Umbreon": "イカサマ,つきのひかり,どくどく,あくのはどう,まもる,あくび,ねむる,ねごと,のろい",
- "scizor": "バレットパンチ,つるぎのまい,とんぼがえり,はねやすめ,インファイト,アイアンヘッド,シザークロス,まもる",
- "Porygon2": "じこさいせい,トライアタック,れいとうビーム,10まんボルト,でんじは,サイコキネシス,シャドーボール,わるだくみ,ふぶき",
- "Entei": "せいなるほのお,フレアドライブ,しんそく,アイアンヘッド,ストーンエッジ,くさわけ,じしん,ほのおのキバ,まもる,だいもんじ",
- "Tyranitar": "ストーンエッジ,かみくだく,じしん,ステルスロック,ほのおのパンチ,れいとうパンチ,いわなだれ,アイアンヘッド,かみなりパンチ,りゅうのまい",
- "Blaziken": "フレアドライブ,インファイト,つるぎのまい,とんぼがえり,ブレイズキック,ストーンエッジ,れいとうパンチ,かみなりパンチ,まもる",
- "Breloom": "きのこのほうし,たねばくだん,マッハパンチ,インファイト,つるぎのまい,ストーンエッジ,やどりぎのたね,まもる",
- "Mawile": "じゃれつく,アイアンヘッド,つるぎのまい,ふいうち,ほのおのパンチ,れいとうパンチ,かみなりパンチ,かみくだく",
- "Sharpedo": "アクアブレイク,かみくだく,アクアジェット,こおりのキバ,どくづき,ハイドロポンプ,まもる",
- "Glalie": "フリーズドライ,こおりのつぶて,ふぶき,かみくだく,ぜったいれいど,みがわり,まもる,れいとうビーム,こおりのキバ",
- "Salamence": "りゅうのまい,じしん,すてみタックル,はねやすめ,げきりん,ハイパーボイス,かえんほうしゃ,ドラゴンクロー,かみくだく,まもる",
- "metagross": "しねんのずつき,バレットパンチ,コメットパンチ,じしん,アイアンヘッド,れいとうパンチ,ほのおのパンチ,かみなりパンチ",
- "Latias": "ミストボール,りゅうせいぐん,サイコキネシス,じこさいせい,めいそう,はどうだん,れいとうビーム,ドラゴンテール",
- "Latios": "りゅうせいぐん,サイコキネシス,ラスターパージ,10まんボルト,れいとうビーム,はどうだん,ドラゴンテール,めいそう,まもる",
- "Bastiodon": "ステルスロック,ラスターカノン,ボディプレス,てっぺき,ねむる,ねごと,パワージェム,メタルバースト,じわれ",
- "Lucario": "インファイト,はどうだん,ラスターカノン,バレットパンチ,しんくうは,つるぎのまい,ストーンエッジ,じしん,まもる,めいそう",
- "Hippowdon": "じしん,なまける,ステルスロック,あくび,ストーンエッジ,かみくだく,ふぶき,こおりのキバ,ほのおのキバ,かみなりのキバ",
- "togekiss": "マジカルシャイン,エアスラッシュ,はねやすめ,でんじは,かえんほうしゃ,わるだくみ,だいもんじ,まもる",
- "Rotom": "ボルトチェンジ,ハイドロポンプ,おにび,10まんボルト,シャドーボール,ほうでん,でんじは,みがわり,ねっとう,まもる",
- "rotom2": "オーバーヒート,ボルトチェンジ,おにび,でんじは,10まんボルト,シャドーボール,だいもんじ,ほうでん,みがわり,まもる",
- "Heatran": "ラスターカノン,マグマストーム,だいちのちから,ステルスロック,おにび,まもる,オーバーヒート,だいもんじ,パワージェム",
- "Cresselia": "つきのひかり,ムーンフォース,サイコキネシス,めいそう,れいとうビーム,どくどく,シャドーボール",
- "zoroarkhisui": "ハイパーボイス,シャドーボール,きあいだま,かえんほうしゃ,ヘドロばくだん,うらみつらみ,わるだくみ,かげうち",
- "Ferrothorn": "やどりぎのたね,ジャイロボール,ステルスロック,パワーウィップ,ボディプレス,てっぺき,まもる,どくどく",
- "Hydreigon": "あくのはどう,りゅうせいぐん,かえんほうしゃ,だいもんじ,れいとうビーム,ラスターカノン,わるだくみ,めざめるパワー氷,ドラゴンテール",
- "Volcarona": "ちょうのまい,ほのおのまい,ギガドレイン,むしのさざめき,あさのひざし,ねっぷう,まもる,だいもんじ",
- "Landorus": "だいちのちから,ヘドロウェーブ,わるだくみ,サイコキネシス,きあいだま,エナジーボール,ステルスロック,ヘドロばくだん,じしん,とんぼがえり",
- "landorus": "じしん,とんぼがえり,ステルスロック,つるぎのまい,ストーンエッジ,いわなだれ,はねやすめ,はたきおとす,じだんだ,ばかぢから",
- "Greninja": "ハイドロポンプ,あくのはどう,れいとうビーム,みずしゅりけん,ヘドロウェーブ,とんぼがえり",
- "aegislash": "キングシールド,シャドーボール,アイアンヘッド,かげうち,つるぎのまい,インファイト,せいなるつるぎ",
- "Primarina": "うたかたのアリア,ムーンフォース,めいそう,アクアジェット,ハイパーボイス,れいとうビーム,サイコノイズ,クイックターン,ハイドロポンプ,エナジーボール",
- "mimikyu": "つるぎのまい,じゃれつく,シャドークロー,ゴーストダイブ,ウッドハンマー,かげうち,のろい,シャドーボール,みがわり",
- "TapuLele": "ムーンフォース,サイコキネシス,シャドーボール,きあいだま,エナジーボール,めいそう,めざめるパワー炎,マジカルシャイン",
- "Pheromosa": "インファイト,とびひざげり,とびかかる,どくづき,むしのさざめき,フェイント,ギガインパクト,ばかぢから",
- "Celesteela": "ヘビーボンバー,やどりぎのたね,まもる,ボディプレス,エアスラッシュ,かえんほうしゃ,ラスターカノン,てっぺき,みがわり",
- "kartana": "つるぎのまい,リーフブレード,スマートホーン,せいなるつるぎ,はたきおとす,ギガインパクト",
- "Rillaboom": "グラススライダー,ウッドハンマー,はたきおとす,とんぼがえり,ばかぢから,つるぎのまい,げきりん",
- "Cinderace": "かえんボール,とびひざげり,とんぼがえり,ふいうち,つるぎのまい",
- "Corviknight": "ボディプレス,てっぺき,はねやすめ,とんぼがえり,アイアンヘッド,ドリルくちばし",
- "Dragapult": "ドラゴンアロー,ポルターガイスト,ゴーストダイブ,シャドーボール,りゅうせいぐん,ふいうち,りゅうのまい,かえんほうしゃ,おにび",
- "Urshifu": "すいりゅうれんだ,インファイト,アクアジェット,とんぼがえり,アイススピナー,つるぎのまい,ストーンエッジ",
- "Urshifu1": "あんこくきょうだ,インファイト,ふいうち,とんぼがえり,つるぎのまい,れいとうパンチ,アイアンヘッド,かわらわり",
- "Glastrier": "つららおとし,インファイト,10まんばりき,ヘビーボンバー,ギガインパクト,ぜったいれいど",
- "Ursaluna": "からげんき,じしん,じゃれつく,インファイト,ふいうち,すてみタックル,まもる,ギガインパクト,ほのおのパンチ,れいとうパンチ",
- "UrsalunaBloodmoon": "ブラッドムーン,ハイパーボイス,だいちのちから,しんくうは,まもる,みがわり",
- "Basculegion": "ウェーブタックル,おはかまいり,アクアジェット,こうそくいどう,アクアブレイク,ストーンエッジ,どくづき",
- "Meowscarada": "トリックフラワー,トリプルアクセル,とんぼがえり,はたきおとす,ふいうち,じゃれつく,ばかぢから",
- "Kingambit": "ふいうち,ドゲザン,アイアンヘッド,つるぎのまい,インファイト,はたきおとす,かわらわり,ギガインパクト",
- "FlutterMane": "ムーンフォース,シャドーボール,マジカルフレイム,パワージェム,わるだくみ,めいそう,みがわり,おにび,まもる,めざめるパワー炎",
- "ChienPao": "つるぎのまい,つららおとし,かみくだく,せいなるつるぎ,ふいうち,こおりのつぶて,アイススピナー,はたきおとす",
- "ChiYu": "オーバーヒート,あくのはどう,わるだくみ,だいもんじ,かえんほうしゃ,サイコキネシス,めざめるパワー氷",
- "RoaringMoon": "りゅうのまい,ドラゴンダイブ,かみくだく,じしん,アイアンヘッド,はたきおとす,ストーンエッジ,げきりん,アクロバット,まもる",
- "Archaludon": "ラスターカノン,ボディプレス,りゅうせいぐん,10まんボルト,ステルスロック,ドラゴンテール,でんじは,はどうだん",
- "RagingBolt": "10まんボルト,じんらい,りゅうせいぐん,ボルトチェンジ,かみなり,ボディプレス,ドラゴンテール,めいそう"
+ "Venusaur": "やどりぎのたね,ねむりごな,どくどく,こうごうせい,エナジーボール,じしん,ヘドロウェーブ,ベノムショック,パワーウィップ,ギガインパクト,ねむる,まもる,つるぎのまい,のしかかり,みがわり,たねばくだん",
+ "charizard": "かえんほうしゃ,はねやすめ,エアスラッシュ,オーバーヒート,だいもんじ,ねっぷう,ブラストバーン,ドラゴンクロー,ほのおのパンチ,かみなりパンチ,シャドークロー,いわなだれ,つるぎのまい,まもる,みがわり,ぼうふう",
+ "Ninetales": "ふぶき,こおりのつぶて,マジカルシャイン,めいそう,まもる,こおりのキバ,アイアンテール,エナジーボール,みがわり,こごえるかぜ,じゃれつく,フリーズドライ,ドレインキッス,トリプルアクセル,ぜったいれいど,ギガインパクト",
+ "slowbro": "なまける,どくどく,わるだくみ,ヘドロばくだん,ヘドロウェーブ,ねむる,ねごと,あくび,じしん,シャドーボール,ハイドロポンプ,めいそう,ふぶき,まもる,みがわり,しねんのずつき",
+ "gengar": "ヘドロばくだん,きあいだま,みがわり,わるだくみ,10まんボルト,おにび,まもる,ふいうち,サイコキネシス,エナジーボール,ベノムショック,たたりめ,かみなり,のろい,ポルターガイスト,ゴーストダイブ",
+ "Kangaskhan": "すてみタックル,れいとうパンチ,からげんき,ギガインパクト,まもる,かみなりパンチ,みがわり,きあいだま,いわなだれ,のしかかり,げきりん,かみなり,だいもんじ,ふぶき,ハイドロポンプ,アイアンテール",
+ "Starmie": "ハイドロポンプ,サイコキネシス,れいとうビーム,10まんボルト,じこさいせい,ねっとう,まもる,サイコショック,ふぶき,かみなり,でんじは,みがわり,たきのぼり,クイックターン,みずのはどう,ギガインパクト",
+ "Gyarados": "じしん,こおりのキバ,ストーンエッジ,まもる,ハイドロポンプ,アクアテール,ねっとう,みがわり,ふぶき,みずのはどう,ぼうふう,ギガインパクト,すてみタックル,パワーウィップ,かみなり,だいもんじ",
+ "snorlax": "じしん,ねむる,ねごと,からげんき,れいとうパンチ,ほのおのパンチ,ギガインパクト,かみなりパンチ,ばかぢから,ヘビーボンバー,すてみタックル,ハイパーボイス,きあいだま,げきりん,かみなり,だいもんじ",
+ "zapdos": "ボルトチェンジ,はねやすめ,ほうでん,でんじは,まもる,かみなり,ぼうふう,ブレイブバード,みがわり,エアカッター,つばめがえし,ドリルくちばし,でんげきは,アクロバット,ギガインパクト,からげんき",
+ "dragonite": "りゅうのまい,ドラゴンクロー,はねやすめ,ほのおのパンチ,かみなりパンチ,まもる,ドラゴンテール,ばかぢから,ストーンエッジ,ギガインパクト,エアスラッシュ,ねっぷう,かみなり,りゅうせいぐん,がんせきふうじ,ぼうふう",
+ "Umbreon": "イカサマ,あくび,ねむる,ねごと,のろい,シャドーボール,でんじは,バークアウト,でんこうせっか,サイコキネシス,めいそう,アイアンテール,かみくだく,ギガインパクト,すてみタックル,ハイパーボイス",
+ "scizor": "はねやすめ,アイアンヘッド,シザークロス,まもる,はたきおとす,ギガインパクト,つばめがえし,でんこうせっか,アクロバット,ばかぢから,かわらわり,むしのさざめき,とびかかる,ラスターカノン,すてみタックル,エアスラッシュ",
+ "Porygon2": "れいとうビーム,サイコキネシス,シャドーボール,ふぶき,かみなり,まもる,みがわり,ねむる,ねごと,ほうでん,でんげきは,ギガインパクト,すてみタックル,からげんき,アイアンテール,イカサマ",
+ "Entei": "フレアドライブ,しんそく,ほのおのキバ,まもる,だいもんじ,オーバーヒート,ギガインパクト,かえんほうしゃ,ねっぷう,すてみタックル,アイアンテール,のしかかり,かみくだく,シャドーボール,じだんだ,からげんき",
+ "Tyranitar": "じしん,ステルスロック,いわなだれ,アイアンヘッド,かみなりパンチ,りゅうのまい,ばかぢから,はたきおとす,ギガインパクト,かえんほうしゃ,あくのはどう,だいちのちから,がんせきふうじ,ふぶき,イカサマ,パワージェム",
+ "Blaziken": "つるぎのまい,とんぼがえり,ブレイズキック,ストーンエッジ,かみなりパンチ,ばかぢから,ギガインパクト,つばめがえし,ブレイブバード,かえんほうしゃ,オーバーヒート,ほのおのパンチ,みがわり,ねっぷう,ブラストバーン,とびひざげり",
+ "Breloom": "つるぎのまい,ストーンエッジ,やどりぎのたね,まもる,ギガドレイン,かみなりパンチ,ドレインパンチ,みがわり,きあいだま,エナジーボール,かわらわり,ギガインパクト,アイアンテール,ヘドロばくだん,のしかかり,しねんのずつき",
+ "Mawile": "れいとうパンチ,かみなりパンチ,かみくだく,まもる,ギガインパクト,ストーンエッジ,からげんき,すてみタックル,ヘドロばくだん,みがわり,ステルスロック,ラスターカノン,ドレインキッス,きあいだま,だいもんじ,イカサマ",
+ "Sharpedo": "アクアジェット,どくづき,ハイドロポンプ,ふぶき,ねっとう,ギガインパクト,みずのはどう,こうそくいどう,あくのはどう,たきのぼり,つじぎり,クイックターン,バークアウト,すてみタックル,インファイト,じしん",
+ "Glalie": "こおりのつぶて,ふぶき,かみくだく,れいとうビーム,こおりのキバ,アイアンヘッド,ギガインパクト,じしん,シャドーボール,こごえるかぜ,つららおとし,アイススピナー,ジャイロボール,イカサマ,のしかかり,あくのはどう",
+ "Salamence": "げきりん,ハイパーボイス,かえんほうしゃ,ドラゴンクロー,かみくだく,まもる,ドラゴンテール,ストーンエッジ,ほのおのキバ,かみなりのキバ,りゅうせいぐん,だいもんじ,ギガインパクト,ぼうふう,りゅうのはどう,エアスラッシュ",
+ "metagross": "コメットパンチ,アイアンヘッド,かみなりパンチ,ギガインパクト,ストーンエッジ,ジャイロボール,てっぺき,まもる,いわなだれ,ラスターカノン,サイコキネシス,ステルスロック,ヘビーボンバー,サイコショック,サイコノイズ,すてみタックル",
+ "Latias": "りゅうせいぐん,サイコキネシス,れいとうビーム,10まんボルト,シャドーボール,ねむる,ねごと,みがわり,まもる,りゅうのはどう,サイコショック,でんげきは,げきりん,しねんのずつき,ドラゴンクロー,スケイルショット",
+ "Latios": "サイコキネシス,はどうだん,めいそう,まもる,みがわり,シャドーボール,りゅうのはどう,サイコショック,かみなり,エナジーボール,つばめがえし,げきりん,しねんのずつき,ドラゴンクロー,サイコノイズ,スケイルショット",
+ "Bastiodon": "ステルスロック,ラスターカノン,ボディプレス,てっぺき,パワージェム,じしん,アイアンヘッド,ストーンエッジ,いわなだれ,まもる,のしかかり,でんげきは,アイアンテール,ヘビーボンバー,がんせきふうじ,ギガインパクト",
+ "Lucario": "インファイト,バレットパンチ,つるぎのまい,ストーンエッジ,じしん,まもる,めいそう,グロウパンチ,きあいだま,わるだくみ,ドレインパンチ,とびひざげり,アイアンテール,コメットパンチ,かわらわり,マッハパンチ",
+ "Hippowdon": "ストーンエッジ,かみくだく,こおりのキバ,ほのおのキバ,かみなりのキバ,ねむる,ねごと,いわなだれ,アイアンヘッド,じならし,がんせきふうじ,ギガインパクト,ばかぢから,のしかかり,10まんばりき,だいちのちから",
+ "togekiss": "はねやすめ,わるだくみ,だいもんじ,まもる,サイコキネシス,シャドーボール,ねっぷう,ムーンフォース,みがわり,じゃれつく,つばめがえし,エアカッター,ドレインキッス,ギガインパクト,すてみタックル,ハイパーボイス",
+ "Rotom": "10まんボルト,シャドーボール,ほうでん,でんじは,みがわり,まもる,かみなり,わるだくみ,たたりめ,でんげきは,エレキネット,ポルターガイスト,イカサマ,ハイパーボイス,あくのはどう,からげんき",
+ "rotom2": "10まんボルト,シャドーボール,ほうでん,みがわり,まもる,かみなり,わるだくみ,たたりめ,でんげきは,エレキネット,ポルターガイスト,イカサマ,ハイパーボイス,あくのはどう,からげんき,ねごと",
+ "Heatran": "ラスターカノン,だいちのちから,ステルスロック,オーバーヒート,だいもんじ,ほのおのキバ,アイアンヘッド,ストーンエッジ,かえんほうしゃ,あくのはどう,ねっぷう,じしん,ねっさのだいち,フレアドライブ,ヘビーボンバー,ギガインパクト",
+ "Cresselia": "サイコキネシス,れいとうビーム,シャドーボール,サイコショック,ねむる,ねごと,でんじは,エナジーボール,しねんのずつき,ギガインパクト,かみなり,10まんボルト,のしかかり,パワージェム,マジカルシャイン,からげんき",
+ "zoroarkhisui": "シャドーボール,かえんほうしゃ,ヘドロばくだん,わるだくみ,あくのはどう,とんぼがえり,みがわり,おにび,バークアウト,シャドークロー,ギガインパクト,ポルターガイスト,ゴーストダイブ,のしかかり,からげんき,たたりめ",
+ "Ferrothorn": "ステルスロック,パワーウィップ,ボディプレス,てっぺき,のろい,みがわり,ねむる,ねごと,ギガドレイン,アイアンヘッド,ラスターカノン,ギガインパクト,ヘビーボンバー,エナジーボール,たねばくだん,かみなり",
+ "Hydreigon": "だいもんじ,ラスターカノン,わるだくみ,ドラゴンテール,かみくだく,りゅうのはどう,まもる,バークアウト,げきりん,ドラゴンダイブ,スケイルショット,ギガインパクト,きあいだま,ばかぢから,ハイドロポンプ,じしん",
+ "Volcarona": "むしのさざめき,ねっぷう,まもる,だいもんじ,オーバーヒート,かえんほうしゃ,サイコキネシス,ぼうふう,エアスラッシュ,みがわり,フレアドライブ,とびかかる,マジカルフレイム,とんぼがえり,ギガインパクト,すてみタックル",
+ "Landorus": "きあいだま,ステルスロック,ヘドロばくだん,じしん,とんぼがえり,ストーンエッジ,いわなだれ,ねっさのだいち,ばかぢから,じだんだ,じならし,じわれ,ギガインパクト,げきりん,アイアンテール,のしかかり",
+ "landorus": "ストーンエッジ,いわなだれ,じだんだ,ばかぢから,ヘドロばくだん,ギガインパクト,がんせきふうじ,のしかかり,アイアンテール,だいちのちから,ねっさのだいち,じならし,じわれ,きあいだま,げきりん,ヘドロウェーブ",
+ "Greninja": "ハイドロポンプ,とんぼがえり,まもる,みがわり,かげうち,つじぎり,みずのはどう,ふぶき,アクアブレイク,たきのぼり,クイックターン,ギガインパクト,いわなだれ,かわらわり,れいとうパンチ,からげんき",
+ "aegislash": "シャドーボール,つるぎのまい,せいなるつるぎ,ラスターカノン,シャドークロー,まもる,ギガインパクト,つじぎり,ジャイロボール,つばめがえし,ポルターガイスト,しねんのずつき,いわなだれ,かわらわり,エアスラッシュ,からげんき",
+ "Primarina": "めいそう,ハイパーボイス,れいとうビーム,サイコノイズ,ハイドロポンプ,エナジーボール,ふぶき,まもる,みがわり,ねっとう,シャドーボール,みずのはどう,サイコキネシス,じゃれつく,アクアブレイク,たきのぼり",
+ "mimikyu": "ゴーストダイブ,ウッドハンマー,のろい,シャドーボール,みがわり,まもる,ドレインパンチ,おにび,つじぎり,サイコキネシス,マジカルシャイン,たたりめ,ドレインキッス,ギガインパクト,かみなり,10まんボルト",
+ "TapuLele": "シャドーボール,きあいだま,エナジーボール,マジカルシャイン,サイコショック,みがわり,まもる,10まんボルト,ねむる,ねごと,ドレインキッス,じゃれつく,ギガインパクト,かみなり,からげんき,てっぺき",
+ "Pheromosa": "とびひざげり,どくづき,むしのさざめき,とんぼがえり,まもる,みがわり,かわらわり,きあいだま,げきりん,ふぶき,イカサマ,れいとうビーム,ドリルライナー,からげんき,こごえるかぜ,エレキネット",
+ "Celesteela": "エアスラッシュ,かえんほうしゃ,ラスターカノン,てっぺき,アイアンヘッド,いわなだれ,ギガインパクト,だいもんじ,アクロバット,ジャイロボール,スマートホーン,すてみタックル,ばかぢから,じしん,ストーンエッジ,エナジーボール",
+ "kartana": "せいなるつるぎ,シザークロス,つばめがえし,つじぎり,まもる,みがわり,ギガドレイン,かわらわり,エアスラッシュ,エアカッター,しんくうは,こうごうせい,てっぺき,ねごと,ねむる,めいそう",
+ "Rillaboom": "はたきおとす,ばかぢから,ドラムアタック,ギガインパクト,アクロバット,じしん,やどりぎのたね,みがわり,エナジーボール,たねばくだん,ギガドレイン,くさわけ,きあいだま,すてみタックル,10まんばりき,だいちのちから",
+ "Cinderace": "つるぎのまい,ブレイズキック,アイアンヘッド,ギガインパクト,みがわり,まもる,でんこうせっか,ブラストバーン,オーバーヒート,フレアドライブ,だいもんじ,ねっぷう,かえんほうしゃ,ほのおのパンチ,ほのおのキバ,きあいだま",
+ "Corviknight": "アイアンヘッド,ドリルくちばし,ブレイブバード,エアスラッシュ,つばめがえし,まもる,ギガインパクト,ぼうふう,エアカッター,ラスターカノン,ヘビーボンバー,すてみタックル,のしかかり,からげんき,こうそくいどう,ねごと",
+ "Dragapult": "ゴーストダイブ,シャドーボール,りゅうせいぐん,かえんほうしゃ,おにび,10まんボルト,ドラゴンテール,とんぼがえり,たたりめ,まもる,みがわり,げきりん,ドラゴンダイブ,りゅうのはどう,ドラゴンクロー,ギガインパクト",
+ "Urshifu": "とんぼがえり,つるぎのまい,ストーンエッジ,かわらわり,つばめがえし,アイアンヘッド,ばかぢから,ギガインパクト,ドレインパンチ,まもる,みがわり,かみなりパンチ,きあいだま,アクアブレイク,たきのぼり,ねっとう",
+ "Urshifu1": "とんぼがえり,つるぎのまい,アイアンヘッド,かわらわり,ストーンエッジ,つばめがえし,ばかぢから,ギガインパクト,ドレインパンチ,まもる,みがわり,かみなりパンチ,ほのおのパンチ,きあいだま,イカサマ,あくのはどう",
+ "Glastrier": "ギガインパクト,ばかぢから,のしかかり,まもる,みがわり,ふぶき,れいとうビーム,こごえるかぜ,げきりん,すてみタックル,かみくだく,しねんのずつき,ボディプレス,じだんだ,からげんき,スマートホーン",
+ "Ursaluna": "インファイト,すてみタックル,ギガインパクト,ほのおのパンチ,れいとうパンチ,ストーンエッジ,かみなりパンチ,ドレインパンチ,いわなだれ,ねむる,ねごと,つるぎのまい,シャドークロー,10まんばりき,だいちのちから,ハイパーボイス",
+ "UrsalunaBloodmoon": "まもる,みがわり,きあいだま,ねむる,ねごと,シャドークロー,バークアウト,ギガインパクト,すてみタックル,じしん,10まんばりき,のしかかり,じだんだ,からげんき,じならし,インファイト",
+ "Basculegion": "アクアブレイク,ギガインパクト,かみくだく,まもる,ハイドロポンプ,ゴーストダイブ,たきのぼり,シャドーボール,クイックターン,たたりめ,みずのはどう,げきりん,すてみタックル,ふぶき,れいとうビーム,しねんのずつき",
+ "Meowscarada": "とんぼがえり,はたきおとす,グラススライダー,アクロバット,ギガインパクト,シャドークロー,まもる,みがわり,つじぎり,イカサマ,エナジーボール,あくのはどう,たねばくだん,ギガドレイン,くさわけ,はどうだん",
+ "Kingambit": "つるぎのまい,ギガインパクト,つじぎり,ストーンエッジ,まもる,みがわり,つばめがえし,イカサマ,あくのはどう,ラスターカノン,バークアウト,きあいだま,しねんのずつき,どくづき,シザークロス,エアスラッシュ",
+ "FlutterMane": "マジカルフレイム,みがわり,まもる,エナジーボール,たたりめ,10まんボルト,サイコショック,ドレインキッス,ポルターガイスト,ゴーストダイブ,マジカルシャイン,ギガインパクト,かみなり,ハイパーボイス,あくのはどう,こごえるかぜ",
+ "ChienPao": "つるぎのまい,こおりのつぶて,アイススピナー,ギガインパクト,つじぎり,まもる,みがわり,かわらわり,ふぶき,あくのはどう,こおりのキバ,こごえるかぜ,バークアウト,ぜったいれいど,からげんき,たたりめ",
+ "ChiYu": "わるだくみ,だいもんじ,かえんほうしゃ,ねっぷう,まもる,みがわり,バークアウト,フレアドライブ,かみくだく,ギガインパクト,しねんのずつき,からげんき,たたりめ,おにび,ねごと,ねむる",
+ "RoaringMoon": "ドラゴンダイブ,アイアンヘッド,はたきおとす,ストーンエッジ,アクロバット,まもる,ギガインパクト,ドラゴンクロー,ほのおのキバ,かみなりのキバ,つばめがえし,ドラゴンテール,みがわり,りゅうせいぐん,りゅうのはどう,あくのはどう",
+ "Archaludon": "ボディプレス,ステルスロック,ドラゴンテール,でんじは,まもる,アイアンヘッド,ドラゴンクロー,じしん,かみなり,てっぺき,げきりん,ジャイロボール,ヘビーボンバー,りゅうのはどう,ギガインパクト,すてみタックル",
+ "RagingBolt": "10まんボルト,かみなり,ボディプレス,ドラゴンテール,めいそう,ほうでん,まもる,みがわり,でんげきは,げきりん,りゅうのはどう,かみなりのキバ,エレキネット,ギガインパクト,すてみタックル,じしん"
 };
+    // ガブリアス：使用率データに加えて、候補が合計20技になるよう（覚える技のみ）定番技を追加
+    CHAMPIONS_MOVE_USAGE.garchomp.push(...["アイアンヘッド", "ストーンエッジ", "ドラゴンクロー", "かみくだく", "かみなりのキバ", "まもる", "みがわり", "じならし", "ドラゴンダイブ", "りゅうせいぐん"].map(n=>[n,null]));
     Object.entries(CHAMPIONS_PROVISIONAL_MOVES).forEach(([k,v])=>{ if(!CHAMPIONS_MOVE_USAGE[k]) CHAMPIONS_MOVE_USAGE[k]=v.split(',').map(n=>[n,null]); });
     function customResolveChampionsMove(name){
       const lib=customKnownMoveLibrary.get(name);
@@ -2241,6 +2276,16 @@ let isBattleInProgress = false;
       const selectedMoves=current.slice(0,4).map(m=>m.name);
       while(selectedMoves.length<4)selectedMoves.push('');
       customMovesEditor.innerHTML='';
+      // ---- 絞り込み入力欄（候補が増えたので名前・タイプで探せるようにする） ----
+      let filterBox=document.getElementById('custom-move-filter');
+      if(!filterBox){
+        filterBox=document.createElement('input');
+        filterBox.id='custom-move-filter';filterBox.type='search';
+        filterBox.placeholder='技名・タイプ・物理/特殊/変化で絞り込み（例：ほのお、じしん、変化）';
+        filterBox.style.cssText='width:100%;border:2px solid #333;border-radius:6px;padding:9px;margin-bottom:8px;font-size:.8rem;background:#fff;color:#111;';
+        customMovesEditor.parentNode.insertBefore(filterBox,customMovesEditor);
+      }
+      filterBox.value='';
       for(let i=0;i<4;i++){
         const label=document.createElement('label');
         label.style.cssText='display:flex;flex-direction:column;gap:5px;font-size:.78rem;font-weight:800;border:1px solid #bbb;border-radius:7px;padding:9px;background:#f8fafc;';
@@ -2250,78 +2295,85 @@ let isBattleInProgress = false;
         label.appendChild(select); customMovesEditor.appendChild(label); customMoveSelects.push(select);
       }
       const currentMap=new Map(current.map(m=>[m.name,customCloneMove(m)]));
-      const setOptions=(usageMoves=[],learnedSet=null,trusted=false)=>{
-        const candidateMap=new Map();
-        // The moves already assigned to the Pokémon are kept as existing legal-set entries.
-        current.forEach(m=>candidateMap.set(m.name,{move:customCloneMove(m),rank:0}));
-        // Usage-ranked candidates are admitted only when the species' PokéAPI learnset contains them.
-        usageMoves.forEach(item=>{
-          const slug=String(item.id||'').toLowerCase().replace(/_/g,'-');
-          if(item.move?.name && (trusted || (learnedSet && learnedSet.has(customNormMoveSlug(slug)))))candidateMap.set(item.move.name,{move:item.move,rank:item.rank,usage:item.usage});
-        });
+      // ---- 候補の状態 ----
+      const groups={current:new Map(),usage:new Map()};
+      current.forEach(m=>groups.current.set(m.name,{move:customCloneMove(m),rank:0}));
+      const findMove=name=>{for(const g of [groups.current,groups.usage]){if(g.has(name))return g.get(name).move;}return null;};
+      const stale=()=>!document.getElementById('customize-modal') || customPokemonSelect.value!==key;
+      const catOrder={physical:0,special:1,status:2};
+      const kindOf=m=>m.category==='physical'?'物理':m.category==='special'?'特殊':'変化';
+      const render=()=>{
+        const q=customSlugKey(filterBox.value)?String(filterBox.value).trim().toLowerCase():'';
+        const match=(m)=>!q||[m.name,Array.isArray(m.type)?m.type.join(''):m.type,kindOf(m)].some(t=>String(t||'').toLowerCase().includes(q));
         customMoveSelects.forEach((select,index)=>{
           const wanted=selectedMoves[index];
           select.innerHTML='';
-          candidateMap.forEach(({move,rank,usage},name)=>{
-            const opt=document.createElement('option');opt.value=name;opt.textContent=customMoveOptionLabel(move,rank,usage);select.appendChild(opt);
-          });
-          select.value=wanted&&candidateMap.has(wanted)?wanted:(select.options[0]?.value||'');
-          selectedMoves[index]=select.value;
-          select.onchange=()=>{
-            selectedMoves[index]=select.value;
-            const move=candidateMap.get(select.value)?.move;
-            if(move)customMoveCache.set(move.name,customCloneMove(move));
-            customRenderMoveReference({moves:selectedMoves.map(n=>candidateMap.get(n)?.move).filter(Boolean)});
+          const used=new Set();
+          const addGroup=(title,map,sorter)=>{
+            let entries=[...map.entries()].filter(([name,{move}])=>!used.has(name)&&(name===wanted||match(move)));
+            if(sorter)entries.sort(sorter);
+            if(!entries.length)return;
+            const og=document.createElement('optgroup');og.label=`${title}（${entries.length}）`;
+            entries.forEach(([name,{move,rank,usage}])=>{
+              used.add(name);
+              const opt=document.createElement('option');opt.value=name;opt.textContent=customMoveOptionLabel(move,rank,usage);og.appendChild(opt);
+            });
+            select.appendChild(og);
           };
+          addGroup('現在の技',groups.current);
+          addGroup('おすすめ・使用率上位',groups.usage,(x,y)=>(x[1].rank||99)-(y[1].rank||99));
+                    if(wanted){const o=[...select.options].find(o=>o.value===wanted);if(o)select.value=wanted;}
+          if(!select.value&&select.options[0]){select.value=select.options[0].value;}
+          selectedMoves[index]=select.value;
         });
+        customRenderMoveReference({moves:selectedMoves.map(n=>findMove(n)||currentMap.get(n)||customMoveCache.get(n)).filter(Boolean)});
       };
-      setOptions([],new Set());
+      customMoveSelects.forEach((select,index)=>{
+        select.onchange=()=>{
+          selectedMoves[index]=select.value;
+          const move=findMove(select.value);
+          if(move)customMoveCache.set(move.name,customCloneMove(move));
+          customRenderMoveReference({moves:selectedMoves.map(n=>findMove(n)||customMoveCache.get(n)).filter(Boolean)});
+        };
+      });
+      filterBox.oninput=render;
+      let renderTimer=null;
+      const renderSoon=()=>{if(renderTimer)return;renderTimer=setTimeout(()=>{renderTimer=null;if(!stale())render();},250);};
+      const countText=()=>`現在の技${groups.current.size}／おすすめ${groups.usage.size}`;
+      render();
       customMovesSource.textContent='このポケモンが覚えられる技を確認しています…';
-      const stale=()=>!document.getElementById('customize-modal') || customPokemonSelect.value!==key;
-      // ① 埋め込み済みの使用率データ（GameWith）があればそれを最優先で使う。ゲームに無い技は自動で追加する。
+      // ① おすすめ（埋め込みの使用率／定番技）
       const embedded=CHAMPIONS_MOVE_USAGE[key];
+      const added=[];
       if(embedded&&embedded.length){
-        const usageMoves=[];const added=[];
-        embedded.slice(0,10).forEach(([name,pct],i)=>{
+        embedded.forEach(([name,pct],i)=>{
           const r=customResolveChampionsMove(name);
           if(!r)return;
           customMoveCache.set(r.move.name,customCloneMove(r.move));
           if(r.added)added.push(name);
-          usageMoves.push({id:name,move:r.move,rank:i+1,usage:pct});
+          groups.usage.set(r.move.name,{move:r.move,rank:i+1,usage:pct});
         });
-        if(usageMoves.length){
-          setOptions(usageMoves,null,true);
-          const real=usageMoves.some(u=>u.usage!=null);
-          customMovesSource.textContent=(real?`候補：現在の技 ＋ 使用率上位${usageMoves.length}技（ポケモンチャンピオンズ・シングル／GameWith）。`:`候補：現在の技 ＋ このポケモンがよく使う技${usageMoves.length}技。`)+(added.length?` ゲームに無かった技を追加しました：${added.join('、')}`:'');
-          customRenderMoveReference({moves:selectedMoves.map(n=>currentMap.get(n)||customMoveCache.get(n)).filter(Boolean)});
-          return;
-        }
+        render();
       }
+      // おすすめ技が登録済みのポケモンは、通信せずここで完了
+      if(groups.usage.size){
+        customMovesSource.textContent=`候補：${countText()}。`+(added.length?` ゲームに無かった技を追加：${added.join('、')}`:'');
+        return;
+      }
+      // 未登録のポケモンのみ、従来どおりネットから使用率上位の技を取得
       const [learnedSet,rows]=await Promise.all([customLoadLearnset(p,key),customLoadUsageRows()]);
       if(stale())return;
-      const row=customUsageForPokemon(key,p);
-      const allUsage=customParseUsageMoves(row);
-      if(!learnedSet){
-        // 覚える技が確認できない場合は、安全のため現在の技のみ
-        setOptions([],new Set());
-        customMovesSource.textContent='覚える技データを取得できなかったため、現在の技のみ表示しています。通信できる環境で再度開いてください。';
-      }else if(!allUsage.length){
-        setOptions([],learnedSet);
-        customMovesSource.textContent='使用率データを取得できなかったため、現在の技のみ表示しています。通信できる環境で再度開いてください。';
-      }else{
-        // ① 使用率順のまま「このポケモンが覚えられる技」だけに絞る → ② その上位10技を候補にする
-        const learnable=allUsage.filter(item=>learnedSet.has(customNormMoveSlug(item.id)));
-        const picked=learnable.slice(0,14); // 技データ取得に失敗した分の予備を含めて取得
-        const fetched=await Promise.all(picked.map(async item=>({item,move:await customFetchMoveData(item.id)})));
-        if(stale())return;
-        const usageMoves=[];
-        fetched.forEach(({item,move})=>{if(move&&usageMoves.length<10)usageMoves.push({id:item.id,move,rank:usageMoves.length+1,usage:item.usage});});
-        setOptions(usageMoves,learnedSet);
-        customMovesSource.textContent=usageMoves.length
-          ?`候補：現在の技 ＋ このポケモンが覚えられる技の使用率上位${usageMoves.length}技（National Dex OU）。好きな技を4枠に選べます。`
-          :'使用率データの中に、このポケモンが覚えられる技が見つかりませんでした。現在の技のみ選択できます。';
+      const allUsage=customParseUsageMoves(customUsageForPokemon(key,p));
+      if(!learnedSet||!allUsage.length){
+        customMovesSource.textContent='おすすめ技のデータがないため、現在の技のみ表示しています。通信できる環境で再度開くと候補が増える場合があります。';
+        return;
       }
-      customRenderMoveReference({moves:selectedMoves.map(n=>currentMap.get(n)||customMoveCache.get(n)).filter(Boolean)});
+      const picked=allUsage.filter(item=>learnedSet.has(customNormMoveSlug(item.id))).slice(0,14);
+      const fetched=await Promise.all(picked.map(async item=>({item,move:await customFetchMoveData(item.id)})));
+      if(stale())return;
+      fetched.forEach(({item,move})=>{if(move&&groups.usage.size<10)groups.usage.set(move.name,{move,rank:groups.usage.size+1,usage:item.usage});});
+      render();
+      customMovesSource.textContent=`候補：${countText()}。`;
     }
 
     const customNatureStatLabels = {attack:'こうげき',defense:'ぼうぎょ',spAttack:'とくこう',spDefense:'とくぼう',speed:'すばやさ'};

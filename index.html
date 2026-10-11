@@ -1997,7 +1997,7 @@ let isBattleInProgress = false;
         'こだわりメガネ': { name: 'こだわりメガネ', description: '特殊技の威力が1.5倍。交代するまで技が固定。'},
         'ちからのハチマキ': { name: 'ちからのハチマキ', description: '物理技の威力が1.3倍。'},
         'ものしりメガネ': { name: 'ものしりメガネ', description: '特殊技の威力が1.3倍。'},
-        'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.2倍。交代するまで技が固定。'},
+        'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.５倍。交代するまで技が固定。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら最大HPの1/8のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/4回復。'},
@@ -6888,7 +6888,7 @@ function getAIEffectiveStat(pokemon, statName) {
     let effective = Math.max(1, stat * getStatModifier(stage));
     if (statName === 'speed') {
         if (pokemon.status === 'paralyze') effective *= 0.5;
-        if (pokemon.item?.name === 'こだわりスカーフ') effective *= 1.2;
+        if (pokemon.item?.name === 'こだわりスカーフ') effective *= 1.5;
         if (isAncientBoostActive(pokemon) && getAncientBoostStat(pokemon) === 'speed') effective *= 1.5;
         if (pokemon.ability === 'ききかいひ') effective *= 1.25;
     }

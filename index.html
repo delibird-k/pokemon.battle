@@ -1077,7 +1077,7 @@ function updateBattleNameLabel(pokemon, nameEl, shownName = null) {
         badge.style.color = '#ffffff';
         badge.style.fontSize = '0.58rem';
         badge.style.whiteSpace = 'nowrap';
-        badge.textContent = `ダイマックス（あと${pokemon.dynamaxTurns}ターン）`;
+        badge.textContent = `ダイマックス ${pokemon.dynamaxTurns}`;
         nameEl.appendChild(badge);
     }
 }

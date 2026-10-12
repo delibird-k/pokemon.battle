@@ -10989,6 +10989,12 @@ for(let hit = 0; hit < hitCount; hit++){
         defender.currentHp - currentDamage
     );
     defender.lastAttacker = attacker;
+
+    // 通常の単発技は applyDamage() を通らず、この処理でHPを直接減らす。
+    // そのため、実際の通常攻撃ルートでダメージ直後にはたきおとすを処理する。
+    if (!move?.isDynamaxMove && currentDamage > 0) {
+        await applyKnockOffEffect(attacker, defender, move, currentDamage, false);
+    }
     if (currentDamage > 0) {
         shakeSprite(defenderUI.sprite);
         vibrateOnHit();

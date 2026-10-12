@@ -1065,7 +1065,7 @@ function updateBattleNameLabel(pokemon, nameEl, shownName = null) {
         badge.style.fontWeight = 'bold';
         badge.style.lineHeight = '1.4';
         badge.style.whiteSpace = 'nowrap';
-        badge.textContent = `テラスタル${pokemon.teraType ? `（${pokemon.teraType}）` : ''}`;
+        badge.textContent = pokemon.teraType || '';
         nameEl.appendChild(badge);
     }
     if (pokemon.dynamaxActive) {
@@ -1077,7 +1077,7 @@ function updateBattleNameLabel(pokemon, nameEl, shownName = null) {
         badge.style.color = '#ffffff';
         badge.style.fontSize = '0.58rem';
         badge.style.whiteSpace = 'nowrap';
-        badge.textContent = `ダイマックス ${pokemon.dynamaxTurns}`;
+        badge.textContent = `ダイマックス（あと${pokemon.dynamaxTurns}ターン）`;
         nameEl.appendChild(badge);
     }
 }
@@ -5515,7 +5515,7 @@ if (
         (playerPokemon.originalTypes || playerPokemon.types || ['ノーマル'])[0] ||
         'ノーマル';
 
-    teraBtn.textContent = `${lockedTeraType}`;
+    teraBtn.textContent = `テラスタル（${lockedTeraType}）`;
     teraBtn.className =
         'border-2 border-cyan-500 bg-cyan-100 text-gray-900 rounded p-1';
 

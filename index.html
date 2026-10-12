@@ -182,12 +182,22 @@
 
         .opening-battle-button { background: #fbbf24; }
 
-        /* バトルをする以外の6ボタンを横一列に6等分 */
+        /* バトルをする → カスタマイズ → 履歴/対人戦(横2つ) → 設定系4つ(横一列) */
         .opening-button-row {
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 6px;
             margin-top: 14px;
+        }
+        .opening-button-row-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .opening-button-row-2 .opening-button {
+            font-size: 0.72rem;
+            min-height: 52px;
+            padding: 12px 6px;
         }
         .opening-button-row .opening-button {
             margin-top: 0;
@@ -290,6 +300,7 @@
             .opening-panel { padding: 22px 14px; }
             .opening-button { font-size: 0.72rem; }
             .opening-button-row .opening-button { font-size: 0.5rem; padding: 8px 1px; min-height: 58px; }
+            .opening-button-row-2 .opening-button { font-size: 0.65rem; padding: 10px 4px; min-height: 52px; }
             .history-row {
                 grid-template-columns: 42px minmax(0, 1fr) 88px;
                 font-size: 0.58rem;
@@ -321,27 +332,29 @@
                 ⚔ バトルをする
             </button>
 
-            <div class="opening-button-row">
-                <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
+            <button id="customize-pokemon-button"
+                    class="opening-button" style="background:#c4b5fd;">
+                🛠 技・努力値・性格をカスタマイズ
+            </button>
 
-                <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタル：ON</button>
-
-                <button id="dynamax-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">ダイマックス：ON</button>
-
+            <div class="opening-button-row opening-button-row-2">
                 <button id="history-button"
                         class="opening-button opening-history-button">
                     📜 履歴を見る
-                </button>
-
-                <button id="customize-pokemon-button"
-                        class="opening-button" style="background:#c4b5fd;">
-                    🛠 技・努力値・性格をカスタマイズ
                 </button>
 
                 <button id="online-battle-button"
                         class="opening-button" style="background:#7c3aed;color:white;">
                     👥 対人戦(PC推奨)
                 </button>
+            </div>
+
+            <div class="opening-button-row opening-button-row-4">
+                <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
+
+                <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタルルール：ON</button>
+
+                <button id="dynamax-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">ダイマックスルール：ON</button>
 
                 <button id="opening-reset-button"
                         class="opening-button opening-reset-button">
@@ -805,8 +818,8 @@ document.getElementById("reset-no-button");
         openingStats.innerHTML = `
             <div>レート：<strong>${rating}</strong></div>
             <div>レート変動：<strong>${ratingEnabled ? 'ON' : 'OFF'}</strong></div>
-            <div>テラスタル：<strong>${teraRuleEnabled ? 'ON' : 'OFF'}</strong></div>
-            <div>ダイマックス：<strong>${dynamaxRuleEnabled ? 'ON' : 'OFF'}</strong></div>
+            <div>テラスタルルール：<strong>${teraRuleEnabled ? 'ON' : 'OFF'}</strong></div>
+            <div>ダイマックスルール：<strong>${dynamaxRuleEnabled ? 'ON' : 'OFF'}</strong></div>
             <div>ランク：${getRank()}</div>
             <div>戦績：${winCount}勝 ${loseCount}敗</div>
             <div>連勝：${winStreak}　連敗：${loseStreak}</div>
@@ -1937,7 +1950,7 @@ let selectedOpponentItemName;
     const teraRuleToggleButton = document.getElementById('tera-rule-toggle-button');
     function updateTeraRuleToggleButton() {
         if (!teraRuleToggleButton) return;
-        teraRuleToggleButton.textContent = `テラスタル：${teraRuleEnabled ? 'ON' : 'OFF'}`;
+        teraRuleToggleButton.textContent = `テラスタルルール：${teraRuleEnabled ? 'ON' : 'OFF'}`;
         teraRuleToggleButton.style.background = teraRuleEnabled ? '#bbf7d0' : '#e5e7eb';
         teraRuleToggleButton.style.color = teraRuleEnabled ? '#14532d' : '#374151';
         teraRuleToggleButton.setAttribute('aria-pressed', String(teraRuleEnabled));
@@ -1957,7 +1970,7 @@ let selectedOpponentItemName;
     const dynamaxRuleToggleButton = document.getElementById('dynamax-rule-toggle-button');
     function updateDynamaxRuleToggleButton() {
         if (!dynamaxRuleToggleButton) return;
-        dynamaxRuleToggleButton.textContent = `ダイマックス：${dynamaxRuleEnabled ? 'ON' : 'OFF'}`;
+        dynamaxRuleToggleButton.textContent = `ダイマックスルール：${dynamaxRuleEnabled ? 'ON' : 'OFF'}`;
         dynamaxRuleToggleButton.style.background = dynamaxRuleEnabled ? '#bbf7d0' : '#e5e7eb';
         dynamaxRuleToggleButton.style.color = dynamaxRuleEnabled ? '#14532d' : '#374151';
         dynamaxRuleToggleButton.setAttribute('aria-pressed', String(dynamaxRuleEnabled));

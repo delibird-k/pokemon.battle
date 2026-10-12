@@ -11414,6 +11414,19 @@ defender.lastDamageTaken = damage;
 defender.lastDamageCategory = move.category;
 defender.lastAttacker = attacker;
 
+// はたきおとす：命中して本体にダメージを与えた場合、対象の持ち物を失わせる。
+// メガストーンとZクリスタルは例外として、はたき落とせない。
+if (
+    move.name === 'はたきおとす' &&
+    damage > 0 &&
+    defender.item &&
+    !['メガストーン', 'Zクリスタル'].includes(defender.item.name)
+) {
+    const knockedItemName = defender.item.name;
+    defender.item = null;
+    await showMessage(`${defender.name} の ${knockedItemName} は はたきおとされた！`);
+}
+
     // 被弾した側を毎回振動させる。
     // 自分が攻撃を受けた場合も、相手が攻撃を受けた場合も同じ処理を通る。
     // 連続技では applyDamage が1発ごとに呼ばれるため、1発ずつ振動する。

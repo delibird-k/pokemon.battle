@@ -6502,6 +6502,12 @@ updateStatDisplay(
         500
     );
 
+    // 交代ターンの終了後、参加側に次ターンの入力権を明示的に戻す。
+    // showMessage() が送る phase='event' のままだと参加側は入力禁止状態のままになる。
+    if (difficulty === "online" && onlineRole === "host") {
+        onlineSendState('input');
+    }
+
     isBattleInProgress = false;
 
     updateHpBars();

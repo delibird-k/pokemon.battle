@@ -5355,6 +5355,9 @@ async function applyDynamaxMoveEffect(attacker, defender, move) {
 const DYNAMAX_STRIPPED_MOVE_PROPS = [
     'secondary',        // 追加効果（状態異常・能力変化・ひるみ・こんらん等）
     'self',             // 攻撃後の自分の能力変化
+    'priority',         // 元技の優先度を引き継がない（通常のダイマックスわざは優先度0）
+    'critPriority',     // 元技の急所ランクを引き継がない
+    'isContact',        // ダイマックスわざは元技の接触判定を引き継がない
     'isDynamicType',    // ランダムタイプ変化＋状態異常
     'isBloodMoon',      // 連続使用不可
     'isSound',          // 音技（みがわり貫通）

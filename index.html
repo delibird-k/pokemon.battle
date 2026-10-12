@@ -195,9 +195,11 @@
             margin-top: 10px;
         }
         .opening-button-row-2 .opening-button {
-            font-size: 0.72rem;
+            font-size: clamp(0.88rem, 2.5vw, 1.05rem);
+            line-height: 1.6;
             min-height: 52px;
-            padding: 12px 6px;
+            padding: 12px 8px;
+            overflow-wrap: anywhere;
         }
         .opening-button-row .opening-button {
             margin-top: 0;
@@ -300,7 +302,7 @@
             .opening-panel { padding: 22px 14px; }
             .opening-button { font-size: 0.72rem; }
             .opening-button-row .opening-button { font-size: 0.5rem; padding: 8px 1px; min-height: 58px; }
-            .opening-button-row-2 .opening-button { font-size: 0.65rem; padding: 10px 4px; min-height: 52px; }
+            .opening-button-row-2 .opening-button { font-size: 0.78rem; line-height: 1.6; padding: 10px 5px; min-height: 56px; }
             .history-row {
                 grid-template-columns: 42px minmax(0, 1fr) 88px;
                 font-size: 0.58rem;
@@ -403,6 +405,16 @@
         </div>
         <button id="online-cancel-button" class="opening-button opening-back-button" style="width:100%;margin-top:10px;">← 戻る</button>
     </div>
+</div>
+
+<div id="surrender-confirm-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.78);padding:16px;align-items:center;justify-content:center;">
+  <div style="width:min(100%,360px);background:#fff8e8;border:4px solid #171717;box-shadow:6px 6px 0 rgba(0,0,0,.45);padding:22px 18px;text-align:center;color:#171717;font-family:'Press Start 2P',monospace;">
+    <p style="font-size:clamp(12px,3.5vw,16px);line-height:1.9;font-weight:900;margin:0 0 22px;">本当にこうさんする？</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button id="surrender-confirm-yes" type="button" style="flex:1;min-height:44px;background:#a91f25;color:#fff;border:3px solid #171717;padding:8px 10px;font-weight:900;font-size:14px;cursor:pointer;">はい</button>
+      <button id="surrender-confirm-no" type="button" style="flex:1;min-height:44px;background:#eee7d8;color:#171717;border:3px solid #171717;padding:8px 10px;font-weight:900;font-size:14px;cursor:pointer;">いいえ</button>
+    </div>
+  </div>
 </div>
 
 <div id="customize-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.78);padding:14px;overflow-y:auto;">
@@ -1040,11 +1052,29 @@ const ratingDisplay = document.getElementById("rating-display");
 function updateBattleNameLabel(pokemon, nameEl, shownName = null) {
     if (!pokemon || !nameEl) return;
     nameEl.textContent = shownName || getShownName(pokemon);
+    if (pokemon.teraActive) {
+        const badge = document.createElement('span');
+        badge.className = 'status-badge tera-status-badge';
+        badge.style.display = 'inline-block';
+        badge.style.marginLeft = '5px';
+        badge.style.padding = '2px 5px';
+        badge.style.borderRadius = '4px';
+        badge.style.backgroundColor = '#0e7490';
+        badge.style.color = '#ffffff';
+        badge.style.fontSize = '0.62rem';
+        badge.style.fontWeight = 'bold';
+        badge.style.lineHeight = '1.4';
+        badge.style.whiteSpace = 'nowrap';
+        badge.textContent = `テラスタル${pokemon.teraType ? `（${pokemon.teraType}）` : ''}`;
+        nameEl.appendChild(badge);
+    }
     if (pokemon.dynamaxActive) {
         const badge = document.createElement('span');
         badge.className = 'status-badge';
         badge.style.display = 'inline-block';
+        badge.style.marginLeft = '5px';
         badge.style.backgroundColor = '#a21caf';
+        badge.style.color = '#ffffff';
         badge.style.fontSize = '0.58rem';
         badge.style.whiteSpace = 'nowrap';
         badge.textContent = `ダイマックス（あと${pokemon.dynamaxTurns}ターン）`;
@@ -1083,7 +1113,11 @@ pokemonButton.onclick = () => {
     showSwitchSelection();
 };
 
-surrenderButton.onclick = () => {
+const surrenderConfirmModal = document.getElementById('surrender-confirm-modal');
+const surrenderConfirmYesButton = document.getElementById('surrender-confirm-yes');
+const surrenderConfirmNoButton = document.getElementById('surrender-confirm-no');
+
+function executeSurrender() {
     if (onlineMode && onlineRole === 'guest') {
         if (onlineWaitingForRemote) return;
 
@@ -1097,6 +1131,21 @@ surrenderButton.onclick = () => {
 
     isBattleInProgress = false;
     endGame(false);
+}
+
+surrenderButton.onclick = () => {
+    // ゲーム画面内の確認ダイアログを表示し、ブラウザ標準ダイアログは使わない。
+    if (onlineMode && onlineWaitingForRemote) return;
+    surrenderConfirmModal.style.display = 'flex';
+};
+
+surrenderConfirmYesButton.onclick = () => {
+    surrenderConfirmModal.style.display = 'none';
+    executeSurrender();
+};
+
+surrenderConfirmNoButton.onclick = () => {
+    surrenderConfirmModal.style.display = 'none';
 };
  
     // --- Game Data ---

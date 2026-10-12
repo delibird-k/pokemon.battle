@@ -10990,9 +10990,15 @@ for(let hit = 0; hit < hitCount; hit++){
     );
     defender.lastAttacker = attacker;
 
-    // 通常の単発技は applyDamage() を通らず、この処理でHPを直接減らす。
-    // そのため、実際の通常攻撃ルートでダメージ直後にはたきおとすを処理する。
+    // はたきおとすは「技名表示 → HP減少表示 → 持ち物をはたきおとすメッセージ」の順にする。
+    // HPを直接減らす通常攻撃ルートなので、持ち物のメッセージより先にHP表示を更新する。
     if (!move?.isDynamaxMove && currentDamage > 0) {
+        const knockOffNames = [move?.name, move?.originalMoveName, move?.displayName, move?.id, move?.nameEn, move?.englishName]
+            .filter(value => typeof value === 'string')
+            .map(value => value.trim().toLowerCase());
+        if (knockOffNames.some(name => ['はたきおとす', 'knock off', 'knockoff', 'knock_off'].includes(name))) {
+            updateHpBars();
+        }
         await applyKnockOffEffect(attacker, defender, move, currentDamage, false);
     }
     if (currentDamage > 0) {

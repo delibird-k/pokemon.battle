@@ -6338,6 +6338,19 @@ async function executePlayerSwitch(newIndex) {
 
     movesContainer.style.display = "none";
 
+    // 通常交代はターン中の行動なので、先に参加側の行動選択を待つ。
+    // 交代演出や状態同期を先に送ると参加側の入力画面が閉じてしまうため、
+    // 受信するまでは戦闘状態を変更せず、この画面で待機する。
+    let onlineRemoteAction = null;
+    if (difficulty === "online" && onlineRole === "host") {
+        onlineRemoteAction = await onlineWaitForAction();
+        if (onlineRemoteAction.actionType === 'surrender') {
+            endGame(true);
+            isBattleInProgress = false;
+            return;
+        }
+    }
+
 const oldPokemon = playerPokemon;
 if (oldPokemon.dynamaxActive) await endDynamax(oldPokemon, true);
 // こだわり系アイテムの技固定は、交代した時点で解除する。
@@ -6418,13 +6431,8 @@ updateStatDisplay(
     updateStatusMarkers();
     updateSubstituteMarkers();
 
-    // ホストが通常交代した後は、参加側の行動を受け取ってから攻撃処理へ進む。
-    // showMessage() が送る phase='event' のままだと参加側の入力が無効化されたまま
-    // onlineWaitForAction() が待ち続け、両画面が停止する。
-    if (difficulty === "online" && onlineRole === "host") {
-        onlineSendState('input');
-    }
-
+    // 参加側の行動は交代処理の開始前に受信済み。
+    // 交代後は、その行動を使って攻撃または相手側の交代を処理する。
     // ========================================================
     // 交代したターンは相手が攻撃
     // ========================================================
@@ -6432,11 +6440,10 @@ updateStatDisplay(
     let opponentMove = null;
 
     if (difficulty === "online" && onlineRole === "host") {
-        const remoteAction = await onlineWaitForAction();
-        if (remoteAction.actionType === 'move') {
-            opponentMove = opponentPokemon.moves[remoteAction.moveIndex];
-        } else if (remoteAction.actionType === 'switch') {
-            await executeOpponentAISwitch(remoteAction.index);
+        if (onlineRemoteAction.actionType === 'move') {
+            opponentMove = opponentPokemon.moves[onlineRemoteAction.moveIndex];
+        } else if (onlineRemoteAction.actionType === 'switch') {
+            await executeOpponentAISwitch(onlineRemoteAction.index);
         }
     } else {
         opponentMove = getOpponentMove();

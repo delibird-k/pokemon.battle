@@ -11417,14 +11417,16 @@ defender.lastAttacker = attacker;
 // はたきおとす：命中して本体にダメージを与えた場合、対象の持ち物を失わせる。
 // メガストーンとZクリスタルは例外として、はたき落とせない。
 if (
-    move.name === 'はたきおとす' &&
+    (move?.name === 'はたきおとす' ||
+     move?.originalMoveName === 'はたきおとす' ||
+     move?.displayName === 'はたきおとす') &&
     damage > 0 &&
-    defender.item &&
+    defender.item?.name &&
     !['メガストーン', 'Zクリスタル'].includes(defender.item.name)
 ) {
     const knockedItemName = defender.item.name;
     defender.item = null;
-    await showMessage(`${defender.name} の ${knockedItemName} を はたきおとした！`);
+    await showMessage(`${knockedItemName} を はたきおとした！`);
 }
 
     // 被弾した側を毎回振動させる。

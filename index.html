@@ -9419,10 +9419,6 @@ async function applyKnockOffEffect(attacker, defender, move, damage, hitSubstitu
         }
 
         const result = await applyDamage(attacker, defender, actualDamage, move, defenderUI);
-        // 本体にダメージが通った場合のみ持ち物を落とす。みがわり・まもるは対象外。
-        if (result && result.hit !== false && actualDamage > 0 && !hitSubstitute && !blockedByProtect) {
-            await applyKnockOffEffect(attacker, defender, move, actualDamage, false);
-        }
         if (move?.isDynamaxMove && actualDamage > 0 && result && result.hit !== false) {
             await applyDynamaxMoveEffect(attacker, defender, move);
         }
@@ -11434,7 +11430,11 @@ defender.lastDamageTaken = damage;
 defender.lastDamageCategory = move.category;
 defender.lastAttacker = attacker;
 
-// はたきおとすの持ち物処理は applyDamageWithSurvival 側で一元管理する。
+// 実際に相手本体へダメージを与えたこの場所で処理する。
+// まもる・みがわりは上で return するため、持ち物は落ちない。
+if (!move?.isDynamaxMove) {
+    await applyKnockOffEffect(attacker, defender, move, damage, false);
+}
 
     // 被弾した側を毎回振動させる。
     // 自分が攻撃を受けた場合も、相手が攻撃を受けた場合も同じ処理を通る。

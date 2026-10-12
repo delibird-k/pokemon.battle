@@ -9368,16 +9368,21 @@ function getOpponentMove() {
 // はたきおとすの効果を、実際に相手本体へダメージが通った後に適用する。
 // 技オブジェクトの表示名・変換後の名前の違いにも対応する。
 async function applyKnockOffEffect(attacker, defender, move, damage, hitSubstitute = false) {
-    const isKnockOff =
-        move?.name === 'はたきおとす' ||
-        move?.originalMoveName === 'はたきおとす' ||
-        move?.displayName === 'はたきおとす';
-    if (!isKnockOff || damage <= 0 || hitSubstitute || !defender?.item?.name) return false;
-    if (['メガストーン', 'Zクリスタル'].includes(defender.item.name)) return false;
+    // 通常技・変換後の技・英語IDのいずれで渡されても判定できるようにする。
+    const moveNames = [
+        move?.name, move?.originalMoveName, move?.displayName,
+        move?.id, move?.nameEn, move?.englishName
+    ].filter(value => typeof value === 'string').map(value => value.trim().toLowerCase());
+    const isKnockOff = moveNames.some(name =>
+        name === 'はたきおとす' || name === 'knock off' || name === 'knockoff' || name === 'knock_off'
+    );
+    const itemName = typeof defender?.item === 'string' ? defender.item : defender?.item?.name;
+    if (!isKnockOff || damage <= 0 || hitSubstitute || !itemName) return false;
+    if (['メガストーン', 'Zクリスタル'].includes(itemName)) return false;
 
-    const knockedItemName = defender.item.name;
+    // 持ち物の削除とメッセージ表示を同じ場所で実行する。
     defender.item = null;
-    await showMessage(`${knockedItemName} を はたきおとした！`);
+    await showMessage(`${itemName} を はたきおとした！`);
     return true;
 }
 

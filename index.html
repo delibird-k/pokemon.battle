@@ -1036,6 +1036,23 @@ const pokemonButton = document.getElementById("pokemon-button");
 const surrenderButton = document.getElementById("surrender-button");
 const ratingDisplay = document.getElementById("rating-display");
 
+// 名前の横にダイマックス状態と残りターンを表示する。
+function updateBattleNameLabel(pokemon, nameEl, shownName = null) {
+    if (!pokemon || !nameEl) return;
+    nameEl.textContent = shownName || getShownName(pokemon);
+    if (pokemon.dynamaxActive) {
+        const badge = document.createElement('span');
+        badge.className = 'status-badge';
+        badge.style.display = 'inline-block';
+        badge.style.backgroundColor = '#a21caf';
+        badge.style.fontSize = '0.58rem';
+        badge.style.whiteSpace = 'nowrap';
+        badge.textContent = `ダイマックス（あと${pokemon.dynamaxTurns}ターン）`;
+        nameEl.appendChild(badge);
+    }
+}
+
+
 // 下のメニュー（テキスト欄）が高くなった分だけ、
 // HP欄とポケモン画像のエリアも同じ量だけ上へ動かす。
 const baseMenuHeight = 120;
@@ -1377,14 +1394,14 @@ function onlineApplyState(data) {
 
     if (playerPokemon) {
         const ps = playerPokemon.disguiseData || playerPokemon;
-        player.nameEl.textContent = ps.name;
+        updateBattleNameLabel(playerPokemon, player.nameEl, ps.name);
         player.maxHpEl.textContent = playerPokemon.maxHp;
         onlineUpdateSprite(player, playerPokemon, true);
         updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
     }
     if (opponentPokemon) {
         const os = opponentPokemon.disguiseData || opponentPokemon;
-        opponent.nameEl.textContent = os.name;
+        updateBattleNameLabel(opponentPokemon, opponent.nameEl, os.name);
         document.getElementById('opponent-max-hp').textContent = opponentPokemon.maxHp;
         onlineUpdateSprite(opponent, opponentPokemon, false);
         updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
@@ -5140,8 +5157,7 @@ function determineOpponentItem(pokemon) {
 const playerShown =
     playerPokemon.disguiseData || playerPokemon;
 
-player.nameEl.textContent =
-    playerShown.name;
+updateBattleNameLabel(playerPokemon, player.nameEl, playerShown.name);
 
 player.maxHpEl.textContent =
     playerPokemon.maxHp;
@@ -5151,8 +5167,7 @@ player.sprite.src =
 const opponentShown =
     opponentPokemon.disguiseData || opponentPokemon;
 
-opponent.nameEl.textContent =
-    opponentShown.name;
+updateBattleNameLabel(opponentPokemon, opponent.nameEl, opponentShown.name);
 
 document.getElementById("opponent-max-hp").textContent =
     opponentPokemon.maxHp;
@@ -5470,13 +5485,6 @@ if (
     };
 
     movesContainer.appendChild(teraBtn);
-} else if (playerPokemon.teraActive) {
-    const teraInfo = document.createElement('div');
-    teraInfo.className =
-        'col-span-2 text-center text-xs font-bold text-cyan-800 p-1';
-    teraInfo.textContent =
-        `テラスタル中：${playerPokemon.teraType}タイプ`;
-    movesContainer.appendChild(teraInfo);
 }
 
     // ダイマックス：チームで1回、3ターン。技を選ぶときに発動を予約する。
@@ -5493,11 +5501,6 @@ if (
             messageText.textContent = `${getShownName(playerPokemon)} は ダイマックスする準備をした！ 技を選んでください。`;
         };
         movesContainer.appendChild(dynamaxBtn);
-    } else if (playerPokemon.dynamaxActive) {
-        const dynamaxInfo = document.createElement('div');
-        dynamaxInfo.className = 'col-span-2 text-center text-xs font-bold text-fuchsia-800 p-1';
-        dynamaxInfo.textContent = `ダイマックス中：あと${playerPokemon.dynamaxTurns}ターン`;
-        movesContainer.appendChild(dynamaxInfo);
     }
 
     // メガ進化
@@ -6049,8 +6052,7 @@ playerPokemon.statStages = {
         playerPokemon.disguiseData ||
         playerPokemon;
 
-    player.nameEl.textContent =
-        playerShown.name;
+    updateBattleNameLabel(playerPokemon, player.nameEl, playerShown.name);
 
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
@@ -6335,8 +6337,7 @@ updateStatDisplay(
         playerPokemon.disguiseData ||
         playerPokemon;
 
-    player.nameEl.textContent =
-        playerShown.name;
+    updateBattleNameLabel(playerPokemon, player.nameEl, playerShown.name);
 
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
@@ -6514,8 +6515,7 @@ opponentPokemon.protectUsed = false;
         opponentPokemon.disguiseData ||
         opponentPokemon;
 
-    opponent.nameEl.textContent =
-        opponentShown.name;
+    updateBattleNameLabel(opponentPokemon, opponent.nameEl, opponentShown.name);
 
     document.getElementById(
         'opponent-max-hp'
@@ -10911,11 +10911,11 @@ for(let hit = 0; hit < hitCount; hit++){
     defender.disguiseData = null;
 
     if (defender === playerPokemon) {
-        player.nameEl.textContent = defender.name;
+        updateBattleNameLabel(defender, player.nameEl, defender.name);
         player.sprite.src =
             "https://play.pokemonshowdown.com/sprites/ani-back/zoroark-hisui.gif";
     } else {
-        opponent.nameEl.textContent = defender.name;
+        updateBattleNameLabel(defender, opponent.nameEl, defender.name);
         opponent.sprite.src =
             "https://play.pokemonshowdown.com/sprites/ani/zoroark-hisui.gif";
     }
@@ -12679,8 +12679,7 @@ updateStatDisplay(
     const opponentShown =
         opponentPokemon.disguiseData || opponentPokemon;
 
-    opponent.nameEl.textContent =
-        opponentShown.name;
+    updateBattleNameLabel(opponentPokemon, opponent.nameEl, opponentShown.name);
 
     document.getElementById(
         'opponent-max-hp'
@@ -12909,8 +12908,7 @@ updateStatDisplay(
     playerPokemon.disguiseData ||
     playerPokemon;
 
-player.nameEl.textContent =
-    playerShown.name;
+updateBattleNameLabel(playerPokemon, player.nameEl, playerShown.name);
 
 player.maxHpEl.textContent =
     playerPokemon.maxHp;
@@ -14113,6 +14111,9 @@ return {
     }
 
     function updateHpBars() {
+        // HP更新時に残りターン表示も同期する（ターン経過・ダイマックス解除を反映）。
+        if (playerPokemon) updateBattleNameLabel(playerPokemon, player.nameEl);
+        if (opponentPokemon) updateBattleNameLabel(opponentPokemon, opponent.nameEl);
         if(playerPokemon) {
             const playerHpPercent = (playerPokemon.currentHp / playerPokemon.maxHp) * 100;
             player.hpBar.style.width = `${playerHpPercent}%`;

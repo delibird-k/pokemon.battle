@@ -324,7 +324,9 @@
             <div class="opening-button-row">
                 <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
 
-                <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタルルール：ON</button>
+                <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタル：ON</button>
+
+                <button id="dynamax-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">ダイマックス：ON</button>
 
                 <button id="history-button"
                         class="opening-button opening-history-button">
@@ -803,7 +805,8 @@ document.getElementById("reset-no-button");
         openingStats.innerHTML = `
             <div>レート：<strong>${rating}</strong></div>
             <div>レート変動：<strong>${ratingEnabled ? 'ON' : 'OFF'}</strong></div>
-            <div>テラスタルルール：<strong>${teraRuleEnabled ? 'ON' : 'OFF'}</strong></div>
+            <div>テラスタル：<strong>${teraRuleEnabled ? 'ON' : 'OFF'}</strong></div>
+            <div>ダイマックス：<strong>${dynamaxRuleEnabled ? 'ON' : 'OFF'}</strong></div>
             <div>ランク：${getRank()}</div>
             <div>戦績：${winCount}勝 ${loseCount}敗</div>
             <div>連勝：${winStreak}　連敗：${loseStreak}</div>
@@ -1133,6 +1136,11 @@ function onlineMakeTeam(keys, itemNames, teraTypes = []) {
         pokemon.teraActive = false;
         pokemon.teraUsed = false;
         pokemon.pendingTera = false;
+        pokemon.dynamaxActive = false;
+        pokemon.pendingDynamax = false;
+        pokemon.dynamaxUsed = false;
+        pokemon.dynamaxTurns = 0;
+        pokemon.originalMaxHp = pokemon.maxHp;
         applyIllusion(pokemon);
         initZData(pokemon);
         return pokemon;
@@ -1140,7 +1148,7 @@ function onlineMakeTeam(keys, itemNames, teraTypes = []) {
 }
 
 function onlineTeamPayload() {
-    return { keys: [...selectedPlayerKeys], items: [...selectedPlayerItemNames], teraTypes: [...selectedPlayerTeraTypes], teraRuleEnabled: !!teraRuleEnabled };
+    return { keys: [...selectedPlayerKeys], items: [...selectedPlayerItemNames], teraTypes: [...selectedPlayerTeraTypes], teraRuleEnabled: !!teraRuleEnabled, dynamaxRuleEnabled: !!dynamaxRuleEnabled };
 }
 
 function onlineWaitForAction() {
@@ -1470,6 +1478,7 @@ function onlineGuestSendMove(moveIndex, options = {}) {
     // ホスト側でも再現できるよう、選択内容をそのまま送る。
     const useMega = !!playerPokemon.pendingMega;
     const useTera = !!playerPokemon.pendingTera;
+    const useDynamax = !!playerPokemon.pendingDynamax;
 
     onlineWaitingForRemote = true;
     onlineGuestActedTurn = currentTurn;
@@ -1481,6 +1490,7 @@ function onlineGuestSendMove(moveIndex, options = {}) {
         moveIndex,
         useMega,
         useTera,
+        useDynamax,
         teraType: playerPokemon.teraType,
         useZMove: !!options.useZMove
     });
@@ -1753,7 +1763,9 @@ function handleOnlineData(data) {
         selectedOpponentTeraTypes = Array.isArray(data.team.teraTypes) ? [...data.team.teraTypes] : [];
         // 対人戦のテラスタルルールはルーム作成者（ホスト）の設定を共通ルールとする。
         teraRuleEnabled = data.team.teraRuleEnabled !== false;
+        dynamaxRuleEnabled = data.team.dynamaxRuleEnabled !== false;
         updateTeraRuleToggleButton();
+        updateDynamaxRuleToggleButton();
         onlineStartGuestBattle(data.team);
         return;
     }
@@ -1925,7 +1937,7 @@ let selectedOpponentItemName;
     const teraRuleToggleButton = document.getElementById('tera-rule-toggle-button');
     function updateTeraRuleToggleButton() {
         if (!teraRuleToggleButton) return;
-        teraRuleToggleButton.textContent = `テラスタルルール：${teraRuleEnabled ? 'ON' : 'OFF'}`;
+        teraRuleToggleButton.textContent = `テラスタル：${teraRuleEnabled ? 'ON' : 'OFF'}`;
         teraRuleToggleButton.style.background = teraRuleEnabled ? '#bbf7d0' : '#e5e7eb';
         teraRuleToggleButton.style.color = teraRuleEnabled ? '#14532d' : '#374151';
         teraRuleToggleButton.setAttribute('aria-pressed', String(teraRuleEnabled));
@@ -1939,6 +1951,27 @@ let selectedOpponentItemName;
         };
     }
     updateTeraRuleToggleButton();
+
+    // ダイマックスルールも端末ごとに保存。未設定時はON。オンラインではホスト設定を採用。
+    let dynamaxRuleEnabled = localStorage.getItem('dynamaxRuleEnabled') !== 'false';
+    const dynamaxRuleToggleButton = document.getElementById('dynamax-rule-toggle-button');
+    function updateDynamaxRuleToggleButton() {
+        if (!dynamaxRuleToggleButton) return;
+        dynamaxRuleToggleButton.textContent = `ダイマックス：${dynamaxRuleEnabled ? 'ON' : 'OFF'}`;
+        dynamaxRuleToggleButton.style.background = dynamaxRuleEnabled ? '#bbf7d0' : '#e5e7eb';
+        dynamaxRuleToggleButton.style.color = dynamaxRuleEnabled ? '#14532d' : '#374151';
+        dynamaxRuleToggleButton.setAttribute('aria-pressed', String(dynamaxRuleEnabled));
+    }
+    if (dynamaxRuleToggleButton) {
+        dynamaxRuleToggleButton.onclick = () => {
+            dynamaxRuleEnabled = !dynamaxRuleEnabled;
+            localStorage.setItem('dynamaxRuleEnabled', String(dynamaxRuleEnabled));
+            updateDynamaxRuleToggleButton();
+            updateOpeningStats();
+        };
+    }
+    updateDynamaxRuleToggleButton();
+
     let winCount = Number(localStorage.getItem("wins")) || 0;
     let loseCount = Number(localStorage.getItem("losses")) || 0;  
     let winStreak = Number(localStorage.getItem("winStreak")) || 0;
@@ -1983,7 +2016,10 @@ let isBattleInProgress = false;
 };
     
     // こだわり系アイテムの技固定処理。交代時に choiceLockedMove を消去する。
+    // ダイマックス中（および今ターンにダイマックスを発動する予約中）は、こだわり系の技固定を無効にする。
+    // ※ こだわりハチマキ/メガネ/スカーフの威力・素早さ補正は item.name を直接見ているので、そちらは影響を受けない。
     function hasChoiceItem(pokemon) {
+        if (pokemon && (pokemon.dynamaxActive || pokemon.pendingDynamax)) return false;
         return !!pokemon && ['こだわりハチマキ', 'こだわりメガネ', 'こだわりスカーフ'].includes(pokemon.item?.name);
     }
 
@@ -3334,6 +3370,11 @@ function useZMove(pokemon){
         instance.teraActive = false;
         instance.teraUsed = false;
         instance.pendingTera = false;
+        instance.dynamaxActive = false;
+        instance.pendingDynamax = false;
+        instance.dynamaxUsed = false;
+        instance.dynamaxTurns = 0;
+        instance.originalMaxHp = instance.maxHp;
         instance.currentHp = instance.maxHp;
         instance.statModifiers = { attack: 1 };
         instance.statStages = { attack: 0, defense: 0, spAttack: 0, spDefense: 0, speed: 0 };
@@ -5127,6 +5168,178 @@ opponent.sprite.src =
         setupTooltips();
     }
     
+const DYNAMAX_MOVE_NAMES = {
+    'ノーマル':'ダイアタック','ほのお':'ダイバーン','みず':'ダイストリーム','でんき':'ダイサンダー',
+    'くさ':'ダイソウゲン','こおり':'ダイアイス','かくとう':'ダイナックル','どく':'ダイアシッド',
+    'じめん':'ダイアース','ひこう':'ダイジェット','エスパー':'ダイサイコ','むし':'ダイワーム',
+    'いわ':'ダイロック','ゴースト':'ダイホロウ','ドラゴン':'ダイドラグーン','あく':'ダイアーク',
+    'はがね':'ダイスチル','フェアリー':'ダイフェアリー'
+};
+
+function getDynamaxMovePower(basePower, type) {
+    // 剣盾準拠の通常ダイマックスわざ威力帯。
+    // 元技の威力を基準にし、連続技は連続回数を合算せず1回分の威力で変換する。
+    if (!Number.isFinite(Number(basePower)) || Number(basePower) <= 0) return 0;
+    const power = Number(basePower);
+    if (power <= 40) return 90;
+    if (power <= 50) return 100;
+    if (power <= 60) return 110;
+    if (power <= 70) return 120;
+    if (power <= 100) return 130;
+    if (power <= 140) return 140;
+    return 150;
+}
+
+const DYNAMAX_MOVE_EFFECTS = {
+    'ノーマル': { label: '相手の素早さを1段階下げる' },
+    'ほのお': { label: '晴れにする' },
+    'みず': { label: '雨にする' },
+    'でんき': { label: 'エレキフィールドにする' },
+    'くさ': { label: 'グラスフィールドにする' },
+    'こおり': { label: '雪にする' },
+    'かくとう': { label: '味方全体の攻撃を1段階上げる' },
+    'どく': { label: '味方全体の特攻を1段階上げる' },
+    'じめん': { label: '味方全体の特防を1段階上げる' },
+    'ひこう': { label: '味方全体の素早さを1段階上げる' },
+    'エスパー': { label: 'サイコフィールドにする' },
+    'むし': { label: '相手の特攻を1段階下げる' },
+    'いわ': { label: '砂嵐にする' },
+    'ゴースト': { label: '相手の防御を1段階下げる' },
+    'ドラゴン': { label: '相手の攻撃を1段階下げる' },
+    'あく': { label: '相手の特防を1段階下げる' },
+    'はがね': { label: '味方全体の防御を1段階上げる' },
+    'フェアリー': { label: 'ミストフィールドにする' }
+};
+
+function changeStageByMaxMove(pokemon, stat, amount) {
+    if (!pokemon) return false;
+    if (!pokemon.statStages) pokemon.statStages = {};
+    const before = Number(pokemon.statStages[stat] || 0);
+    const after = Math.max(-6, Math.min(6, before + amount));
+    pokemon.statStages[stat] = after;
+    return after !== before;
+}
+
+async function applyDynamaxMoveEffect(attacker, defender, move) {
+    if (!move?.isDynamaxMove || move._maxEffectApplied) return;
+    move._maxEffectApplied = true;
+    const type = move.type;
+    const team = attacker === playerPokemon ? playerTeam : opponentTeam;
+    const enemyTeam = attacker === playerPokemon ? opponentTeam : playerTeam;
+    const statNames = { attack: 'こうげき', defense: 'ぼうぎょ', spAttack: 'とくこう', spDefense: 'とくぼう', speed: 'すばやさ' };
+    const raiseTeam = async (stat) => {
+        const targets = [attacker].filter(p => p && p.currentHp > 0);
+        let changed = false;
+        targets.forEach(p => { if (changeStageByMaxMove(p, stat, 1)) changed = true; });
+        await showMessage(changed ? `味方の ${statNames[stat]} が上がった！` : 'しかし これ以上 能力は上がらない！');
+    };
+    const lowerTarget = async (stat) => {
+        if (!defender || defender.currentHp <= 0) return;
+        const blocksDrop = ['クリアボディ', 'しろいけむり', 'メタルプロテクト'].includes(defender.ability)
+            || (stat === 'attack' && defender.ability === 'かいりきバサミ')
+            || (stat === 'defense' && defender.ability === 'はとむね');
+        if (blocksDrop) {
+            await showMessage(`${getShownName(defender)} の ${defender.ability} で 能力が下がらない！`);
+            return;
+        }
+        const changed = changeStageByMaxMove(defender, stat, -1);
+        await showMessage(changed ? `${getShownName(defender)} の ${statNames[stat]} が下がった！` : `${getShownName(defender)} の ${statNames[stat]} は これ以上下がらない！`);
+    };
+    switch (type) {
+        case 'ノーマル': await lowerTarget('speed'); break;
+        case 'ほのお': weather = { type: 'sun', turns: 5 }; await showMessage('ひざしが つよくなった！'); break;
+        case 'みず': weather = { type: 'rain', turns: 5 }; await showMessage('あめが ふりはじめた！'); break;
+        case 'でんき': field = { type: 'electric', turns: 5 }; await showMessage('あしもとに 電気が かけめぐる！'); break;
+        case 'くさ': field = { type: 'grass', turns: 5 }; await showMessage('あしもとに くさが おいしげった！'); break;
+        case 'こおり': weather = { type: 'snow', turns: 5 }; await showMessage('ゆきが ふりはじめた！'); break;
+        case 'かくとう': await raiseTeam('attack'); break;
+        case 'どく': await raiseTeam('spAttack'); break;
+        case 'じめん': await raiseTeam('spDefense'); break;
+        case 'ひこう': await raiseTeam('speed'); break;
+        case 'エスパー': field = { type: 'psyco', turns: 5 }; await showMessage('あしもとが ふしぎなかんじに なった！'); break;
+        case 'むし': await lowerTarget('spAttack'); break;
+        case 'いわ': weather = { type: 'sandstorm', turns: 5 }; await showMessage('すなあらしが ふきはじめた！'); break;
+        case 'ゴースト': await lowerTarget('defense'); break;
+        case 'ドラゴン': await lowerTarget('attack'); break;
+        case 'あく': await lowerTarget('spDefense'); break;
+        case 'はがね': await raiseTeam('defense'); break;
+        case 'フェアリー': field = { type: 'misty', turns: 5 }; await showMessage('あしもとに きりが たちこめた！'); break;
+    }
+    if (typeof updateStatDisplay === 'function') {
+        updateStatDisplay(playerPokemon, document.getElementById('player-stat-display'));
+        updateStatDisplay(opponentPokemon, document.getElementById('opponent-stat-display'));
+    }
+    if (typeof updateWeatherIndicator === 'function') updateWeatherIndicator();
+    if (typeof updateFieldIndicator === 'function') updateFieldIndicator();
+}
+
+// ダイマックスわざは元技の追加効果・特殊挙動を一切引き継がない。
+// ({ ...move } で複製すると secondary 等が残り、元技の追加効果が出てしまうため、ここで除去する)
+const DYNAMAX_STRIPPED_MOVE_PROPS = [
+    'secondary',        // 追加効果（状態異常・能力変化・ひるみ・こんらん等）
+    'self',             // 攻撃後の自分の能力変化
+    'isDynamicType',    // ランダムタイプ変化＋状態異常
+    'isBloodMoon',      // 連続使用不可
+    'isSound',          // 音技（みがわり貫通）
+    'isTrapMove',       // 拘束技
+    'isburb',           // かみつき技判定
+    'apiTarget', 'apiAilment', 'apiEffectChance', 'apiStatChanges', 'apiMetaCategory',
+    '_maxEffectApplied'
+];
+function stripOriginalMoveEffects(move) {
+    const copy = { ...move };
+    DYNAMAX_STRIPPED_MOVE_PROPS.forEach(key => { delete copy[key]; });
+    return copy;
+}
+
+function makeDynamaxMove(pokemon, move) {
+    if (!dynamaxRuleEnabled || !pokemon?.dynamaxActive || !move) return move;
+    // ダイマックス中の変化技は「ダイウォール」になる。既存の「まもる」処理を利用する。
+    if (move.category === 'status' || !move.power || move.power <= 0) {
+        return { ...stripOriginalMoveEffects(move), name: 'まもる', displayName: 'ダイウォール', isMaxGuard: true, originalMoveName: move.name, category: 'status', type: 'ノーマル', power: 0, accuracy: 100, priority: 4 };
+    }
+    let moveType = move.dynamicAppliedType || (Array.isArray(move.type) ? move.type[0] : move.type) || 'ノーマル';
+    if (pokemon.ability === 'スカイスキン' && moveType === 'ノーマル') moveType = 'ひこう';
+    if (pokemon.ability === 'フェアリースキン' && moveType === 'ノーマル') moveType = 'フェアリー';
+    const multiHitNames = ['スケイルショット','げきりゅうれんげきけん','みずしゅりけん','めったざし','ドラゴンアロー','ダブルパンツァー','すいりゅうれんだ','つららばり','ロックブラスト','タネマシンガン','スイープビンタ','みだれづき','みだれひっかき','れんぞくパンチ','おうふくビンタ','タネマシンガン','ボーンラッシュ','ミサイルばり','とげキャノン','ダブルアタック','トリプルキック','トリプルアクセル'];
+    // 連続技も元技のタイプに対応したダイマックスわざへ変換し、連続回数は適用しない。
+    const originalMoveName = move.name;
+    return { ...stripOriginalMoveEffects(move), name: DYNAMAX_MOVE_NAMES[moveType] || 'ダイアタック', displayName: DYNAMAX_MOVE_NAMES[moveType] || 'ダイアタック', power: getDynamaxMovePower(move.power, moveType), accuracy: 101, type: moveType, isDynamaxMove: true, originalMoveName, dynamicAppliedType: undefined, isMultiHit: false, isMaxGuard: false };
+}
+
+async function activateDynamax(pokemon, isPlayer) {
+    if (!dynamaxRuleEnabled || !pokemon || pokemon.dynamaxUsed || pokemon.dynamaxActive) return false;
+    const sideTeam = isPlayer ? playerTeam : opponentTeam;
+    if (Array.isArray(sideTeam)) sideTeam.forEach(member => { if (member) member.dynamaxUsed = true; });
+    pokemon.dynamaxUsed = true;
+    pokemon.pendingDynamax = false;
+    pokemon.dynamaxActive = true;
+    pokemon.dynamaxTurns = 3;
+    pokemon.originalMaxHp = pokemon.maxHp / 2 === pokemon.originalMaxHp ? pokemon.originalMaxHp : pokemon.maxHp;
+    pokemon.maxHp = pokemon.originalMaxHp * 2;
+    pokemon.currentHp = Math.min(pokemon.maxHp, pokemon.currentHp * 2);
+    if (isPlayer) {
+        player.maxHpEl.textContent = pokemon.maxHp;
+    } else {
+        document.getElementById('opponent-max-hp').textContent = pokemon.maxHp;
+    }
+    updateHpBars();
+    await showMessage(`${getShownName(pokemon)} は ダイマックスした！`);
+    return true;
+}
+
+async function endDynamax(pokemon, isPlayer) {
+    if (!pokemon || !pokemon.dynamaxActive) return;
+    pokemon.dynamaxActive = false;
+    pokemon.dynamaxTurns = 0;
+    pokemon.maxHp = pokemon.originalMaxHp || Math.floor(pokemon.maxHp / 2);
+    pokemon.currentHp = pokemon.currentHp <= 0 ? 0 : Math.min(pokemon.maxHp, Math.ceil(pokemon.currentHp / 2));
+    if (isPlayer) player.maxHpEl.textContent = pokemon.maxHp;
+    else document.getElementById('opponent-max-hp').textContent = pokemon.maxHp;
+    updateHpBars();
+    await showMessage(`${getShownName(pokemon)} の ダイマックスが とけた！`);
+}
+
 function updateMoves() {
     // 技画面は常に2×2のレイアウトに戻す
     // （交代画面で3列に変更されたあとも、交代先の技を2×2で表示する）
@@ -5138,7 +5351,7 @@ function updateMoves() {
 moveTooltip.innerHTML = "";
 
     // 最初は技を隠してメニューを表示
-if (!playerPokemon.pendingMega && !playerPokemon.pendingTera) {
+if (!playerPokemon.pendingMega && !playerPokemon.pendingTera && !playerPokemon.pendingDynamax) {
     battleMenu.style.display = "grid";
     movesContainer.style.display = "none";
 }
@@ -5146,7 +5359,8 @@ if (!playerPokemon.pendingMega && !playerPokemon.pendingTera) {
     // 通常技
     playerPokemon.moves.forEach(move => {
         const button = document.createElement('button');
-        button.textContent = move.name;
+        const displayedMove = playerPokemon.dynamaxActive ? makeDynamaxMove(playerPokemon, move) : move;
+        button.textContent = displayedMove.displayName || displayedMove.name;
 
         const isDisabled =
     move.currentPp === 0 ||
@@ -5190,7 +5404,9 @@ button.className =
         };
 
         button.onmouseover = (e) => {
-    moveTooltip.innerHTML = getMoveTooltipContent(move);
+    moveTooltip.innerHTML = playerPokemon.dynamaxActive
+        ? `<strong>${displayedMove.displayName || displayedMove.name}</strong><br>元の技：${move.name}<br>威力：${displayedMove.power}<br>追加効果：${DYNAMAX_MOVE_EFFECTS[displayedMove.type]?.label || 'ダイマックスわざの効果'}`
+        : getMoveTooltipContent(move);
     moveTooltip.style.display = 'block';
 
     moveTooltip.style.left = `${e.pageX + 15}px`;
@@ -5249,6 +5465,27 @@ if (
         `テラスタル中：${playerPokemon.teraType}タイプ`;
     movesContainer.appendChild(teraInfo);
 }
+
+    // ダイマックス：チームで1回、3ターン。技を選ぶときに発動を予約する。
+    if (dynamaxRuleEnabled && !playerPokemon.dynamaxUsed && !playerPokemon.dynamaxActive) {
+        const dynamaxBtn = document.createElement('button');
+        dynamaxBtn.textContent = 'ダイマックス';
+        dynamaxBtn.className = 'border-2 border-fuchsia-600 bg-fuchsia-100 text-gray-900 rounded p-1';
+        dynamaxBtn.onclick = () => {
+            if (isBattleInProgress || (onlineMode && onlineWaitingForRemote)) return;
+            playerPokemon.pendingDynamax = true;
+            updateMoves();
+            battleMenu.style.display = 'none';
+            movesContainer.style.display = 'grid';
+            messageText.textContent = `${getShownName(playerPokemon)} は ダイマックスする準備をした！ 技を選んでください。`;
+        };
+        movesContainer.appendChild(dynamaxBtn);
+    } else if (playerPokemon.dynamaxActive) {
+        const dynamaxInfo = document.createElement('div');
+        dynamaxInfo.className = 'col-span-2 text-center text-xs font-bold text-fuchsia-800 p-1';
+        dynamaxInfo.textContent = `ダイマックス中：あと${playerPokemon.dynamaxTurns}ターン`;
+        movesContainer.appendChild(dynamaxInfo);
+    }
 
     // メガ進化
     if (canMegaEvolve(playerPokemon)) {
@@ -5759,6 +5996,7 @@ function showUTurnSwitchSelection() {
 async function executeUTurnSwitch(newIndex) {
 
     const oldPokemon = playerPokemon;
+    if (oldPokemon.dynamaxActive) await endDynamax(oldPokemon, true);
 oldPokemon.choiceLockedMove = null;
 
 await showMessage(
@@ -6037,6 +6275,7 @@ async function executePlayerSwitch(newIndex) {
     movesContainer.style.display = "none";
 
 const oldPokemon = playerPokemon;
+if (oldPokemon.dynamaxActive) await endDynamax(oldPokemon, true);
 // こだわり系アイテムの技固定は、交代した時点で解除する。
 oldPokemon.choiceLockedMove = null;
 
@@ -6213,6 +6452,7 @@ async function executeOpponentAISwitch(newIndex) {
 
     const oldPokemon =
     opponentPokemon;
+    if (oldPokemon.dynamaxActive) await endDynamax(oldPokemon, false);
     oldPokemon.choiceLockedMove = null;
 
 await showMessage(
@@ -6383,6 +6623,11 @@ if (difficulty === "online" && onlineRole === "host") {
             opponentMove = remoteMove;
         }
 
+        // ダイマックス予約は、こだわり系の技固定の判定より先に反映する。
+        if (dynamaxRuleEnabled && remoteAction.useDynamax && !opponentPokemon.dynamaxUsed && !opponentPokemon.dynamaxActive) {
+            opponentPokemon.pendingDynamax = true;
+        }
+
         if (hasChoiceItem(opponentPokemon)) {
             if (opponentPokemon.choiceLockedMove && opponentMove.name !== opponentPokemon.choiceLockedMove) {
                 opponentMove = opponentPokemon.moves.find(m => m.name === opponentPokemon.choiceLockedMove) || opponentMove;
@@ -6419,6 +6664,12 @@ if (difficulty === "online" && onlineRole === "host") {
     opponentSwitched = await executeOpponentAISwitch(nextIndex);
 }
 
+// CPUのダイマックス判断は、こだわり系の技固定の判定より先に行う。
+if (dynamaxRuleEnabled && difficulty !== "online" && !opponentSwitched && !opponentPokemon.dynamaxUsed && !opponentPokemon.dynamaxActive) {
+    const aiDynamaxChance = difficulty === 'hard' ? 0.30 : difficulty === 'normal' ? 0.12 : 0;
+    if (Math.random() < aiDynamaxChance) opponentPokemon.pendingDynamax = true;
+}
+
 if (!opponentSwitched && !opponentMove) {
     opponentMove = getOpponentMove();
 }
@@ -6452,6 +6703,13 @@ if (opponentPokemon.pendingMega) {
     opponentPokemon.pendingMega = false;
 }
 
+if (playerPokemon.pendingDynamax) {
+    await activateDynamax(playerPokemon, true);
+}
+if (opponentPokemon.pendingDynamax) {
+    await activateDynamax(opponentPokemon, false);
+}
+
 if (playerPokemon.pendingTera) {
     await teraEvolve(playerPokemon, true);
 }
@@ -6465,6 +6723,11 @@ if (
 ) {
     opponentMove.currentPp--;
 }
+
+// ダイマックス中は通常技を対応するダイマックス技に変換する。
+playerMove = makeDynamaxMove(playerPokemon, playerMove);
+if (!opponentSwitched && opponentMove) opponentMove = makeDynamaxMove(opponentPokemon, opponentMove);
+
         let playerClaw = false;
 let opponentClaw = false;
 
@@ -6714,6 +6977,15 @@ gameOver =
         gameOver = await handleEndOfTurnEffects();
         if (gameOver) { isBattleInProgress = false; return; }
         
+        if (playerPokemon.dynamaxActive && playerPokemon.currentHp > 0) {
+            playerPokemon.dynamaxTurns--;
+            if (playerPokemon.dynamaxTurns <= 0) await endDynamax(playerPokemon, true);
+        }
+        if (opponentPokemon.dynamaxActive && opponentPokemon.currentHp > 0) {
+            opponentPokemon.dynamaxTurns--;
+            if (opponentPokemon.dynamaxTurns <= 0) await endDynamax(opponentPokemon, false);
+        }
+
         currentTurn++;
 
 opponentSwitchedLastTurn = opponentSwitched;
@@ -9011,8 +9283,8 @@ function getOpponentMove() {
     async function applyDamageWithSurvival(attacker, defender, damage, move, defenderUI) {
         const hpBeforeHit = defender.currentHp;
         const hitSubstitute = defender.hasSubstitute && !move.isSound;
-        const blockedByProtect = defender.isProtected && attacker.ability !== 'ふかしのこぶし';
-        let actualDamage = damage;
+        const blockedByProtect = defender.isProtected && !move?.isDynamaxMove && attacker.ability !== 'ふかしのこぶし';
+        let actualDamage = defender.isProtected && move?.isDynamaxMove ? Math.max(1, Math.floor(damage / 4)) : damage;
         let survivalMessage = '';
 
         if (!hitSubstitute && !blockedByProtect && hpBeforeHit > 0 && damage >= hpBeforeHit) {
@@ -9046,6 +9318,9 @@ function getOpponentMove() {
         }
 
         const result = await applyDamage(attacker, defender, actualDamage, move, defenderUI);
+        if (move?.isDynamaxMove && actualDamage > 0 && result && result.hit !== false) {
+            await applyDynamaxMoveEffect(attacker, defender, move);
+        }
         if (survivalMessage && result && result.hit !== false) {
             await showMessage(survivalMessage);
             updateHpBars();
@@ -9912,7 +10187,7 @@ if (attacker.status === 'sleep' && !attacker.isUsingSleepTalk) {
         }
 
         await showAncientBoostActivationMessage(attacker);
-        const moveMessage = `${getShownName(attacker)} の ${move.name}！`;
+        const moveMessage = `${getShownName(attacker)} の ${move.displayName || move.name}！`;
         const isRemoteAttacker = difficulty === 'online' && onlineRole === 'host' && attacker === opponentPokemon;
         await showMessage(
             isRemoteAttacker ? `あいて の ${moveMessage}` : moveMessage,
@@ -10273,7 +10548,7 @@ if (move.category === 'status') {
     await handleStatusMove(attacker, defender, move);
     return false;
 }
-       if (defender.isProtected) {
+       if (defender.isProtected && !move?.isDynamaxMove) {
 
     // ふかしのこぶしなら貫通
     if (attacker.ability === "ふかしのこぶし") {
@@ -10356,7 +10631,7 @@ async function handleMultiHit(attacker, defender, move) {
         else hits = 5;
     }
 
-    await showMessage(`${attacker.name} の ${move.name}！`);
+    await showMessage(`${attacker.name} の ${move.displayName || move.name}！`);
     let landedHits = 0;
     let lastDamage = 0;
     let lastHitReachedPokemon = false;
@@ -10568,6 +10843,7 @@ if (defender.hasSubstitute && !move.isSound) {
                 updateSubstituteMarkers();
                 await showMessage(`${defender.name} の みがわりは こわれた！`);
             }
+            if (move?.isDynamaxMove && finalDamage > 0) await applyDynamaxMoveEffect(attacker, defender, move);
         } else {
             if (effectivenessMessage && effectivenessMessage !== 'きゅうしょにあたった！') await showMessage(effectivenessMessage);
             defender.lastDamageCategory = move.category;
@@ -10691,6 +10967,9 @@ for(let hit = 0; hit < hitCount; hit++){
     } else {
 
     updateHpBars();
+
+    // 相手を倒した場合も、ダイマックスわざの効果（天候・フィールド・味方の能力上昇）は発動する。
+    if (move?.isDynamaxMove) await applyDynamaxMoveEffect(attacker, defender, move);
 
     break;
 }
@@ -10991,8 +11270,8 @@ attacker.hasMoved = true;
     
     async function applyDamage(attacker, defender, damage, move, defenderUI) {
 
-    // まもる
-    if (defender.isProtected) {
+    // まもる：ダイマックスわざは完全には防がず、外側の処理で1/4ダメージにする。
+    if (defender.isProtected && !move?.isDynamaxMove) {
 
     // ふかしのこぶしなら貫通
     if (attacker.ability !== "ふかしのこぶし") {
@@ -11040,6 +11319,7 @@ attacker.hasMoved = true;
             await showMessage(`${defender.name} の みがわりは こわれた！`);
         }
 
+        if (move?.isDynamaxMove && damage > 0) await applyDynamaxMoveEffect(attacker, defender, move);
         return { hit: true };
     }
 
@@ -11058,6 +11338,10 @@ defender.lastAttacker = attacker;
     await new Promise(resolve => setTimeout(resolve, 500));
 
     updateHpBars();
+
+    // ダイマックスわざの追加効果は、実際に命中したダメージ処理から必ず発動させる。
+    // _maxEffectApplied により連続技や複数のダメージ経路で二重発動しない。
+    if (move?.isDynamaxMove && damage > 0) await applyDynamaxMoveEffect(attacker, defender, move);
 
     // 接触技の追加効果は、連続技の各ヒットでも一度ずつ処理する。
     // みがわりに当たった場合は上の分岐で戻るため、ここには到達しない。
@@ -11145,6 +11429,11 @@ defender.lastAttacker = attacker;
 
         // 効果なし・無効化などでダメージが発生していない場合、追加効果は発動しない。
         if (finalDamage <= 0) return;
+
+        // ダイマックスわざの追加効果。
+        // 通常の攻撃経路は applyDamage() を通らないため、ここでも発動させる。
+        // applyDynamaxMoveEffect 側の _maxEffectApplied により二重発動はしない。
+        if (move?.isDynamaxMove) await applyDynamaxMoveEffect(attacker, defender, move);
         
         if (move.secondary) {
 
@@ -11704,7 +11993,7 @@ if (opponentPokemon.ability === 'ムラッけ') {
         if (playerPokemon.isProtected) playerPokemon.isProtected = false;
         if (opponentPokemon.isProtected) opponentPokemon.isProtected = false;
         // フィールドの効果
-if (field.type === 'psyco' || field.type === 'grass') {
+if (field.type === 'psyco' || field.type === 'grass' || field.type === 'electric' || field.type === 'misty') {
 
   // グラスフィールドの回復
 if (field.type === 'grass') {
@@ -11791,6 +12080,16 @@ for (const pokemon of [playerPokemon, opponentPokemon]) {
             if (weather.turns === 0) {
                 weather.type = 'none';
                 await showMessage('すなあらしは おさまった！');
+                updateWeatherIndicator();
+            }
+        }
+        if (weather.type === 'sun') {
+            await showMessage('ひざしが つよい！');
+            weather.turns--;
+            if (weather.turns <= 0) {
+                weather.type = 'none';
+                weather.turns = 0;
+                await showMessage('ひざしが もとにもどった！');
                 updateWeatherIndicator();
             }
         }
@@ -14166,7 +14465,10 @@ isBattleInProgress = false;
 }
 
     function updateWeatherIndicator() {
-    if (weather.type === 'sandstorm') {
+    if (weather.type === 'sun') {
+        weatherIndicator.textContent = '状態: はれ';
+        weatherIndicator.style.display = 'block';
+    } else if (weather.type === 'sandstorm') {
         weatherIndicator.textContent = '状態: すなあらし';
         weatherIndicator.style.display = 'block';
     } else if (weather.type === 'rain') {
@@ -14189,6 +14491,16 @@ function updateFieldIndicator() {
     } else if (field.type === 'grass') {
 
         fieldIndicator.textContent = '状態: グラスフィールド';
+        fieldIndicator.style.display = 'block';
+
+    } else if (field.type === 'electric') {
+
+        fieldIndicator.textContent = '状態: エレキフィールド';
+        fieldIndicator.style.display = 'block';
+
+    } else if (field.type === 'misty') {
+
+        fieldIndicator.textContent = '状態: ミストフィールド';
         fieldIndicator.style.display = 'block';
 
     } else {

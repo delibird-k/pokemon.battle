@@ -1152,15 +1152,12 @@ function syncSmartphoneBattleSpacing() {
     const expandedBy = Math.max(0, menu.offsetHeight - baseMenuHeight);
     battleScreen.style.setProperty("--menu-expand-shift", `${expandedBy}px`);
     if (!document.body.classList.contains('smartphone-mode')) return;
-    // HPカードの「下端」をメニュー上端に合わせる。親エリアのbottom値を使うと
-    // 親エリアの高さ分だけ余白が残るため、カード自身の矩形から位置を計算する。
+    // #player-area はポケモン画像とHPカードを含むflexコンテナなので、
+    // コンテナ自体の下端をメニュー上端のすぐ上に合わせる。カード高さは加算しない。
     const screenRect = battleScreen.getBoundingClientRect();
     const menuRect = menu.getBoundingClientRect();
-    const playerCard = document.querySelector('#player-area > .nes-container');
-    if (!playerCard) return;
-    const cardHeight = playerCard.getBoundingClientRect().height;
-    const desiredGap = Math.max(3, Math.min(7, screenRect.height * 0.006));
-    const bottomOffset = Math.max(0, screenRect.bottom - menuRect.top + cardHeight + desiredGap);
+    const desiredGap = 4;
+    const bottomOffset = Math.max(0, screenRect.bottom - menuRect.top + desiredGap);
     battleScreen.style.setProperty('--smart-player-bottom', `${bottomOffset}px`);
 }
 const menuResizeObserver = new ResizeObserver(syncSmartphoneBattleSpacing);

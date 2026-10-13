@@ -323,7 +323,7 @@
         body.smartphone-mode #opponent-area { top:2% !important; right:2% !important; width:48% !important; max-width:none !important; }
         body.smartphone-mode #opponent-area > .nes-container, body.smartphone-mode #player-area > .nes-container { background:rgba(245,248,250,.82) !important; border-radius:22px; padding:12px !important; }
         body.smartphone-mode #opponent-sprite { max-width:100%; max-height:25dvh; object-fit:contain; }
-        body.smartphone-mode #player-area { left:2% !important; width:49% !important; max-width:none !important; bottom:calc(var(--smart-menu-height, 190px) + 0.5%) !important; }
+        body.smartphone-mode #player-area { left:2% !important; width:49% !important; max-width:none !important; bottom:var(--smart-player-bottom, 195px) !important; }
         body.smartphone-mode #player-area > .nes-container { margin-top:0 !important; top:0 !important; }
         body.smartphone-mode #player-sprite { max-width:100%; max-height:clamp(90px, 19dvh, 180px); object-fit:contain; }
         body.smartphone-mode #menu { bottom:1% !important; left:2% !important; right:2% !important; width:96% !important; height:auto !important; min-height:0 !important; max-height:42dvh !important; margin:0 !important; padding:6px !important; border:6px solid #000 !important; border-radius:22px; grid-template-columns:34% minmax(0,1fr) !important; gap:5px !important; font-size:12px !important; box-sizing:border-box; align-items:stretch; }
@@ -1145,15 +1145,25 @@ function updateBattleNameLabel(pokemon, nameEl, shownName = null) {
 // 下のメニュー（テキスト欄）が高くなった分だけ、
 // HP欄とポケモン画像のエリアも同じ量だけ上へ動かす。
 const baseMenuHeight = 120;
-const menuResizeObserver = new ResizeObserver(() => {
+function syncSmartphoneBattleSpacing() {
     const expandedBy = Math.max(0, menu.offsetHeight - baseMenuHeight);
     battleScreen.style.setProperty("--menu-expand-shift", `${expandedBy}px`);
-    // スマホモードでは、メニューの実際の高さに合わせて味方のHP欄を移動。
-    if (document.body.classList.contains('smartphone-mode')) {
-        battleScreen.style.setProperty('--smart-menu-height', `${menu.offsetHeight}px`);
-    }
-});
+    if (!document.body.classList.contains('smartphone-mode')) return;
+    // メニュー上端の実座標を使い、コマンド画面と技選択画面の両方でHP欄を直上に配置する。
+    const screenRect = battleScreen.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const desiredGap = Math.max(4, Math.min(10, screenRect.height * 0.01));
+    const bottomOffset = Math.max(0, screenRect.bottom - menuRect.top - desiredGap);
+    battleScreen.style.setProperty('--smart-player-bottom', `${bottomOffset}px`);
+}
+const menuResizeObserver = new ResizeObserver(syncSmartphoneBattleSpacing);
 menuResizeObserver.observe(menu);
+if (typeof ResizeObserver !== 'undefined') {
+    const battleResizeObserver = new ResizeObserver(syncSmartphoneBattleSpacing);
+    battleResizeObserver.observe(battleScreen);
+}
+window.addEventListener('resize', syncSmartphoneBattleSpacing);
+requestAnimationFrame(syncSmartphoneBattleSpacing);
 
 function returnToBattleMenu() {
     // 技選択・Zワザ選択から通常のコマンド画面へ戻る
@@ -1170,6 +1180,7 @@ fightButton.onclick = () => {
     updateMoves();
     battleMenu.style.display = "none";
     movesContainer.style.display = "grid";
+    requestAnimationFrame(syncSmartphoneBattleSpacing);
 };
 
 pokemonButton.onclick = () => {

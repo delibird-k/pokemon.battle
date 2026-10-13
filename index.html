@@ -325,6 +325,9 @@
         body.smartphone-mode #opponent-sprite { max-width:100%; max-height:25dvh; object-fit:contain; }
         body.smartphone-mode #player-area { left:2% !important; width:49% !important; max-width:none !important; bottom:var(--smart-player-bottom, 195px) !important; }
         body.smartphone-mode #player-area > .nes-container { margin-top:0 !important; top:0 !important; }
+        /* スマホではメニュー上端に合わせる bottom 計算を使うため、
+           メニュー高に応じた追加 transform を重ねてHP欄が離れるのを防ぐ */
+        body.smartphone-mode #player-area.battle-ui-shift { transform:none !important; }
         body.smartphone-mode #player-sprite { max-width:100%; max-height:clamp(90px, 19dvh, 180px); object-fit:contain; }
         body.smartphone-mode #menu { bottom:1% !important; left:2% !important; right:2% !important; width:96% !important; height:clamp(150px, 25dvh, 220px) !important; min-height:150px !important; max-height:42dvh !important; margin:0 !important; padding:6px !important; border:6px solid #000 !important; border-radius:22px; grid-template-columns:34% minmax(0,1fr) !important; gap:5px !important; font-size:12px !important; box-sizing:border-box; align-items:stretch; }
         body.smartphone-mode #message-log { min-width:0; min-height:0; height:100% !important; align-self:stretch; padding:4px !important; border:5px solid #111 !important; border-radius:20px; overflow-wrap:anywhere; box-sizing:border-box; }

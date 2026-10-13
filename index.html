@@ -298,6 +298,25 @@
         }
         .online-status { min-height: 2.8em; text-align:center; margin:12px 0; line-height:1.7; }
         .online-input { width:100%; border:2px solid #111; border-radius:6px; padding:12px; font-size:1rem; box-sizing:border-box; }
+        /* スマホモード：画面中央に縦長のゲーム画面を固定し、左右を暗くする */
+        body.smartphone-mode { background:#101014 !important; min-height:100dvh; align-items:flex-start !important; justify-content:center !important; overflow-x:hidden; }
+        body.smartphone-mode #game-container { width:min(100vw,432px) !important; max-width:432px !important; height:100dvh; min-height:560px; padding:0 !important; margin:0 auto; box-sizing:border-box; }
+        body.smartphone-mode #battle-screen { width:100% !important; height:100dvh !important; min-height:560px; max-height:100dvh; aspect-ratio:auto !important; border-radius:0; overflow:hidden; padding:8px !important; box-sizing:border-box; }
+        body.smartphone-mode #opponent-area { top:2% !important; right:2% !important; width:48% !important; max-width:none !important; }
+        body.smartphone-mode #opponent-area > .nes-container, body.smartphone-mode #player-area > .nes-container { background:rgba(245,248,250,.82) !important; border-radius:22px; padding:12px !important; }
+        body.smartphone-mode #opponent-sprite { max-width:100%; max-height:25dvh; object-fit:contain; }
+        body.smartphone-mode #player-area { left:2% !important; width:49% !important; max-width:none !important; bottom:24% !important; }
+        body.smartphone-mode #player-sprite { max-width:100%; max-height:25dvh; object-fit:contain; }
+        body.smartphone-mode #menu { bottom:1% !important; left:2% !important; right:2% !important; width:96% !important; min-height:166px !important; max-height:27dvh !important; margin:0 !important; padding:8px !important; border:6px solid #000 !important; border-radius:22px; grid-template-columns:36% minmax(0,1fr) !important; gap:8px !important; font-size:12px !important; box-sizing:border-box; }
+        body.smartphone-mode #message-log { min-width:0; padding:5px !important; border:5px solid #111 !important; border-radius:20px; overflow-wrap:anywhere; }
+        body.smartphone-mode #message-text { font-size:clamp(10px,2.8vw,13px); line-height:1.6; }
+        body.smartphone-mode #battle-menu, body.smartphone-mode #moves-container { gap:6px !important; align-content:center; }
+        body.smartphone-mode #battle-menu button, body.smartphone-mode #moves-container button { min-width:0; min-height:44px; padding:5px 3px !important; font-size:clamp(10px,2.8vw,13px) !important; overflow-wrap:anywhere; }
+        body.smartphone-mode #turn-counter, body.smartphone-mode #rating-display { font-size:10px !important; }
+        body.smartphone-mode #weather-indicator, body.smartphone-mode #field-indicator { font-size:10px !important; max-width:45%; }
+        body.smartphone-mode #opening-screen, body.smartphone-mode #history-screen { width:min(100vw,432px); margin:0 auto; }
+        body:not(.smartphone-mode) #game-container { height:auto; }
+
         @media (max-width: 480px) {
             .opening-panel { padding: 22px 14px; }
             .opening-button { font-size: 0.72rem; }
@@ -349,6 +368,10 @@
                         class="opening-button" style="background:#7c3aed;color:white;">
                     👥 対人戦(PC推奨)
                 </button>
+            </div>
+
+            <div class="opening-button-row" style="margin:10px 0;">
+                <button id="smartphone-mode-toggle-button" class="opening-button" style="background:#dbeafe;color:#1e3a8a;">スマホモード：OFF</button>
             </div>
 
             <div class="opening-button-row opening-button-row-4">
@@ -660,6 +683,24 @@ class="border-2 border-gray-800 rounded p-1 bg-gray-300 hover:bg-gray-400">
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // スマホ用レイアウトはオープニング画面のスイッチで切替。設定は次回も維持する。
+    const smartphoneModeButton = document.getElementById('smartphone-mode-toggle-button');
+    let smartphoneModeEnabled = false;
+    try { smartphoneModeEnabled = localStorage.getItem('pokemonBattleSmartphoneMode') === 'on'; } catch (e) {}
+    function applySmartphoneMode() {
+        document.body.classList.toggle('smartphone-mode', smartphoneModeEnabled);
+        if (smartphoneModeButton) {
+            smartphoneModeButton.textContent = 'スマホモード：' + (smartphoneModeEnabled ? 'ON' : 'OFF');
+            smartphoneModeButton.style.background = smartphoneModeEnabled ? '#bbf7d0' : '#dbeafe';
+            smartphoneModeButton.style.color = smartphoneModeEnabled ? '#14532d' : '#1e3a8a';
+        }
+    }
+    applySmartphoneMode();
+    smartphoneModeButton?.addEventListener('click', () => {
+        smartphoneModeEnabled = !smartphoneModeEnabled;
+        try { localStorage.setItem('pokemonBattleSmartphoneMode', smartphoneModeEnabled ? 'on' : 'off'); } catch (e) {}
+        applySmartphoneMode();
+    });
     // ============================================================
     // オフライン対応：PokéAPI / 使用率データを IndexedDB に保存
     // 取得済みデータは30日間キャッシュ優先。期限切れなら通信で更新し、

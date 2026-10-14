@@ -1266,6 +1266,9 @@ let onlineConn = null;
 let onlineRoomCodeValue = '';
 let onlineLocalReady = false;
 let onlineRemoteReady = false;
+let onlineLocalItemsReady = false;
+let onlineRemoteItemsReady = false;
+let onlineTeraSelectionStarted = false;
 let onlineRemoteTeamData = null;
 let onlineActionResolver = null;
 let onlineQueuedAction = null;
@@ -1767,6 +1770,9 @@ function onlineCreateRoom() {
     onlineMode = true;
     onlineLocalReady = false;
     onlineRemoteReady = false;
+    onlineLocalItemsReady = false;
+    onlineRemoteItemsReady = false;
+    onlineTeraSelectionStarted = false;
     const code = String(Math.floor(100000 + Math.random() * 900000));
     onlineRoomCodeValue = code;
     onlinePeer = new Peer(code);
@@ -1921,6 +1927,11 @@ function handleOnlineData(data) {
         onlineLobbyStatus.textContent = '相手が接続しました。自分の3匹を選んでください。';
         return;
     }
+    if (data.type === 'items-ready') {
+        onlineRemoteItemsReady = true;
+        onlineTryBeginTeraSelection();
+        return;
+    }
     if (data.type === 'team') {
         onlineRemoteTeamData = data.team;
         onlineRemoteReady = true;
@@ -2012,6 +2023,12 @@ function handleOnlineData(data) {
     }
 }
 
+function onlineTryBeginTeraSelection() {
+    if (!onlineMode || !onlineLocalItemsReady || !onlineRemoteItemsReady || onlineTeraSelectionStarted) return;
+    onlineTeraSelectionStarted = true;
+    beginTeraSelection('player');
+}
+
 function onlineSubmitLocalTeam() {
     if (!onlineConn || !onlineConn.open) {
         alert('対戦相手との接続がまだできていません。');
@@ -2061,7 +2078,7 @@ function onlineStartGuestBattle(hostTeam) {
 
 function onlineCleanup() {
     sessionStorage.removeItem('pokemonBattleInProgress');
-    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false; onlineGuestActedTurn=0;
+    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineLocalItemsReady=false; onlineRemoteItemsReady=false; onlineTeraSelectionStarted=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false; onlineGuestActedTurn=0;
     if (onlineGuestRampageTimer) { clearTimeout(onlineGuestRampageTimer); onlineGuestRampageTimer=null; }
     if (onlineConn) { try { onlineConn.close(); } catch(e){} }
     if (onlinePeer) { try { onlinePeer.destroy(); } catch(e){} }
@@ -3941,6 +3958,13 @@ function handlePlayerItemSelect(itemName) {
         return;
     }
 
+    if (onlineMode) {
+        onlineLocalItemsReady = true;
+        onlineSend({type:'items-ready'});
+        onlineTryBeginTeraSelection();
+        onlineShowWaiting('持ちものの選択が完了しました。相手の選択完了を待っています…');
+        return;
+    }
     beginTeraSelection('player');
 }
     

@@ -9535,8 +9535,12 @@ async function applyKnockOffEffect(attacker, defender, move, damage, hitSubstitu
     async function applyDamageWithSurvival(attacker, defender, damage, move, defenderUI) {
         const hpBeforeHit = defender.currentHp;
         const hitSubstitute = defender.hasSubstitute && !move.isSound;
-        const blockedByProtect = defender.isProtected && !move?.isDynamaxMove && attacker.ability !== 'ふかしのこぶし';
-        let actualDamage = defender.isProtected && move?.isDynamaxMove ? Math.max(1, Math.floor(damage / 4)) : damage;
+        const isMaxGuard = !!move?.isMaxGuard;
+        const isProtectedSpecialMove = !!(move?.isDynamaxMove || move?.isZMove);
+        const blockedByProtect = defender.isProtected && !isMaxGuard && !isProtectedSpecialMove && attacker.ability !== 'ふかしのこぶし';
+        let actualDamage = defender.isProtected && isProtectedSpecialMove && !isMaxGuard
+            ? Math.max(1, Math.floor(damage / 4))
+            : damage;
         let survivalMessage = '';
 
         if (!hitSubstitute && !blockedByProtect && hpBeforeHit > 0 && damage >= hpBeforeHit) {
@@ -10800,7 +10804,7 @@ if (move.category === 'status') {
     await handleStatusMove(attacker, defender, move);
     return false;
 }
-       if (defender.isProtected && !move?.isDynamaxMove) {
+       if (defender.isProtected && !move?.isMaxGuard && !move?.isDynamaxMove && !move?.isZMove) {
 
     // ふかしのこぶしなら貫通
     if (attacker.ability === "ふかしのこぶし") {
@@ -11551,7 +11555,7 @@ attacker.hasMoved = true;
     async function applyDamage(attacker, defender, damage, move, defenderUI) {
 
     // まもる：ダイマックスわざは完全には防がず、外側の処理で1/4ダメージにする。
-    if (defender.isProtected && !move?.isDynamaxMove) {
+    if (defender.isProtected && !move?.isMaxGuard && !move?.isDynamaxMove && !move?.isZMove) {
 
     // ふかしのこぶしなら貫通
     if (attacker.ability !== "ふかしのこぶし") {

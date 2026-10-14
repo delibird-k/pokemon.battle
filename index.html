@@ -1834,7 +1834,21 @@ function onlineJoinRoom() {
 function setupOnlineConnection(conn, role) {
     onlineConn = conn;
     onlineRole = role;
+    let connectionOpened = false;
+    // スマホでは接続待ちが長引くことがあるため、無反応のまま固まらず原因を表示する。
+    const connectionTimeout = setTimeout(() => {
+        if (connectionOpened || !onlineMode) return;
+        onlineLobbyStatus.textContent = role === 'guest'
+            ? '接続できませんでした。IDを確認し、相手がルームを開いたままか確認してください。両方のスマホでページを再読み込みして再試行してください。'
+            : '相手の接続待ちがタイムアウトしました。相手側でIDを入力して参加し直してください。';
+        onlineCreateButton.disabled = false;
+        onlineJoinButton.disabled = false;
+        try { conn.close(); } catch (e) {}
+        if (onlineConn === conn) onlineConn = null;
+    }, 20000);
     conn.on('open', () => {
+        connectionOpened = true;
+        clearTimeout(connectionTimeout);
         onlineLobbyStatus.textContent = role === 'host' ? '相手が接続しました。自分の3匹を選んでください。' : '接続しました。自分の3匹を選んでください。';
 
         // 接続成功後は、ルーム画面に留まらずポケモン選択へ進む
@@ -1857,6 +1871,7 @@ function setupOnlineConnection(conn, role) {
     });
     conn.on('data', data => handleOnlineData(data));
     conn.on('close', () => {
+        clearTimeout(connectionTimeout);
         // 接続が切れたときは、Peer/DataConnection と対戦中フラグも必ず片付ける。
         // 画面だけ戻すと onlineMode が残り、次の対戦を正常に開始できないことがある。
         if (onlineMode) {
@@ -1865,11 +1880,13 @@ function setupOnlineConnection(conn, role) {
             showOpeningScreen();
         }
     });
-    conn.on('error', () => {
+    conn.on('error', err => {
+        clearTimeout(connectionTimeout);
         // 接続エラー後に入力だけロックされた状態で残らないようにする。
         if (onlineMode) {
+            const errorType = err && err.type ? err.type : 'unknown';
             onlineCleanup();
-            alert('対戦相手との接続でエラーが発生しました。もう一度ルームを作成／参加してください。');
+            alert('対戦相手との接続でエラーが発生しました（' + errorType + '）。両方のスマホでページを再読み込みし、ホストが新しいルームを作ってから参加してください。');
             showOpeningScreen();
         } else {
             onlineLobbyStatus.textContent = '対戦相手との接続でエラーが発生しました。';

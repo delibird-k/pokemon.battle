@@ -11229,6 +11229,28 @@ for(let hit = 0; hit < hitCount; hit++){
     // 相手を倒した場合も、ダイマックスわざの効果（天候・フィールド・味方の能力上昇）は発動する。
     if (move?.isDynamaxMove) await applyDynamaxMoveEffect(attacker, defender, move);
 
+    // 相手を倒してこのループを抜ける場合、下の通常反動処理に到達しないため、
+    // ここで反動技の反動を適用する。
+    const recoilMovesOnFaint = [
+        "フレアドライブ", "ワイルドボルト", "ブレイブバード",
+        "もろはのずつき", "すてみタックル", "ボルテッカー", "ウェーブタックル"
+    ];
+    if (recoilMovesOnFaint.includes(move.name) && attacker.ability !== "マジックガード") {
+        const recoilDamageOnFaint = Math.floor(currentDamage / 3);
+        if (recoilDamageOnFaint > 0) {
+            await showMessage(`${attacker.name} は はんどうで ダメージを うけた！`);
+            attacker.currentHp = Math.max(0, attacker.currentHp - recoilDamageOnFaint);
+            updateHpBars();
+            if (await checkAndUseItem(attacker)) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            if (attacker.currentHp <= 0) {
+                await checkFainted(attacker, attacker === playerPokemon);
+                return true;
+            }
+        }
+    }
+
     break;
 }
 }

@@ -3961,8 +3961,8 @@ function handlePlayerItemSelect(itemName) {
     if (onlineMode) {
         onlineLocalItemsReady = true;
         onlineSend({type:'items-ready'});
-        onlineTryBeginTeraSelection();
         onlineShowWaiting('持ちものの選択が完了しました。相手の選択完了を待っています…');
+        onlineTryBeginTeraSelection();
         return;
     }
     beginTeraSelection('player');

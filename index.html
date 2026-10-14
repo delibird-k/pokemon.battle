@@ -11547,10 +11547,31 @@ attacker.hasMoved = true;
     }
 
 // 本体ダメージ
+const hpBeforeDamage = defender.currentHp;
 defender.currentHp = Math.max(0, defender.currentHp - damage);
 defender.lastDamageTaken = damage;
 defender.lastDamageCategory = move.category;
 defender.lastAttacker = attacker;
+
+// きあいのタスキ：通常技だけでなくダイマックスわざでも、満タンからの致死ダメージを受けたら判定する。
+// ダイマックス中は最大HPも増えているため、その時点の currentHp / maxHp で満タンを判定する。
+const sashItem = defender.item;
+const sashItemName = typeof sashItem === 'string' ? sashItem : sashItem?.name;
+const ignoreSash = attacker.item?.name === 'げいげきスコープ';
+if (
+    defender.currentHp <= 0 &&
+    damage > 0 &&
+    sashItemName === 'きあいのタスキ' &&
+    !(typeof sashItem === 'object' && sashItem.used) &&
+    hpBeforeDamage === defender.maxHp &&
+    !ignoreSash &&
+    Math.random() < 0.75
+) {
+    if (typeof sashItem === 'object') sashItem.used = true;
+    defender.currentHp = 1;
+    await showMessage(`${defender.name} は きあいのタスキで もちこたえた！`);
+    updateHpBars();
+}
 
 // 実際に相手本体へダメージを与えたこの場所で処理する。
 // まもる・みがわりは上で return するため、持ち物は落ちない。

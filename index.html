@@ -6498,6 +6498,9 @@ async function executePlayerSwitch(newIndex) {
     }
 
 const oldPokemon = playerPokemon;
+// やどりぎは場にかかる効果。交代したポケモンからは解除する。
+oldPokemon.seeded = false;
+oldPokemon.seedSource = null;
 if (oldPokemon.dynamaxActive) await endDynamax(oldPokemon, true);
 // こだわり系アイテムの技固定は、交代した時点で解除する。
 oldPokemon.choiceLockedMove = null;
@@ -12881,6 +12884,12 @@ pokemon._faintProcessed = true;
     // ========================================================
 
     // まだ生きている交代先があるか確認
+    // 場を離れるポケモンに付いていたやどりぎは解除される。
+    if (opponentPokemon) {
+        opponentPokemon.seeded = false;
+        opponentPokemon.seedSource = null;
+    }
+
     const remainingOpponentIndexes = opponentTeam
         .map((pokemon, index) => ({ pokemon, index }))
         .filter(({ pokemon, index }) =>
@@ -13154,7 +13163,12 @@ let top = e.clientY + 20;
 }
 async function executeForcedSwitch(newIndex) {
 
-    if (playerPokemon) playerPokemon.choiceLockedMove = null;
+    // ひんしによる強制交代でも、場を離れたポケモンのやどりぎ状態を解除。
+    if (playerPokemon) {
+        playerPokemon.seeded = false;
+        playerPokemon.seedSource = null;
+        playerPokemon.choiceLockedMove = null;
+    }
     playerActiveIndex = newIndex;
 
     playerPokemon =

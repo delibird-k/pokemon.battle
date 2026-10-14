@@ -1286,9 +1286,10 @@ function onlineSanitizePokemon(pokemon) {
     }));
 }
 
-function onlineMakeTeam(keys, itemNames, teraTypes = []) {
+function onlineMakeTeam(keys, itemNames, teraTypes = [], usePlayerCustomizations = true) {
     return keys.map((key, index) => {
-        const pokemon = createPokemonInstance(pokemonBaseData[key]);
+        const teamBaseData = usePlayerCustomizations ? (pokemonBaseData[key] || customOriginalPokemonBaseData[key]) : (customOriginalPokemonBaseData[key] || pokemonBaseData[key]);
+        const pokemon = createPokemonInstance(teamBaseData);
         pokemon.item = { name: itemNames[index], used: false };
         pokemon.usedZMove = false;
         pokemon.pendingMega = false;
@@ -2038,7 +2039,7 @@ function onlineSubmitLocalTeam() {
 
 function onlineStartGuestBattle(hostTeam) {
     playerTeam = onlineMakeTeam(selectedPlayerKeys, selectedPlayerItemNames, selectedPlayerTeraTypes);
-    opponentTeam = onlineMakeTeam(hostTeam.keys, hostTeam.items, hostTeam.teraTypes || []);
+    opponentTeam = onlineMakeTeam(hostTeam.keys, hostTeam.items, hostTeam.teraTypes || [], false);
     playerActiveIndex=0; opponentActiveIndex=0;
     playerPokemon=playerTeam[0]; opponentPokemon=opponentTeam[0];
     difficulty='online';
@@ -2310,6 +2311,8 @@ let isBattleInProgress = false;
     const customStatsGrid = document.getElementById('custom-stats-grid');
     const customStatus = document.getElementById('customize-status');
     const customStatFields = [['hp','HP'],['atk','こうげき'],['def','ぼうぎょ'],['spa','とくこう'],['spd','とくぼう'],['spe','すばやさ']];
+    // カスタマイズ適用前の基準データを保持し、相手側のチームにはプレイヤーの調整を混ぜない。
+    const customOriginalPokemonBaseData = JSON.parse(JSON.stringify(pokemonBaseData));
     let customOverrides = {};
     try { customOverrides = JSON.parse(localStorage.getItem('pokemonEvOverrides') || '{}') || {}; } catch(e) {}
     function customApplyOverrides() {
@@ -4319,7 +4322,7 @@ function startGame(difficultyLevel) {
     opponentTeam = selectedOpponentKeys.map((key, index) => {
 
         const pokemon = createPokemonInstance(
-            pokemonBaseData[key]
+            customOriginalPokemonBaseData[key] || pokemonBaseData[key]
         );
 
         const itemName =

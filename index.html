@@ -1945,9 +1945,14 @@ function handleOnlineData(data) {
             if (onlineLocalReady) {
                 // 相手が先でも自分が先でも、共通の開始判定に通す。
                 onlineTryStartHostBattle();
-            } else if (selectedPlayerKeys.length < 3) {
-                // 自分のポケモン選択がまだなら選択画面を表示する。
-                // すでに3匹選び、持ち物/テラスタイプ選択中なら画面を切り替えない。
+            } else if (
+                selectedPlayerKeys.length < 3 &&
+                !onlineLocalItemsReady &&
+                !onlineTeraSelectionStarted &&
+                !onlineLocalReady
+            ) {
+                // 相手の選出完了通知で画面を戻すのは、自分がまだポケモン選択中のときだけ。
+                // 持ち物選択・テラスタイプ選択・選出完了後は、オンラインの進行状態を優先する。
                 showPlayerSelection();
                 selectionTitle.textContent = '相手の選出が完了しました。あなたの3匹を選んでください。';
             }

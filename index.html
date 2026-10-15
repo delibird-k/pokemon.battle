@@ -7227,7 +7227,20 @@ turnCounter.textContent = `ターン: ${currentTurn}`;
         if (playerPokemon.isRampaging && playerPokemon.currentHp > 0) {
             await new Promise(resolve => setTimeout(resolve, 1500));
             isBattleInProgress = false;
-            startBattleRound(null);
+            // げきりんの連続使用中は、null ではなく固定された技を渡して次のターンへ進む。
+            // startBattleRound は null の入力を受けると即 return するため、null のままだと停止する。
+            const rampageMove = playerPokemon.moves.find(m => m.name === "げきりん");
+            if (rampageMove && playerPokemon.isRampaging && playerPokemon.currentHp > 0) {
+                startBattleRound(rampageMove);
+            } else {
+                await showMessage(
+                    `${getShownName(playerPokemon)} は どうする？`,
+                    500
+                );
+                if (difficulty === "online" && onlineRole === "host") onlineSendState('input');
+                enableMoves();
+                updateMoves();
+            }
         } else {
             await showMessage(
     `${getShownName(playerPokemon)} は どうする？`,

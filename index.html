@@ -2012,17 +2012,16 @@ function handleOnlineData(data) {
 
         const guestWon = !!data.guestWon;
         sessionStorage.removeItem('pokemonBattleInProgress');
-        if (guestWon) {
-            winStreak++; loseStreak=0; winCount++;
-        } else {
-            loseStreak++; winStreak=0; loseCount++;
+        if (data.recordResult !== false) {
+            if (guestWon) {
+                winStreak++; loseStreak=0; winCount++;
+            } else {
+                loseStreak++; winStreak=0; loseCount++;
+            }
+            if (Number.isFinite(Number(data.ratingDelta))) rating = Math.max(1, rating + Number(data.ratingDelta));
+            updateRating();
+            saveMatchHistory(guestWon ? 'win' : 'lose', playerTeam, opponentTeam);
         }
-        // ホストが確定したレート変動を使い、双方で別々の乱数計算をしない。
-        if (Number.isFinite(Number(data.ratingDelta))) {
-            rating = Math.max(1, rating + Number(data.ratingDelta));
-        }
-        updateRating();
-        saveMatchHistory(guestWon ? 'win' : 'lose', playerTeam, opponentTeam);
         messageText.textContent = guestWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…';
         setTimeout(() => { onlineCleanup(); showOpeningScreen(); }, 1800);
     }
@@ -14483,15 +14482,17 @@ function endGame(playerWon) {
         sessionStorage.removeItem('pokemonBattleInProgress');
         disableMoves();
         const delta = playerWon ? (Math.floor(Math.random()*11)+10 + (winStreak + 1) * 3) : -(Math.floor(Math.random()*11)+10 + (loseStreak + 1) * 2);
-        if (playerWon) { winStreak++; loseStreak=0; winCount++; if (ratingEnabled) rating += delta; }
-        else { loseStreak++; winStreak=0; loseCount++; if (ratingEnabled) rating=Math.max(1,rating+delta); }
-        updateRating();
-        saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
+        if (ratingEnabled) {
+            if (playerWon) { winStreak++; loseStreak=0; winCount++; rating += delta; }
+            else { loseStreak++; winStreak=0; loseCount++; rating=Math.max(1,rating+delta); }
+            updateRating();
+            saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
+        } else updateRating();
         onlineSendState(
             'result',
             playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…'
         );
-        onlineSend({type:'result', guestWon:!playerWon, ratingDelta: ratingEnabled ? -delta : 0});
+        onlineSend({type:'result', guestWon:!playerWon, ratingDelta: ratingEnabled ? -delta : 0, recordResult: ratingEnabled});
         messageText.textContent = playerWon ? 'しょうぶ に かった！' : 'めのまえが まっくら になった…';
         setTimeout(() => { onlineCleanup(); showOpeningScreen(); }, 1800);
         return;

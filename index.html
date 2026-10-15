@@ -3655,17 +3655,15 @@ function handleRefreshLoss() {
         );
     }
 
-    // 敗北数を増やす
-    loseCount++;
-
     // 対戦中フラグを消す
     sessionStorage.removeItem('pokemonBattleInProgress');
 
-    // レート・勝敗数を保存
-    updateRating();
-
-    // リロードによる敗北も履歴に1戦として記録
-    saveMatchHistory('lose', playerTeam, opponentTeam);
+    // レート変動OFFなら、リロードによる離脱も戦績・履歴に記録しない。
+    if (ratingEnabled) {
+        loseCount++;
+        updateRating();
+        saveMatchHistory('lose', playerTeam, opponentTeam);
+    }
 }
 
 function updateRating() {
@@ -14513,61 +14511,32 @@ function endGame(playerWon) {
     movesContainer.style.display = "none";
 
     if (playerWon) {
-
-        // 勝利時は黒いオーバーレイを解除して勝利画面を表示
         screenOverlay.classList.remove("active");
         winScreen.style.display = "flex";
-
-        // 10～20
-        const gain = Math.floor(Math.random() * 11) + 10;
-
-        // 連勝管理
-        winStreak++;
-        loseStreak = 0;
-
-        // 連勝ボーナス
-        const streakBonus = winStreak * 3;
-
-        if (ratingEnabled) rating += gain + streakBonus;
-
-        winCount++;
-
-        winText.textContent =
-            `しょうぶ に かった！`;
-
-    } else {
-
-        screenOverlay.classList.add("active");
-
-        gameOverScreen.style.display = "flex";
-
-        // 10～20
-        const loss = Math.floor(Math.random() * 11) + 10;
-
-        // 連敗管理
-        loseStreak++;
-        winStreak = 0;
-
-        // 連敗ボーナス
-        const streakPenalty = loseStreak * 2;
-
         if (ratingEnabled) {
-            rating = Math.max(
-                1,
-                rating - loss - streakPenalty
-            );
+            const gain = Math.floor(Math.random() * 11) + 10;
+            winStreak++;
+            loseStreak = 0;
+            rating += gain + winStreak * 3;
+            winCount++;
         }
-
-        loseCount++;
-
-        gameOverText.textContent =
-            `めのまえが まっくら になった...`;
+        winText.textContent = `しょうぶ に かった！`;
+    } else {
+        screenOverlay.classList.add("active");
+        gameOverScreen.style.display = "flex";
+        if (ratingEnabled) {
+            const loss = Math.floor(Math.random() * 11) + 10;
+            loseStreak++;
+            winStreak = 0;
+            rating = Math.max(1, rating - loss - loseStreak * 2);
+            loseCount++;
+        }
+        gameOverText.textContent = `めのまえが まっくら になった...`;
     }
 
     updateRating();
-
-    // 試合結果を直近30戦の履歴へ保存
-    saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
+    // レート変動OFFなら戦績・連勝連敗・履歴を一切変更しない。
+    if (ratingEnabled) saveMatchHistory(playerWon ? 'win' : 'lose', playerTeam, opponentTeam);
 
     // 結果を少し表示してから、必ずオープニング画面へ戻る
     setTimeout(() => {

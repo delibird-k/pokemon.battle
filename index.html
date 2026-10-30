@@ -90,6 +90,20 @@
             color: white;
             margin-left: 4px;
         }
+        .condition-marker {
+            display: inline-flex !important;
+            width: 25px;
+            height: 25px;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+            border: 2px solid rgba(17,24,39,.75);
+            border-radius: 6px;
+            font-size: 15px !important;
+            line-height: 1;
+            margin-left: 5px;
+            box-sizing: border-box;
+        }
         body {
     background-image: url("sensyutu.jpeg");
     background-size: cover;        /* 画面いっぱいに表示 */
@@ -2271,6 +2285,51 @@ let isBattleInProgress = false;
         ノーマル: 'bg-gray-200 text-black', ほのお: 'bg-red-500 text-white', みず: 'bg-blue-500 text-white', でんき: 'bg-yellow-400 text-black', くさ: 'bg-green-500 text-white', こおり: 'bg-cyan-300 text-black', かくとう: 'bg-red-700 text-white', どく: 'bg-purple-600 text-white', じめん: 'bg-yellow-600 text-white', ひこう: 'bg-indigo-400 text-white', エスパー: 'bg-pink-500 text-white', むし: 'bg-lime-500 text-black', いわ: 'bg-yellow-700 text-white', ゴースト: 'bg-indigo-800 text-white', ドラゴン: 'bg-indigo-600 text-white', あく: 'bg-gray-800 text-white', はがね: 'bg-gray-500 text-white', フェアリー: 'bg-pink-300 text-black', 神: 'bg-gray-200 text-black',神s: 'bg-gray-200 text-black',
     };
 
+    // PokeAPI公式スプライトリポジトリのタイプ・アイテム画像。
+    const POKEAPI_SPRITE_ROOT = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/";
+    const TYPE_API_IDS = {
+        ノーマル: 1, かくとう: 2, ひこう: 3, どく: 4, じめん: 5, いわ: 6,
+        むし: 7, ゴースト: 8, はがね: 9, ほのお: 10, みず: 11, くさ: 12,
+        でんき: 13, エスパー: 14, こおり: 15, ドラゴン: 16, あく: 17, フェアリー: 18
+    };
+    const ITEM_SPRITE_SLUGS = {
+        'きあいのタスキ': 'focus-sash',
+        'こだわりハチマキ': 'choice-band',
+        'こだわりメガネ': 'choice-specs',
+        'ちからのハチマキ': 'muscle-band',
+        'ものしりメガネ': 'wise-glasses',
+        'こだわりスカーフ': 'choice-scarf',
+        'ゴツゴツメット': 'rocky-helmet',
+        'たいきゅうチョッキ': 'assault-vest',
+        'オボンの実': 'sitrus-berry',
+        'たべのこし': 'leftovers',
+        'せんせいのツメ': 'quick-claw',
+        'しろいハーブ': 'white-herb',
+        'きあいのハチマキ': 'focus-band',
+        'かえんだま': 'flame-orb',
+        'Zクリスタル': 'normalium-z',
+        'ブーストエナジー': 'booster-energy'
+    };
+    function getTypeIconUrl(type) {
+        const id = TYPE_API_IDS[type];
+        return id ? `${POKEAPI_SPRITE_ROOT}types/generation-viii/sword-shield/${id}.png` : null;
+    }
+    function getItemIconUrl(itemName) {
+        const slug = ITEM_SPRITE_SLUGS[itemName];
+        return slug ? `${POKEAPI_SPRITE_ROOT}items/${slug}.png` : null;
+    }
+    function createBattleAssetImage(url, alt, className) {
+        if (!url) return null;
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = alt || '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.className = className || '';
+        img.onerror = () => { img.remove(); };
+        return img;
+    }
+
     window.GAME_STATE = {
     getPlayerTeam: () => playerTeam,
     getOpponentTeam: () => opponentTeam,
@@ -4012,7 +4071,15 @@ function selectRandomPlayerPokemon() {
             const card = document.createElement('button');
             card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
             card.onclick = () => handlePlayerItemSelect(item.name);
-            card.innerHTML = `<p class="text-sm font-bold">${item.name}</p><p class="mt-2 text-xs">${item.description}</p>`;
+            const itemIcon = createBattleAssetImage(getItemIconUrl(item.name), item.name, 'w-12 h-12 object-contain mx-auto mb-2');
+            if (itemIcon) card.appendChild(itemIcon);
+            const itemNameLabel = document.createElement('p');
+            itemNameLabel.className = 'text-sm font-bold';
+            itemNameLabel.textContent = item.name;
+            const itemDescription = document.createElement('p');
+            itemDescription.className = 'mt-2 text-xs';
+            itemDescription.textContent = item.description;
+            card.append(itemNameLabel, itemDescription);
             itemSelectionGrid.appendChild(card);
         }
     }
@@ -4231,15 +4298,15 @@ function selectRandomOpponentAndItem() {
         card.onclick = () =>
             handleOpponentItemSelect(item.name);
 
-        card.innerHTML = `
-            <p class="text-sm font-bold">
-                ${item.name}
-            </p>
-
-            <p class="mt-2 text-xs">
-                ${item.description}
-            </p>
-        `;
+        const itemIcon = createBattleAssetImage(getItemIconUrl(item.name), item.name, 'w-12 h-12 object-contain mx-auto mb-2');
+        if (itemIcon) card.appendChild(itemIcon);
+        const itemNameLabel = document.createElement('p');
+        itemNameLabel.className = 'text-sm font-bold';
+        itemNameLabel.textContent = item.name;
+        const itemDescription = document.createElement('p');
+        itemDescription.className = 'mt-2 text-xs';
+        itemDescription.textContent = item.description;
+        card.append(itemNameLabel, itemDescription);
 
         opponentItemSelectionGrid.appendChild(card);
     }
@@ -5637,7 +5704,12 @@ if (!playerPokemon.pendingMega && !playerPokemon.pendingTera && !playerPokemon.p
     playerPokemon.moves.forEach(move => {
         const button = document.createElement('button');
         const displayedMove = playerPokemon.dynamaxActive ? makeDynamaxMove(playerPokemon, move) : move;
-        button.textContent = displayedMove.displayName || displayedMove.name;
+        const moveLabel = document.createElement('span');
+        moveLabel.textContent = displayedMove.displayName || displayedMove.name;
+        button.textContent = '';
+        const typeIcon = createBattleAssetImage(getTypeIconUrl(displayType), `${displayType}タイプ`, 'move-type-icon w-8 h-4 object-contain shrink-0');
+        if (typeIcon) button.appendChild(typeIcon);
+        button.appendChild(moveLabel);
 
         const isDisabled =
     move.currentPp === 0 ||
@@ -5666,7 +5738,7 @@ if (
 }
 
 button.className =
-    `border-2 border-gray-800 rounded p-1
+    `border-2 border-gray-800 rounded p-1 inline-flex items-center justify-center gap-1
     ${typeColors[displayType] || 'bg-gray-200'}
     ${isDisabled ? 'opacity-50' : ''}`;
 
@@ -14484,20 +14556,28 @@ return {
     }
     
     function updateStatusMarkers() {
+        // PokeAPI spritesには状態異常専用マーカーがないため、状態ごとの視認しやすい記号で表示する。
+        const statusMarkers = {
+            burn: { icon: '🔥', label: 'やけど', color: '#ef4444' },
+            freeze: { icon: '❄', label: 'こおり', color: '#38bdf8' },
+            paralyze: { icon: '⚡', label: 'まひ', color: '#facc15' },
+            poison: { icon: '☠', label: 'どく', color: '#a855f7' },
+            toxic: { icon: '☣', label: 'もうどく', color: '#710297' },
+            sleep: { icon: '💤', label: 'ねむり', color: '#71717a' }
+        };
         [player, opponent].forEach(p => {
             const pokemon = p === player ? playerPokemon : opponentPokemon;
-            if (pokemon && pokemon.status) {
-                p.statusEl.style.display = 'inline-block';
-                switch(pokemon.status) {
-                    case 'burn': p.statusEl.textContent = 'BRN'; p.statusEl.style.backgroundColor = '#ef4444'; break;
-                    case 'freeze': p.statusEl.textContent = 'FRZ'; p.statusEl.style.backgroundColor = '#38bdf8'; break;
-                    case 'paralyze': p.statusEl.textContent = 'PAR'; p.statusEl.style.backgroundColor = '#facc15'; break;
-                    case 'poison': p.statusEl.textContent = 'PSN'; p.statusEl.style.backgroundColor = '#a855f7'; break;
-                    case 'toxic': p.statusEl.textContent = 'TOX'; p.statusEl.style.backgroundColor = '#710297'; break;
-                    case 'sleep': p.statusEl.textContent = 'SLP'; p.statusEl.style.backgroundColor = '#71717a'; break;
-                }
+            if (pokemon && pokemon.status && statusMarkers[pokemon.status]) {
+                const marker = statusMarkers[pokemon.status];
+                p.statusEl.className = 'status-badge condition-marker';
+                p.statusEl.style.display = 'inline-flex';
+                p.statusEl.style.backgroundColor = marker.color;
+                p.statusEl.textContent = marker.icon;
+                p.statusEl.title = marker.label;
+                p.statusEl.setAttribute('aria-label', marker.label);
             } else if (p.statusEl) {
                 p.statusEl.style.display = 'none';
+                p.statusEl.textContent = '';
             }
         });
     }

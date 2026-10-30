@@ -2053,8 +2053,12 @@ function handleOnlineData(data) {
     } else if (data.type === 'action') {
         if (data.actionType === 'move') {
             if (!Number.isInteger(data.moveIndex) || data.moveIndex < 0 || data.moveIndex > 15) return;
+            if (['useMega', 'useTera', 'useDynamax', 'useZMove'].some(key => data[key] !== undefined && typeof data[key] !== 'boolean')) return;
+            if (data.teraType !== undefined && (typeof data.teraType !== 'string' || data.teraType.length > 30)) return;
         } else if (data.actionType === 'switch') {
             if (!Number.isInteger(data.index) || data.index < 0 || data.index > 2) return;
+        } else if (data.actionType === 'surrender') {
+            // 降参は行動選択待ちのホストへ送る正規の操作。
         } else return;
     } else if (data.type === 'state') {
         if (!Array.isArray(data.playerTeam) || !Array.isArray(data.opponentTeam) ||
@@ -2224,7 +2228,11 @@ function onlineStartGuestBattle(hostTeam) {
 
 function onlineCleanup() {
     safeSessionStorage.removeItem('pokemonBattleInProgress');
-    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineLocalItemsReady=false; onlineRemoteItemsReady=false; onlineTeraSelectionStarted=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false; onlineGuestActedTurn=0;
+    onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineLocalItemsReady=false; onlineRemoteItemsReady=false; onlineTeraSelectionStarted=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false;
+    // 接続終了時に行動待ちの Promise を解放し、次の対戦へ古い入力を持ち越さない。
+    if (onlineActionResolver) { const resolve = onlineActionResolver; onlineActionResolver = null; resolve(null); }
+    onlineQueuedActions = [];
+    onlineWaitingForRemote=false; onlineGuestActedTurn=0;
     if (onlineGuestRampageTimer) { clearTimeout(onlineGuestRampageTimer); onlineGuestRampageTimer=null; }
     if (onlineConn) { try { onlineConn.close(); } catch(e){} }
     if (onlinePeer) { try { onlinePeer.destroy(); } catch(e){} }
@@ -6691,6 +6699,7 @@ async function executePlayerSwitch(newIndex) {
     let onlineRemoteAction = null;
     if (difficulty === "online" && onlineRole === "host") {
         onlineRemoteAction = await onlineWaitForAction();
+        if (!onlineRemoteAction) { isBattleInProgress = false; return; }
         if (onlineRemoteAction.actionType === 'surrender') {
             endGame(true);
             isBattleInProgress = false;
@@ -7026,6 +7035,7 @@ let opponentMove = null;
 
 if (difficulty === "online" && onlineRole === "host") {
     const remoteAction = await onlineWaitForAction();
+    if (!remoteAction) { isBattleInProgress = false; return; }
 
     if (remoteAction.actionType === 'surrender') {
         // ゲストが降参した場合は、ホストの勝利として

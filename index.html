@@ -2031,7 +2031,39 @@ function onlineTryStartHostBattle() {
 }
 
 function handleOnlineData(data) {
-    if (!data || !data.type) return;
+    // 通信相手から届く値は信用せず、画面・対戦状態を書き換える前に形を検証する。
+    if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.type !== 'string') return;
+    try {
+        if (JSON.stringify(data).length > 262144) return;
+    } catch (error) { return; }
+    const validTeam = team =>
+        !!team &&
+        typeof team === 'object' &&
+        Array.isArray(team.keys) &&
+        team.keys.length === 3 &&
+        team.keys.every(key => typeof key === 'string' && key.length > 0 && key.length <= 120) &&
+        Array.isArray(team.items) &&
+        team.items.length === 3 &&
+        team.items.every(item => typeof item === 'string' && item.length <= 120) &&
+        (team.teraTypes === undefined ||
+            (Array.isArray(team.teraTypes) && team.teraTypes.length === 3 &&
+             team.teraTypes.every(type => typeof type === 'string' && type.length <= 30)));
+    if (data.type === 'team' || data.type === 'battle-start') {
+        if (!validTeam(data.team)) return;
+    } else if (data.type === 'action') {
+        if (data.actionType === 'move') {
+            if (!Number.isInteger(data.moveIndex) || data.moveIndex < 0 || data.moveIndex > 15) return;
+        } else if (data.actionType === 'switch') {
+            if (!Number.isInteger(data.index) || data.index < 0 || data.index > 2) return;
+        } else return;
+    } else if (data.type === 'state') {
+        if (!Array.isArray(data.playerTeam) || !Array.isArray(data.opponentTeam) ||
+            data.playerTeam.length !== 3 || data.opponentTeam.length !== 3) return;
+    } else if (data.type === 'result') {
+        if (typeof data.guestWon !== 'boolean') return;
+    } else if (!['hello', 'items-ready', 'battle-ready', 'faint', 'request-switch', 'animation', 'leave', 'ping', 'pong'].includes(data.type)) {
+        return;
+    }
     if (data.type === 'hello') {
         onlineLobbyStatus.textContent = '相手が接続しました。自分の3匹を選んでください。';
         return;

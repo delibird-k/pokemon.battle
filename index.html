@@ -6165,8 +6165,9 @@ btn.onmouseout = () => {
         if (specialUrl) {
             const match = String(specialUrl).match(/\/([^/?#]+)\.(?:gif|png|webp)(?:[?#].*)?$/i);
             if (match) {
-                let slug = match[1];
-                slug = slug.replace(/-shiny$/, '');
+                let slug = match[1].replace(/-shiny$/, '').toLowerCase();
+                // Showdown のメガリザードンX/Yは mega-x / mega-y ではなく megax / megay のファイル名。
+                slug = slug.replace(/-mega-x$/, '-megax').replace(/-mega-y$/, '-megay');
                 return getPixelSpriteUrl(slug, back, !!pokemon.isShiny);
             }
         }

@@ -790,10 +790,22 @@ class="border-2 border-gray-800 rounded p-1 btn-neutral">
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // localStorage が無効・容量超過・プライベートモード等でもゲーム本体を停止させない。
+    const safeStorage = {
+        getItem(key) {
+            try { return window.safeStorage.getItem(key); } catch (error) { return null; }
+        },
+        setItem(key, value) {
+            try { window.safeStorage.setItem(key, String(value)); return true; } catch (error) { return false; }
+        },
+        removeItem(key) {
+            try { window.safeStorage.removeItem(key); return true; } catch (error) { return false; }
+        }
+    };
     // スマホ用レイアウトはオープニング画面のスイッチで切替。設定は次回も維持する。
     const smartphoneModeButton = document.getElementById('smartphone-mode-toggle-button');
     let smartphoneModeEnabled = false;
-    try { smartphoneModeEnabled = localStorage.getItem('pokemonBattleSmartphoneMode') === 'on'; } catch (e) {}
+    try { smartphoneModeEnabled = safeStorage.getItem('pokemonBattleSmartphoneMode') === 'on'; } catch (e) {}
     function applySmartphoneMode() {
         document.body.classList.toggle('smartphone-mode', smartphoneModeEnabled);
         if (smartphoneModeButton) {
@@ -805,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applySmartphoneMode();
     smartphoneModeButton?.addEventListener('click', () => {
         smartphoneModeEnabled = !smartphoneModeEnabled;
-        try { localStorage.setItem('pokemonBattleSmartphoneMode', smartphoneModeEnabled ? 'on' : 'off'); } catch (e) {}
+        try { safeStorage.setItem('pokemonBattleSmartphoneMode', smartphoneModeEnabled ? 'on' : 'off'); } catch (e) {}
         applySmartphoneMode();
     });
     // ============================================================
@@ -1010,7 +1022,7 @@ document.getElementById("reset-no-button");
 
         // 常に直近30戦だけ保存
         matchHistory = matchHistory.slice(-30);
-        localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
+        safeStorage.setItem('matchHistory', JSON.stringify(matchHistory));
     }
 
     function renderHistory() {
@@ -1122,12 +1134,12 @@ document.getElementById("reset-no-button");
         loseStreak = 0;
         matchHistory = [];
 
-        localStorage.setItem("rating", rating);
-        localStorage.setItem("wins", winCount);
-        localStorage.setItem("losses", loseCount);
-        localStorage.setItem("winStreak", winStreak);
-        localStorage.setItem("loseStreak", loseStreak);
-        localStorage.removeItem("matchHistory");
+        safeStorage.setItem("rating", rating);
+        safeStorage.setItem("wins", winCount);
+        safeStorage.setItem("losses", loseCount);
+        safeStorage.setItem("winStreak", winStreak);
+        safeStorage.setItem("loseStreak", loseStreak);
+        safeStorage.removeItem("matchHistory");
 
         updateRating();
         updateOpeningStats();
@@ -2195,9 +2207,9 @@ let selectedPlayerItemName;
 let selectedOpponentKey;
 let selectedOpponentItemName;
     let difficulty;
-    let rating = Number(localStorage.getItem("rating")) || 1;
+    let rating = Number(safeStorage.getItem("rating")) || 1;
     // レート変動設定は端末ごとに保存。未設定時は従来どおりON。
-    let ratingEnabled = localStorage.getItem("ratingEnabled") !== "false";
+    let ratingEnabled = safeStorage.getItem("ratingEnabled") !== "false";
     const ratingToggleButton = document.getElementById('rating-toggle-button');
     function updateRatingToggleButton() {
         if (!ratingToggleButton) return;
@@ -2209,14 +2221,14 @@ let selectedOpponentItemName;
     if (ratingToggleButton) {
         ratingToggleButton.onclick = () => {
             ratingEnabled = !ratingEnabled;
-            localStorage.setItem('ratingEnabled', String(ratingEnabled));
+            safeStorage.setItem('ratingEnabled', String(ratingEnabled));
             updateRatingToggleButton();
             updateOpeningStats();
         };
     }
 
     // テラスタルルールは端末ごとに保存。未設定時はON。オンラインではホストの設定を採用する。
-    let teraRuleEnabled = localStorage.getItem('teraRuleEnabled') !== 'false';
+    let teraRuleEnabled = safeStorage.getItem('teraRuleEnabled') !== 'false';
     const teraRuleToggleButton = document.getElementById('tera-rule-toggle-button');
     function updateTeraRuleToggleButton() {
         if (!teraRuleToggleButton) return;
@@ -2228,7 +2240,7 @@ let selectedOpponentItemName;
     if (teraRuleToggleButton) {
         teraRuleToggleButton.onclick = () => {
             teraRuleEnabled = !teraRuleEnabled;
-            localStorage.setItem('teraRuleEnabled', String(teraRuleEnabled));
+            safeStorage.setItem('teraRuleEnabled', String(teraRuleEnabled));
             updateTeraRuleToggleButton();
             updateOpeningStats();
         };
@@ -2236,7 +2248,7 @@ let selectedOpponentItemName;
     updateTeraRuleToggleButton();
 
     // ダイマックスルールも端末ごとに保存。未設定時はON。オンラインではホスト設定を採用。
-    let dynamaxRuleEnabled = localStorage.getItem('dynamaxRuleEnabled') !== 'false';
+    let dynamaxRuleEnabled = safeStorage.getItem('dynamaxRuleEnabled') !== 'false';
     const dynamaxRuleToggleButton = document.getElementById('dynamax-rule-toggle-button');
     function updateDynamaxRuleToggleButton() {
         if (!dynamaxRuleToggleButton) return;
@@ -2248,20 +2260,20 @@ let selectedOpponentItemName;
     if (dynamaxRuleToggleButton) {
         dynamaxRuleToggleButton.onclick = () => {
             dynamaxRuleEnabled = !dynamaxRuleEnabled;
-            localStorage.setItem('dynamaxRuleEnabled', String(dynamaxRuleEnabled));
+            safeStorage.setItem('dynamaxRuleEnabled', String(dynamaxRuleEnabled));
             updateDynamaxRuleToggleButton();
             updateOpeningStats();
         };
     }
     updateDynamaxRuleToggleButton();
 
-    let winCount = Number(localStorage.getItem("wins")) || 0;
-    let loseCount = Number(localStorage.getItem("losses")) || 0;  
-    let winStreak = Number(localStorage.getItem("winStreak")) || 0;
-    let loseStreak = Number(localStorage.getItem("loseStreak")) || 0;
+    let winCount = Number(safeStorage.getItem("wins")) || 0;
+    let loseCount = Number(safeStorage.getItem("losses")) || 0;  
+    let winStreak = Number(safeStorage.getItem("winStreak")) || 0;
+    let loseStreak = Number(safeStorage.getItem("loseStreak")) || 0;
     let matchHistory = (() => {
         try {
-            const saved = JSON.parse(localStorage.getItem("matchHistory") || "[]");
+            const saved = JSON.parse(safeStorage.getItem("matchHistory") || "[]");
             return Array.isArray(saved) ? saved.slice(-30) : [];
         } catch (e) {
             return [];
@@ -2464,7 +2476,7 @@ let isBattleInProgress = false;
     // カスタマイズ適用前の基準データを保持し、相手側のチームにはプレイヤーの調整を混ぜない。
     const customOriginalPokemonBaseData = JSON.parse(JSON.stringify(pokemonBaseData));
     let customOverrides = {};
-    try { customOverrides = JSON.parse(localStorage.getItem('pokemonEvOverrides') || '{}') || {}; } catch(e) {}
+    try { customOverrides = JSON.parse(safeStorage.getItem('pokemonEvOverrides') || '{}') || {}; } catch(e) {}
     function customApplyOverrides() {
       Object.keys(customOverrides).forEach(key => {
         const p=pokemonBaseData[key], saved=customOverrides[key]; if(!p||!saved)return;
@@ -3168,7 +3180,7 @@ let isBattleInProgress = false;
       }
       customOverrides[key]={...evs,nature,moves:chosenMoves};
       try{
-        localStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));
+        safeStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));
         p.evs={...evs};
         p.nature=nature;
         p.moves=chosenMoves.map(customCloneMove);
@@ -3179,7 +3191,7 @@ let isBattleInProgress = false;
     };
     document.getElementById('custom-reset-one-button').onclick=()=>{
       delete customOverrides[customPokemonSelect.value];
-      try{localStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));}catch(e){}
+      try{safeStorage.setItem('pokemonEvOverrides',JSON.stringify(customOverrides));}catch(e){}
       customStatus.textContent='努力値・性格・技を初期値に戻すため、ページを再読み込みします。';
       setTimeout(()=>location.reload(),500);
     };
@@ -3803,11 +3815,11 @@ function updateRating() {
         <div>🔥${winStreak}連勝　💀${loseStreak}連敗</div>
     `;
 
-    localStorage.setItem("rating", rating);
-    localStorage.setItem("wins", winCount);
-    localStorage.setItem("losses", loseCount);
-    localStorage.setItem("winStreak", winStreak);
-    localStorage.setItem("loseStreak", loseStreak);
+    safeStorage.setItem("rating", rating);
+    safeStorage.setItem("wins", winCount);
+    safeStorage.setItem("losses", loseCount);
+    safeStorage.setItem("winStreak", winStreak);
+    safeStorage.setItem("loseStreak", loseStreak);
 }
 
 // 起動時にも保存されているレート情報と変動設定を表示する。

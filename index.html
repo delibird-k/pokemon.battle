@@ -793,13 +793,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // localStorage が無効・容量超過・プライベートモード等でもゲーム本体を停止させない。
     const safeStorage = {
         getItem(key) {
-            try { return window.safeStorage.getItem(key); } catch (error) { return null; }
+            try { return window.localStorage.getItem(key); } catch (error) { return null; }
         },
         setItem(key, value) {
-            try { window.safeStorage.setItem(key, String(value)); return true; } catch (error) { return false; }
+            try { window.localStorage.setItem(key, String(value)); return true; } catch (error) { return false; }
         },
         removeItem(key) {
-            try { window.safeStorage.removeItem(key); return true; } catch (error) { return false; }
+            try { window.localStorage.removeItem(key); return true; } catch (error) { return false; }
         }
     };
     // スマホ用レイアウトはオープニング画面のスイッチで切替。設定は次回も維持する。

@@ -1355,6 +1355,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
     const randomPlayerButton = document.getElementById('random-player-button');
     const confirmPlayerSelectionButton = document.getElementById('confirm-player-selection-button');
+    const confirmOpponentSelectionButton = document.getElementById('confirm-opponent-selection-button');
     const itemSelectionScreen = document.getElementById('item-selection-screen');
     randomPlayerButton.onclick = () => {
     selectRandomPlayerPokemon();
@@ -1390,7 +1391,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showOpponentItemSelection();
     });
     const randomOpponentButton = document.getElementById('random-opponent-button');
-    const confirmOpponentSelectionButton = document.getElementById('confirm-opponent-selection-button');
     const opponentItemSelectionScreen = document.getElementById('opponent-item-selection-screen');
     const opponentItemSelectionGrid = document.getElementById('opponent-item-selection-grid');
     const opponentItemSelectionTitle = document.getElementById('opponent-item-selection-title');

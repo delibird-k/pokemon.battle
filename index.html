@@ -1430,11 +1430,7 @@ function onlineTeamPayload() {
 
 function onlineWaitForAction() {
     if (onlineQueuedActions.length) return Promise.resolve(onlineQueuedActions.shift());
-    return new Promise(resolve => {
-        // 同じホスト処理が複数回待機登録されないよう、古い待機を解放する。
-        if (onlineActionResolver) onlineActionResolver(null);
-        onlineActionResolver = resolve;
-    });
+    return new Promise(resolve => { onlineActionResolver = resolve; });
 }
 
 function onlineReceiveAction(action) {

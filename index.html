@@ -591,14 +591,14 @@
             color:#58718e !important; border-color:#d6e6fa !important;
             background:#f7faff !important;
         }
-        #game-container { max-width:800px !important; margin-inline:auto !important; }
+        #game-container { max-width:960px !important; margin-inline:auto !important; }
         #battle-screen {
-            width:min(100%,760px) !important; max-width:760px !important;
+            width:min(100%,900px) !important; max-width:900px !important;
             margin:0 auto !important; aspect-ratio:4/3;
             background:#eaf3ff !important; border:1px solid #c8dcf5 !important;
             border-radius:12px !important; box-shadow:0 4px 16px rgba(35,91,155,.08) !important;
         }
-        #player-sprite, #opponent-sprite { max-width:170px; max-height:150px; }
+        #player-sprite, #opponent-sprite { max-width:200px; max-height:180px; }
         .pokemon-selection-preview {
             display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
             gap:8px; margin:0 auto 14px; padding:10px; max-width:760px; min-height:68px;
@@ -1199,6 +1199,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = retroAudio.currentTime;
             const notes = kind === 'select' ? [[660, 0, .075], [990, .075, .09]]
                 : kind === 'confirm' ? [[523, 0, .07], [784, .065, .08], [1047, .13, .11]]
+                : kind === 'hit' ? [[180, 0, .055], [120, .055, .085]]
+                : kind === 'faint' ? [[392, 0, .12], [294, .13, .14], [196, .28, .22]]
+                : kind === 'attack' ? [[740, 0, .045], [520, .045, .07]]
                 : [[440, 0, .045]];
             notes.forEach(([hz, delay, duration]) => {
                 const oscillator = retroAudio.createOscillator();
@@ -1951,6 +1954,7 @@ function onlineSendState(phase = 'event', messageOverride = null, messageAlready
 // 攻撃を受けたポケモンの画像だけを振動させる
 function shakeSprite(el) {
     if (!el) return;
+    playRetroSound('hit');
     el.classList.remove('sprite-shake');
     void el.offsetWidth;
     el.classList.add('sprite-shake');
@@ -2536,7 +2540,10 @@ function handleOnlineData(data) {
     if (data.type === 'faint' && onlineRole === 'guest') {
         // ホスト視点の side を、ゲスト視点のスプライトに変換する。
         const target = data.side === 'player' ? opponent.sprite : player.sprite;
-        if (target) target.classList.add('sprite-faint');
+        if (target) {
+            playRetroSound('faint');
+            target.classList.add('sprite-faint');
+        }
         return;
     }
     if (data.type === 'request-switch' && onlineRole === 'guest') {
@@ -10367,6 +10374,7 @@ if (move.isDynamicType) {
                     await new Promise(resolve => setTimeout(resolve, 1200));
                     if (attacker.currentHp <= 0) {
                         const faintedSprite = isPlayerAttacking ? player.sprite : opponent.sprite;
+                        playRetroSound('faint');
                         faintedSprite.classList.add('sprite-faint');
                         onlineSendFaint(isPlayerAttacking);
                         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -13465,6 +13473,7 @@ pokemon._faintProcessed = true;
     const faintedSprite =
         isPlayer ? player.sprite : opponent.sprite;
 
+    playRetroSound('faint');
     faintedSprite.classList.add('sprite-faint');
     onlineSendFaint(isPlayer);
 

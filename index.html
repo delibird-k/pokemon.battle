@@ -138,6 +138,14 @@
         background-position: center;
     }
 
+        /* 効果音コントロール */
+        #sound-volume { accent-color: #477eaf; cursor: pointer; }
+        body.dark-mode #sound-volume + b { color:#e5edf8; }
+        body.dark-mode #opening-screen label[for="sound-volume"],
+        body.dark-mode #opening-screen label:has(#sound-volume) {
+            background:#24364e !important; color:#e5edf8 !important; border-color:#526780 !important;
+        }
+
         /* ============================================================
            オープニング・対戦履歴
            ============================================================ */
@@ -789,7 +797,14 @@ ON</button>
                 <button id="dynamax-rule-toggle-button" class="opening-button btn-success">ダイマックスルール
 ON</button>
                 <button id="theme-toggle-button" class="opening-button btn-neutral">画面の明暗
-ライト</button>
+自動</button>
+            </div>
+            <div class="opening-button-row opening-button-row-2" style="align-items:center;margin-top:8px;">
+                <button id="sound-toggle-button" class="opening-button btn-success" type="button">効果音
+ON</button>
+                <label style="display:flex;align-items:center;gap:8px;justify-content:center;min-height:54px;padding:8px;border:2px solid #8aa4c2;border-radius:8px;background:rgba(255,255,255,.7);font-size:.62rem;">
+                    音量 <input id="sound-volume" type="range" min="0" max="100" step="5" value="35" style="width:min(100px,35%);"> <b id="sound-volume-value">35%</b>
+                </label>
             </div>
 
             <button id="opening-reset-button" class="opening-button opening-reset-button opening-small-button">戦績とレートをリセット</button>
@@ -1131,23 +1146,95 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     applySmartphoneMode();
 
-    // 画面の明暗設定（初期値はライト）。選択状態を次回起動時も維持。
+    // 画面の明暗設定：自動 → ライト → ダーク。設定は次回起動時も維持。
     const themeToggleButton = document.getElementById('theme-toggle-button');
-    let darkModeEnabled = safeStorage.getItem('pokemonBattleTheme') === 'dark';
+    let colorTheme = safeStorage.getItem('pokemonBattleTheme') || 'auto';
+    if (!['auto', 'light', 'dark'].includes(colorTheme)) colorTheme = 'auto';
+    const systemDarkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
     function applyColorTheme() {
-        document.body.classList.toggle('dark-mode', darkModeEnabled);
+        const useDark = colorTheme === 'dark' || (colorTheme === 'auto' && !!systemDarkQuery?.matches);
+        document.body.classList.toggle('dark-mode', useDark);
         if (themeToggleButton) {
-            themeToggleButton.textContent = '画面の明暗\n' + (darkModeEnabled ? 'ダーク' : 'ライト');
-            themeToggleButton.classList.toggle('btn-success', darkModeEnabled);
-            themeToggleButton.classList.toggle('btn-neutral', !darkModeEnabled);
+            const label = { auto: '自動', light: 'ライト', dark: 'ダーク' }[colorTheme];
+            themeToggleButton.textContent = '画面の明暗\n' + label;
+            themeToggleButton.classList.toggle('btn-success', colorTheme === 'dark');
+            themeToggleButton.classList.toggle('btn-neutral', colorTheme !== 'dark');
         }
     }
     applyColorTheme();
     themeToggleButton?.addEventListener('click', () => {
-        darkModeEnabled = !darkModeEnabled;
-        safeStorage.setItem('pokemonBattleTheme', darkModeEnabled ? 'dark' : 'light');
+        colorTheme = ({ auto: 'light', light: 'dark', dark: 'auto' })[colorTheme];
+        safeStorage.setItem('pokemonBattleTheme', colorTheme);
         applyColorTheme();
     });
+    systemDarkQuery?.addEventListener?.('change', () => {
+        if (colorTheme === 'auto') applyColorTheme();
+    });
+
+    // レトロゲーム風の8bit効果音（Web Audioで合成。外部音源なし）
+    let retroAudio = null;
+    let retroSoundOn = safeStorage.getItem('pokemonBattleSound') !== 'off';
+    let retroVolume = Number(safeStorage.getItem('pokemonBattleSoundVolume'));
+    if (!Number.isFinite(retroVolume) || retroVolume < 0 || retroVolume > 100) retroVolume = 35;
+    const soundToggleButton = document.getElementById('sound-toggle-button');
+    const soundVolume = document.getElementById('sound-volume');
+    function syncRetroSoundControls() {
+        if (soundToggleButton) {
+            soundToggleButton.textContent = '効果音\n' + (retroSoundOn ? 'ON' : 'OFF');
+            soundToggleButton.classList.toggle('btn-success', retroSoundOn);
+            soundToggleButton.classList.toggle('btn-neutral', !retroSoundOn);
+        }
+        if (soundVolume) soundVolume.value = String(retroVolume);
+        const value = document.getElementById('sound-volume-value');
+        if (value) value.textContent = retroVolume + '%';
+    }
+    function playRetroSound(kind = 'tap') {
+        if (!retroSoundOn || retroVolume <= 0) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!retroAudio) retroAudio = new AudioCtx();
+            if (retroAudio.state === 'suspended') retroAudio.resume();
+            const now = retroAudio.currentTime;
+            const notes = kind === 'select' ? [[660, 0, .075], [990, .075, .09]]
+                : kind === 'confirm' ? [[523, 0, .07], [784, .065, .08], [1047, .13, .11]]
+                : [[440, 0, .045]];
+            notes.forEach(([hz, delay, duration]) => {
+                const oscillator = retroAudio.createOscillator();
+                const gain = retroAudio.createGain();
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(hz, now + delay);
+                gain.gain.setValueAtTime(0.0001, now + delay);
+                gain.gain.linearRampToValueAtTime((retroVolume / 100) * 0.045, now + delay + 0.006);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
+                oscillator.connect(gain);
+                gain.connect(retroAudio.destination);
+                oscillator.start(now + delay);
+                oscillator.stop(now + delay + duration + 0.01);
+                oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+            });
+        } catch (_) {}
+    }
+    soundToggleButton?.addEventListener('click', () => {
+        retroSoundOn = !retroSoundOn;
+        safeStorage.setItem('pokemonBattleSound', retroSoundOn ? 'on' : 'off');
+        syncRetroSoundControls();
+        if (retroSoundOn) playRetroSound('confirm');
+    });
+    soundVolume?.addEventListener('input', () => {
+        retroVolume = Number(soundVolume.value);
+        safeStorage.setItem('pokemonBattleSoundVolume', String(retroVolume));
+        syncRetroSoundControls();
+    });
+    // 実際の操作に合わせて短い8bit音を鳴らす。音声再生は最初の操作後に開始。
+    document.addEventListener('click', (event) => {
+        const target = event.target?.closest?.('button, .pokemon-card, .item-card, .difficulty-card');
+        if (!target || target.disabled || target.id === 'sound-toggle-button') return;
+        const id = target.id || '';
+        const isDecision = /start|confirm|attack|move|battle|select|online-create|online-join/i.test(id);
+        playRetroSound(isDecision ? 'select' : 'tap');
+    }, true);
+    syncRetroSoundControls();
 
     smartphoneModeButton?.addEventListener('click', () => {
         smartphoneModeEnabled = !smartphoneModeEnabled;

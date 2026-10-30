@@ -2307,7 +2307,6 @@ let isBattleInProgress = false;
         'しろいハーブ': 'white-herb',
         'きあいのハチマキ': 'focus-band',
         'かえんだま': 'flame-orb',
-        'Zクリスタル': 'normalium-z',
         'メガストーン': 'common-stone',
         'ブーストエナジー': 'booster-energy'
     };
@@ -2316,6 +2315,8 @@ let isBattleInProgress = false;
         return id ? `${POKEAPI_SPRITE_ROOT}types/generation-viii/sword-shield/${id}.png` : null;
     }
     function getItemIconUrl(itemName) {
+        // ZクリスタルはNormalium Zの専用アイコンを使用する。
+        if (itemName === 'Zクリスタル') return 'https://img.pokemondb.net/sprites/items/normalium-z.png';
         const slug = ITEM_SPRITE_SLUGS[itemName];
         return slug ? `${POKEAPI_SPRITE_ROOT}items/${slug}.png` : null;
     }

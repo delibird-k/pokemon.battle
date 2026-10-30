@@ -1,8 +1,9 @@
 /* PokÃ©mon Battle 3v3 - offline shell cache */
-const CACHE_VERSION = 'pokemon-battle-shell-v1';
+const CACHE_VERSION = 'pokemon-battle-shell-v2';
 const SHELL_URLS = [
   './',
   './index.html',
+  './ai.js',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js',
   'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'

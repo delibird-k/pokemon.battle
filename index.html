@@ -182,7 +182,7 @@
             box-shadow: 0 1px 0 #111;
         }
 
-        .opening-battle-button { background: #fbbf24; }
+
 
         /* バトルをする → カスタマイズ → 履歴/対人戦(横2つ) → 設定系4つ(横一列) */
         .opening-button-row {
@@ -233,9 +233,6 @@
             justify-content: center;
             text-align: center;
         }
-        .opening-history-button { background: #93c5fd; }
-        .opening-reset-button { background: #fca5a5; }
-        .opening-back-button { background: #d1d5db; }
 
         .copyright-disclaimer {
             margin-top: 18px;
@@ -367,6 +364,65 @@
             .history-teams { gap: 5px; }
         }
 
+
+        /* ============================================================
+           ボタン配色の統一パレット
+           primary(黄)=主役・ON状態 / 灰白=その他すべて / danger(赤)=破壊的操作のみ
+           ============================================================ */
+        :root {
+            --ui-ink: #111827;
+            --ui-primary:   #fbbf24; --ui-primary-h:   #f59e0b;
+            --ui-secondary: #f3f4f6; --ui-secondary-h: #e5e7eb;
+            --ui-accent:    #f3f4f6; --ui-accent-h:    #e5e7eb;
+            --ui-neutral:   #f3f4f6; --ui-neutral-h:   #e5e7eb;
+            --ui-danger:    #fca5a5; --ui-danger-h:    #f87171;
+            --ui-success:   #fbbf24; --ui-success-h:   #f59e0b;
+        }
+        .btn-primary, .opening-battle-button   { background: var(--ui-primary);   color: var(--ui-ink); }
+        .btn-secondary, .opening-history-button{ background: var(--ui-secondary); color: var(--ui-ink); }
+        .btn-accent                            { background: var(--ui-accent);    color: var(--ui-ink); }
+        .btn-neutral, .opening-back-button     { background: var(--ui-neutral);   color: var(--ui-ink); }
+        .btn-danger, .opening-reset-button     { background: var(--ui-danger);    color: var(--ui-ink); }
+        .btn-success                           { background: var(--ui-success);   color: var(--ui-ink); }
+        .btn-primary:hover:not(:disabled),   .opening-battle-button:hover:not(:disabled)  { background: var(--ui-primary-h); }
+        .btn-secondary:hover:not(:disabled), .opening-history-button:hover:not(:disabled) { background: var(--ui-secondary-h); }
+        .btn-accent:hover:not(:disabled)  { background: var(--ui-accent-h); }
+        .btn-neutral:hover:not(:disabled), .opening-back-button:hover:not(:disabled)      { background: var(--ui-neutral-h); }
+        .btn-danger:hover:not(:disabled),  .opening-reset-button:hover:not(:disabled)     { background: var(--ui-danger-h); }
+        .btn-success:hover:not(:disabled) { background: var(--ui-success-h); }
+        .btn-primary:disabled, .btn-secondary:disabled, .btn-accent:disabled,
+        .btn-neutral:disabled, .btn-danger:disabled, .btn-success:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-primary, .btn-secondary, .btn-accent, .btn-neutral, .btn-danger, .btn-success { cursor: pointer; font-weight: bold; }
+
+
+        /* ============================================================
+           オープニング画面などの見た目統一（枠・余白・見出し）
+           ============================================================ */
+        .opening-panel, .online-lobby-panel { border: 4px solid var(--ui-ink); }
+        .opening-panel { background: rgba(255,255,255,0.96); }
+        .opening-title { color: var(--ui-ink); padding-bottom: 12px; margin-bottom: 10px; border-bottom: 4px solid var(--ui-primary); }
+        .opening-stats { border: 3px solid var(--ui-ink); background: #f9fafb; }
+        .opening-section-label {
+            margin: 22px 0 8px; padding-left: 8px;
+            font-size: .62rem; font-weight: bold; color: #374151;
+            border-left: 5px solid var(--ui-primary); line-height: 1.4;
+        }
+        .opening-button-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0; }
+        .opening-button-row-4 .opening-button { min-height: 72px; white-space: pre-line; }
+        .opening-button-row.opening-button-row-2 .opening-button { font-size: clamp(0.88rem, 2.5vw, 1.05rem); min-height: 52px; padding: 12px 8px; }
+        .opening-small-button {
+            margin-top: 14px; padding: 9px 10px; font-size: .62rem;
+            box-shadow: 0 3px 0 var(--ui-ink);
+        }
+        .opening-button, .btn-primary, .btn-secondary, .btn-accent, .btn-neutral, .btn-danger, .btn-success {
+            border-color: var(--ui-ink);
+        }
+        .history-win  { background: rgba(251,191,36,0.28); }
+        .history-lose { background: rgba(252,165,165,0.45); }
+        .copyright-disclaimer { border: 2px solid #9ca3af; background: #f3f4f6; }
+        .online-code { border-color: var(--ui-ink); background: #f9fafb; }
+        .online-input { border-color: var(--ui-ink); }
+        .history-list:not(:has(.history-row)) { padding: 18px 12px; text-align: center; font-size: .7rem; line-height: 1.8; margin-bottom: 4px; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -392,7 +448,7 @@
             </button>
 
             <button id="customize-pokemon-button"
-                    class="opening-button" style="background:#c4b5fd;">
+                    class="opening-button btn-secondary">
                 🛠 技・努力値・性格をカスタマイズ
             </button>
 
@@ -403,18 +459,24 @@
                 </button>
 
                 <button id="online-battle-button"
-                        class="opening-button" style="background:#7c3aed;color:white;">
+                        class="opening-button btn-secondary">
                     👥 対人戦
                 </button>
             </div>
 
-            <div class="opening-button-row opening-button-row-5">
-                <button id="smartphone-mode-toggle-button" class="opening-button" style="background:#dbeafe;color:#1e3a8a;">スマホモード：OFF</button>
-                <button id="rating-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">レート変動：ON</button>
-                <button id="tera-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">テラスタルルール：ON</button>
-                <button id="dynamax-rule-toggle-button" class="opening-button" style="background:#bbf7d0;color:#14532d;">ダイマックスルール：ON</button>
-                <button id="opening-reset-button" class="opening-button opening-reset-button">戦績とレートをリセット</button>
+            <div class="opening-section-label">せってい</div>
+            <div class="opening-button-row opening-button-row-5 opening-button-row-4">
+                <button id="smartphone-mode-toggle-button" class="opening-button btn-neutral">スマホモード
+OFF</button>
+                <button id="rating-toggle-button" class="opening-button btn-success">レート変動
+ON</button>
+                <button id="tera-rule-toggle-button" class="opening-button btn-success">テラスタルルール
+ON</button>
+                <button id="dynamax-rule-toggle-button" class="opening-button btn-success">ダイマックスルール
+ON</button>
             </div>
+
+            <button id="opening-reset-button" class="opening-button opening-reset-button opening-small-button">戦績とレートをリセット</button>
 
             <div class="copyright-disclaimer">
                 <div class="copyright-disclaimer-title">著作権・免責事項</div>
@@ -463,8 +525,8 @@
   <div style="width:min(100%,360px);background:#fff8e8;border:4px solid #171717;box-shadow:6px 6px 0 rgba(0,0,0,.45);padding:22px 18px;text-align:center;color:#171717;font-family:'Press Start 2P',monospace;">
     <p style="font-size:clamp(12px,3.5vw,16px);line-height:1.9;font-weight:900;margin:0 0 22px;">本当にこうさんする？</p>
     <div style="display:flex;gap:12px;justify-content:center;">
-      <button id="surrender-confirm-yes" type="button" style="flex:1;min-height:44px;background:#a91f25;color:#fff;border:3px solid #171717;padding:8px 10px;font-weight:900;font-size:14px;cursor:pointer;">はい</button>
-      <button id="surrender-confirm-no" type="button" style="flex:1;min-height:44px;background:#eee7d8;color:#171717;border:3px solid #171717;padding:8px 10px;font-weight:900;font-size:14px;cursor:pointer;">いいえ</button>
+      <button id="surrender-confirm-yes" type="button" class="btn-danger" style="flex:1;min-height:44px;border:3px solid #171717;padding:8px 10px;font-weight:900;font-size:14px;cursor:pointer;">はい</button>
+      <button id="surrender-confirm-no" type="button" class="btn-neutral" style="flex:1;min-height:44px;border:3px solid #171717;padding:8px 10px;font-weight:900;font-size:14px;cursor:pointer;">いいえ</button>
     </div>
   </div>
 </div>
@@ -483,7 +545,7 @@
       <input id="custom-pokemon-search" type="text" autocomplete="off" placeholder="例：リザードン、ガブリアス" style="width:100%;border:2px solid #555;border-radius:5px;padding:10px;margin-bottom:8px;box-sizing:border-box;">
       <p style="font-size:.72rem;color:#555;margin:0 0 7px;">候補一覧は上下にスワイプして探せます。名前を入力すると絞り込めます。</p>
       <div id="custom-pokemon-suggestions" role="listbox" aria-label="ポケモン候補" style="display:none;max-height:260px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;border:1px solid #aaa;border-radius:5px;background:#fff;"></div>
-      <button id="custom-pokemon-picker-done" type="button" style="width:100%;padding:9px;margin-top:8px;border:1px solid #333;border-radius:5px;background:#e5e7eb;font-weight:800;">選択を閉じる</button>
+      <button id="custom-pokemon-picker-done" type="button" class="btn-neutral" style="width:100%;padding:9px;margin-top:8px;border:1px solid #333;border-radius:5px;font-weight:800;">選択を閉じる</button>
     </div>
     <h3 style="font-weight:900;margin:8px 0;">性格</h3>
     <select id="custom-nature-select" style="width:100%;border:2px solid #333;padding:9px;margin:5px 0 14px;"></select>
@@ -502,9 +564,9 @@
     <div id="custom-moves-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:12px;"></div>
     <h3 style="font-weight:900;margin:8px 0;">現在の技データ</h3>
     <div id="custom-moves-reference" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:16px;"></div>
-    <button id="custom-api-refresh-button" type="button" class="opening-button" style="background:#bae6fd;flex:1;">保存済みAPIデータを消去して再取得</button>
+    <button id="custom-api-refresh-button" type="button" class="opening-button btn-secondary" style="flex:1;">保存済みAPIデータを消去して再取得</button>
     <button id="custom-save-button" class="opening-button opening-battle-button" style="flex:1;">保存する</button>
-      <button id="custom-reset-one-button" class="opening-button opening-history-button" style="flex:1;">このポケモンの設定を初期状態に戻す</button>
+      <button id="custom-reset-one-button" class="opening-button btn-danger" style="flex:1;">このポケモンの設定を初期状態に戻す</button>
       <button id="custom-close-button" class="opening-button opening-back-button" style="flex:1;">閉じる</button>
     <p id="customize-status" role="status" aria-live="polite" style="font-size:.8rem;margin:12px 0 0;line-height:1.6;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;white-space:normal;color:#111;"></p>
   </div>
@@ -524,7 +586,7 @@
 <div class="text-center mt-4">
     <button
         id="random-player-button"
-        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
+        class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md">
         ランダムにえらぶ
     </button>
 </div>
@@ -545,7 +607,7 @@
             <div id="opponent-pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             </div>
              <div class="text-center mt-4">
-                <button id="random-opponent-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">ランダムにえらぶ</button>
+                <button id="random-opponent-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md">ランダムにえらぶ</button>
             </div>
         </div>
         
@@ -578,7 +640,7 @@
             <div id="screen-overlay">
                 <div id="game-over-screen" class="w-full h-full hidden items-center justify-center flex-col z-30 text-white">
                     <p id="game-over-text" class="text-lg mb-4 text-center"></p>
-                    <button id="restart-button" class="font-bold py-2 px-4 rounded shadow-md border-2 border-white hover:bg-white/20">はじめから もどる</button>
+                    <button id="restart-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md">はじめから もどる</button>
                 </div>
                 <div id="reset-confirm-screen"
      class="w-full h-full hidden items-center justify-center flex-col z-30 text-white">
@@ -590,12 +652,12 @@
 
     <div class="flex gap-4">
         <button id="reset-yes-button"
-            class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded">
+            class="btn-danger border-2 border-gray-800 px-4 py-2 rounded">
             はい
         </button>
 
         <button id="reset-no-button"
-            class="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            class="btn-neutral border-2 border-gray-800 px-4 py-2 rounded">
             いいえ
         </button>
     </div>
@@ -675,22 +737,22 @@
 <div id="battle-menu" class="grid grid-cols-2 gap-2">
 
 <button id="fight-button"
-class="border-2 border-gray-800 rounded p-1 bg-orange-300 hover:bg-orange-400">
+class="border-2 border-gray-800 rounded p-1 btn-primary">
 たたかう
 </button>
 
 <button id="pokemon-button"
-class="border-2 border-gray-800 rounded p-1 bg-green-300 hover:bg-green-400">
+class="border-2 border-gray-800 rounded p-1 btn-secondary">
 ポケモン
 </button>
 
 <button id="surrender-button"
-class="border-2 border-gray-800 rounded p-1 bg-sky-300 hover:bg-sky-400">
+class="border-2 border-gray-800 rounded p-1 btn-danger">
 こうさん
 </button>
 
 <button id="setting-button"
-class="border-2 border-gray-800 rounded p-1 bg-gray-300 hover:bg-gray-400">
+class="border-2 border-gray-800 rounded p-1 btn-neutral">
 せってい
 </button>
 
@@ -706,7 +768,7 @@ class="border-2 border-gray-800 rounded p-1 bg-gray-300 hover:bg-gray-400">
 </div>
 <div id="win-screen" class="absolute bottom-0 left-0 right-0 h-28 sm:h-32 m-2 p-2 hidden items-center justify-center flex-col">
                 <p id="win-text" class="text-lg mb-4"></p>
-                <button id="win-restart-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md">はじめから もどる</button>
+                <button id="win-restart-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md">はじめから もどる</button>
             </div>
     </div>
         </div>
@@ -721,9 +783,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function applySmartphoneMode() {
         document.body.classList.toggle('smartphone-mode', smartphoneModeEnabled);
         if (smartphoneModeButton) {
-            smartphoneModeButton.textContent = 'スマホモード：' + (smartphoneModeEnabled ? 'ON' : 'OFF');
-            smartphoneModeButton.style.background = smartphoneModeEnabled ? '#bbf7d0' : '#dbeafe';
-            smartphoneModeButton.style.color = smartphoneModeEnabled ? '#14532d' : '#1e3a8a';
+            smartphoneModeButton.textContent = 'スマホモード\n' + (smartphoneModeEnabled ? 'ON' : 'OFF');
+            smartphoneModeButton.classList.toggle('btn-success', smartphoneModeEnabled);
+            smartphoneModeButton.classList.toggle('btn-neutral', !smartphoneModeEnabled);
         }
     }
     applySmartphoneMode();
@@ -2125,9 +2187,9 @@ let selectedOpponentItemName;
     const ratingToggleButton = document.getElementById('rating-toggle-button');
     function updateRatingToggleButton() {
         if (!ratingToggleButton) return;
-        ratingToggleButton.textContent = `レート変動：${ratingEnabled ? 'ON' : 'OFF'}`;
-        ratingToggleButton.style.background = ratingEnabled ? '#bbf7d0' : '#e5e7eb';
-        ratingToggleButton.style.color = ratingEnabled ? '#14532d' : '#374151';
+        ratingToggleButton.textContent = `レート変動\n${ratingEnabled ? 'ON' : 'OFF'}`;
+        ratingToggleButton.classList.toggle('btn-success', ratingEnabled);
+        ratingToggleButton.classList.toggle('btn-neutral', !ratingEnabled);
         ratingToggleButton.setAttribute('aria-pressed', String(ratingEnabled));
     }
     if (ratingToggleButton) {
@@ -2144,9 +2206,9 @@ let selectedOpponentItemName;
     const teraRuleToggleButton = document.getElementById('tera-rule-toggle-button');
     function updateTeraRuleToggleButton() {
         if (!teraRuleToggleButton) return;
-        teraRuleToggleButton.textContent = `テラスタルルール：${teraRuleEnabled ? 'ON' : 'OFF'}`;
-        teraRuleToggleButton.style.background = teraRuleEnabled ? '#bbf7d0' : '#e5e7eb';
-        teraRuleToggleButton.style.color = teraRuleEnabled ? '#14532d' : '#374151';
+        teraRuleToggleButton.textContent = `テラスタルルール\n${teraRuleEnabled ? 'ON' : 'OFF'}`;
+        teraRuleToggleButton.classList.toggle('btn-success', teraRuleEnabled);
+        teraRuleToggleButton.classList.toggle('btn-neutral', !teraRuleEnabled);
         teraRuleToggleButton.setAttribute('aria-pressed', String(teraRuleEnabled));
     }
     if (teraRuleToggleButton) {
@@ -2164,9 +2226,9 @@ let selectedOpponentItemName;
     const dynamaxRuleToggleButton = document.getElementById('dynamax-rule-toggle-button');
     function updateDynamaxRuleToggleButton() {
         if (!dynamaxRuleToggleButton) return;
-        dynamaxRuleToggleButton.textContent = `ダイマックスルール：${dynamaxRuleEnabled ? 'ON' : 'OFF'}`;
-        dynamaxRuleToggleButton.style.background = dynamaxRuleEnabled ? '#bbf7d0' : '#e5e7eb';
-        dynamaxRuleToggleButton.style.color = dynamaxRuleEnabled ? '#14532d' : '#374151';
+        dynamaxRuleToggleButton.textContent = `ダイマックスルール\n${dynamaxRuleEnabled ? 'ON' : 'OFF'}`;
+        dynamaxRuleToggleButton.classList.toggle('btn-success', dynamaxRuleEnabled);
+        dynamaxRuleToggleButton.classList.toggle('btn-neutral', !dynamaxRuleEnabled);
         dynamaxRuleToggleButton.setAttribute('aria-pressed', String(dynamaxRuleEnabled));
     }
     if (dynamaxRuleToggleButton) {
@@ -5666,7 +5728,7 @@ if (
 
     teraBtn.textContent = `テラスタル（${lockedTeraType}）`;
     teraBtn.className =
-        'border-2 border-cyan-500 bg-cyan-100 text-gray-900 rounded p-1';
+        'btn-accent border-2 border-gray-800 rounded p-1';
 
     teraBtn.onclick = () => {
         if (isBattleInProgress || (onlineMode && onlineWaitingForRemote)) return;
@@ -5689,7 +5751,7 @@ if (
     if (dynamaxRuleEnabled && !playerPokemon.dynamaxUsed && !playerPokemon.dynamaxActive) {
         const dynamaxBtn = document.createElement('button');
         dynamaxBtn.textContent = 'ダイマックス';
-        dynamaxBtn.className = 'border-2 border-fuchsia-600 bg-fuchsia-100 text-gray-900 rounded p-1';
+        dynamaxBtn.className = 'btn-accent border-2 border-gray-800 rounded p-1';
         dynamaxBtn.onclick = () => {
             if (isBattleInProgress || (onlineMode && onlineWaitingForRemote)) return;
             playerPokemon.pendingDynamax = true;
@@ -5707,7 +5769,7 @@ if (
 
         megaBtn.textContent = "メガシンカ";
         megaBtn.className =
-            "border-2 border-red-500 bg-gray-800 text-white rounded p-1";
+            "btn-accent border-2 border-gray-800 rounded p-1";
 
         megaBtn.onclick = () => {
             playerPokemon.pendingMega = true;
@@ -5734,7 +5796,7 @@ if (canUseZMove(playerPokemon)) {
     zBtn.textContent = "Ｚワザ";
 
     zBtn.className =
-        "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
+        "btn-accent border-2 border-gray-800 rounded p-1";
 
     zBtn.onclick = () => {
 
@@ -5753,7 +5815,7 @@ if (canUseZMove(playerPokemon)) {
             const btn = document.createElement("button");
 
             btn.className =
-    "border-2 border-yellow-500 bg-yellow-200 rounded p-1";
+    "btn-accent border-2 border-gray-800 rounded p-1";
             btn.textContent = move.category === "status" ? `Z${move.name}` : Z_MOVE_NAMES[move.type];
 
             const zMove = createZMove(move);
@@ -5795,7 +5857,7 @@ btn.onmouseout = () => {
         zMoveBackButton.id = "z-move-back-button";
         zMoveBackButton.textContent = "戻る";
         zMoveBackButton.className =
-            "col-span-2 border-2 border-gray-800 rounded p-1 bg-gray-200 hover:bg-gray-300";
+            "col-span-2 border-2 border-gray-800 rounded p-1 btn-neutral";
         zMoveBackButton.onclick = () => {
             returnToBattleMenu();
             updateMoves();
@@ -5814,7 +5876,7 @@ btn.onmouseout = () => {
     moveBackButton.id = "move-back-button";
     moveBackButton.textContent = "戻る";
     moveBackButton.className =
-        "col-span-2 border-2 border-gray-800 rounded p-1 bg-gray-200 hover:bg-gray-300";
+        "col-span-2 border-2 border-gray-800 rounded p-1 btn-neutral";
     moveBackButton.onclick = () => {
         if (playerPokemon.pendingTera) {
             playerPokemon.pendingTera = false;
@@ -6167,7 +6229,7 @@ function showUTurnSwitchSelection() {
             const button = document.createElement("button");
 
             button.className =
-                "border-2 border-gray-800 rounded p-2 bg-green-200 hover:bg-green-300";
+                "border-2 border-gray-800 rounded p-2 btn-secondary";
 
             const hpRate =
                 pokemon.maxHp > 0
@@ -6317,7 +6379,7 @@ function showSwitchSelection() {
         const button = document.createElement("button");
 
         button.className =
-            "border-2 border-gray-800 rounded p-2 bg-green-200 hover:bg-green-300";
+            "border-2 border-gray-800 rounded p-2 btn-secondary";
 
         // 現在場にいるポケモン
         if (index === playerActiveIndex) {
@@ -6450,7 +6512,7 @@ top = e.clientY - selectionTooltip.offsetHeight - 20;
     // 交代をやめてバトルメニューに戻るボタン
     const backButton = document.createElement("button");
     backButton.className =
-        "border-2 border-gray-800 rounded p-2 bg-gray-300 hover:bg-gray-400";
+        "border-2 border-gray-800 rounded p-2 btn-neutral";
     backButton.textContent = "もどる";
 
     backButton.onclick = () => {

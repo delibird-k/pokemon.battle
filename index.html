@@ -1174,7 +1174,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // レトロゲーム風の8bit効果音（Web Audioで合成。外部音源なし）
     let retroAudio = null;
     let retroSoundOn = safeStorage.getItem('pokemonBattleSound') !== 'off';
-    let retroVolume = Number(safeStorage.getItem('pokemonBattleSoundVolume'));
+    const savedRetroVolume = safeStorage.getItem('pokemonBattleSoundVolume');
+    let retroVolume = savedRetroVolume === null ? 35 : Number(savedRetroVolume);
     if (!Number.isFinite(retroVolume) || retroVolume < 0 || retroVolume > 100) retroVolume = 35;
     const soundToggleButton = document.getElementById('sound-toggle-button');
     const soundVolume = document.getElementById('sound-volume');

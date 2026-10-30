@@ -1212,36 +1212,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const value = document.getElementById('sound-volume-value');
         if (value) value.textContent = retroVolume + '%';
     }
-    function playRetroSound(kind = 'tap') {
-        if (!retroSoundOn || retroVolume <= 0) return;
+    async function unlockRetroAudio() {
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
+            if (!AudioCtx) return false;
             if (!retroAudio) retroAudio = new AudioCtx();
-            if (retroAudio.state === 'suspended') retroAudio.resume();
-            const now = retroAudio.currentTime;
-            const notes = kind === 'select' ? [[660, 0, .075], [990, .075, .09]]
-                : kind === 'confirm' ? [[523, 0, .07], [784, .065, .08], [1047, .13, .11]]
-                : kind === 'hit' ? [[180, 0, .055], [120, .055, .085]]
-                : kind === 'faint' ? [[392, 0, .12], [294, .13, .14], [196, .28, .22]]
-                : kind === 'attack' ? [[740, 0, .045], [520, .045, .07]]
-                : [[440, 0, .045]];
-            notes.forEach(([hz, delay, duration]) => {
-                const oscillator = retroAudio.createOscillator();
-                const gain = retroAudio.createGain();
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(hz, now + delay);
-                gain.gain.setValueAtTime(0.0001, now + delay);
-                gain.gain.linearRampToValueAtTime((retroVolume / 100) * 0.045, now + delay + 0.006);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
-                oscillator.connect(gain);
-                gain.connect(retroAudio.destination);
-                oscillator.start(now + delay);
-                oscillator.stop(now + delay + duration + 0.01);
-                oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
-            });
-        } catch (_) {}
+            if (retroAudio.state !== 'running') await retroAudio.resume();
+            return retroAudio.state === 'running';
+        } catch (_) {
+            return false;
+        }
     }
+    function playRetroSound(kind = 'tap') {
+        if (!retroSoundOn || retroVolume <= 0) return;
+        // resume() の完了前に currentTime を使うと、ブラウザによっては音が欠落する。
+        unlockRetroAudio().then(ready => {
+            if (!ready || !retroAudio || !retroSoundOn || retroVolume <= 0) return;
+            try {
+                const now = retroAudio.currentTime;
+                const notes = kind === 'select' ? [[660, 0, .075], [990, .075, .09]]
+                    : kind === 'confirm' ? [[523, 0, .07], [784, .065, .08], [1047, .13, .11]]
+                    : kind === 'hit' ? [[180, 0, .055], [120, .055, .085]]
+                    : kind === 'faint' ? [[392, 0, .12], [294, .13, .14], [196, .28, .22]]
+                    : kind === 'attack' ? [[740, 0, .045], [520, .045, .07]]
+                    : [[440, 0, .045]];
+                notes.forEach(([hz, delay, duration]) => {
+                    const oscillator = retroAudio.createOscillator();
+                    const gain = retroAudio.createGain();
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(hz, now + delay);
+                    gain.gain.setValueAtTime(0.0001, now + delay);
+                    gain.gain.linearRampToValueAtTime((retroVolume / 100) * 0.045, now + delay + 0.006);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
+                    oscillator.connect(gain);
+                    gain.connect(retroAudio.destination);
+                    oscillator.start(now + delay);
+                    oscillator.stop(now + delay + duration + 0.01);
+                    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+                });
+            } catch (_) {}
+        });
+    }
+    // iOS / Chrome の自動再生制限に備え、最初のユーザー操作で音声を解放する。
+    document.addEventListener('pointerdown', () => { unlockRetroAudio(); }, true);
+    document.addEventListener('keydown', () => { unlockRetroAudio(); }, true);
     soundToggleButton?.addEventListener('click', () => {
         retroSoundOn = !retroSoundOn;
         safeStorage.setItem('pokemonBattleSound', retroSoundOn ? 'on' : 'off');
@@ -6363,8 +6377,7 @@ button.onmouseout = () => {
 if (
     teraRuleEnabled &&
     !playerPokemon.teraUsed &&
-    !playerPokemon.teraActive &&
-    !playerPokemon.pendingTera
+    !playerPokemon.teraActive
 ) {
     const teraBtn = document.createElement('button');
     const lockedTeraType =
@@ -6372,22 +6385,26 @@ if (
         (playerPokemon.originalTypes || playerPokemon.types || ['ノーマル'])[0] ||
         'ノーマル';
 
-    teraBtn.textContent = `テラスタル（${lockedTeraType}）`;
+    teraBtn.textContent = playerPokemon.pendingTera ? 'テラスタルを取りやめる' : `テラスタル（${lockedTeraType}）`;
     teraBtn.className =
         'btn-accent border-2 border-gray-800 rounded p-1';
 
     teraBtn.onclick = () => {
         if (isBattleInProgress || (onlineMode && onlineWaitingForRemote)) return;
 
-        // チーム設定時に決めたテラスタイプで発動を予約する
-        playerPokemon.pendingTera = true;
+        // もう一度押した場合は、技を選ぶ前のテラスタル予約を解除する。
+        playerPokemon.pendingTera = !playerPokemon.pendingTera;
         updateMoves();
-
-        battleMenu.style.display = 'none';
-        movesContainer.style.display = 'grid';
-
-        messageText.textContent =
-            `${playerPokemon.name} は ${lockedTeraType}タイプに テラスタルする準備をした！ 技を選んでください。`;
+        if (playerPokemon.pendingTera) {
+            battleMenu.style.display = 'none';
+            movesContainer.style.display = 'grid';
+            messageText.textContent =
+                `${playerPokemon.name} は ${lockedTeraType}タイプに テラスタルする準備をした！ 技を選んでください。`;
+        } else {
+            battleMenu.style.display = 'grid';
+            movesContainer.style.display = 'none';
+            messageText.textContent = 'テラスタルを とりやめた！';
+        }
     };
 
     movesContainer.appendChild(teraBtn);
@@ -6396,15 +6413,22 @@ if (
     // ダイマックス：チームで1回、3ターン。技を選ぶときに発動を予約する。
     if (dynamaxRuleEnabled && !playerPokemon.dynamaxUsed && !playerPokemon.dynamaxActive) {
         const dynamaxBtn = document.createElement('button');
-        dynamaxBtn.textContent = 'ダイマックス';
+        dynamaxBtn.textContent = playerPokemon.pendingDynamax ? 'ダイマックスを取りやめる' : 'ダイマックス';
         dynamaxBtn.className = 'btn-accent border-2 border-gray-800 rounded p-1';
         dynamaxBtn.onclick = () => {
             if (isBattleInProgress || (onlineMode && onlineWaitingForRemote)) return;
-            playerPokemon.pendingDynamax = true;
+            // もう一度押した場合は、技を選ぶ前のダイマックス予約を解除する。
+            playerPokemon.pendingDynamax = !playerPokemon.pendingDynamax;
             updateMoves();
-            battleMenu.style.display = 'none';
-            movesContainer.style.display = 'grid';
-            messageText.textContent = `${getShownName(playerPokemon)} は ダイマックスする準備をした！ 技を選んでください。`;
+            if (playerPokemon.pendingDynamax) {
+                battleMenu.style.display = 'none';
+                movesContainer.style.display = 'grid';
+                messageText.textContent = `${getShownName(playerPokemon)} は ダイマックスする準備をした！ 技を選んでください。`;
+            } else {
+                battleMenu.style.display = 'grid';
+                movesContainer.style.display = 'none';
+                messageText.textContent = 'ダイマックスを とりやめた！';
+            }
         };
         movesContainer.appendChild(dynamaxBtn);
     }
@@ -6417,18 +6441,26 @@ if (
         megaBtn.className =
             "btn-accent border-2 border-gray-800 rounded p-1";
 
+        megaBtn.textContent = playerPokemon.pendingMega ? 'メガシンカを取りやめる' : 'メガシンカ';
         megaBtn.onclick = () => {
-            playerPokemon.pendingMega = true;
-            const megaPrompt = "どの技で メガシンカする？";
-
-            // 対人戦では、この選択中メッセージをホストから state として送らない。
-            // showMessage() は host の画面状態を guest に配信し、phase='event' によって
-            // 参加側の技選択を閉じてしまうため、ここでは自分の画面だけを更新する。
-            if (onlineMode && (onlineRole === 'host' || onlineRole === 'guest')) {
-                messageText.style.display = '';
-                messageText.textContent = megaPrompt;
+            // もう一度押した場合は、技を選ぶ前のメガシンカ予約を解除する。
+            playerPokemon.pendingMega = !playerPokemon.pendingMega;
+            updateMoves();
+            if (playerPokemon.pendingMega) {
+                battleMenu.style.display = 'none';
+                movesContainer.style.display = 'grid';
+                const megaPrompt = "どの技で メガシンカする？";
+                // 対人戦では自分の画面だけを更新し、相手側の技選択画面を閉じない。
+                if (onlineMode && (onlineRole === 'host' || onlineRole === 'guest')) {
+                    messageText.style.display = '';
+                    messageText.textContent = megaPrompt;
+                } else {
+                    showMessage(megaPrompt);
+                }
             } else {
-                showMessage(megaPrompt);
+                battleMenu.style.display = 'grid';
+                movesContainer.style.display = 'none';
+                messageText.textContent = 'メガシンカを とりやめた！';
             }
         };
 

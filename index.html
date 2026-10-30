@@ -915,11 +915,17 @@ ON</button>
             <div id="pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
 </div>
 
-<div class="text-center mt-4">
+<div class="text-center mt-4 flex flex-wrap justify-center gap-3">
     <button
         id="random-player-button"
         class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md">
         ランダムにえらぶ
+    </button>
+    <button
+        id="confirm-player-selection-button"
+        class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md"
+        disabled>
+        3匹を決定
     </button>
 </div>
         </div>
@@ -939,8 +945,9 @@ ON</button>
             </div>
             <div id="opponent-pokemon-selection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             </div>
-             <div class="text-center mt-4">
+             <div class="text-center mt-4 flex flex-wrap justify-center gap-3">
                 <button id="random-opponent-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md">ランダムにえらぶ</button>
+                <button id="confirm-opponent-selection-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md" disabled>3匹を決定</button>
             </div>
         </div>
         
@@ -1347,6 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectionTitle = document.getElementById('selection-title');
     const pokemonSelectionGrid = document.getElementById('pokemon-selection-grid');
     const randomPlayerButton = document.getElementById('random-player-button');
+    const confirmPlayerSelectionButton = document.getElementById('confirm-player-selection-button');
     const itemSelectionScreen = document.getElementById('item-selection-screen');
     randomPlayerButton.onclick = () => {
     selectRandomPlayerPokemon();
@@ -1369,7 +1377,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(playerPokemonSearch)playerPokemonSearch.addEventListener('input',()=>filterPokemonSelectionCards(pokemonSelectionGrid,playerPokemonSearch.value));
     if(opponentPokemonSearch)opponentPokemonSearch.addEventListener('input',()=>filterPokemonSelectionCards(opponentPokemonSelectionGrid,opponentPokemonSearch.value));
+    confirmPlayerSelectionButton?.addEventListener('click', () => {
+        if (selectedPlayerKeys.length !== 3) return;
+        currentPlayerItemIndex = 0;
+        selectedPlayerItemNames = [];
+        showItemSelection();
+    });
+    confirmOpponentSelectionButton?.addEventListener('click', () => {
+        if (selectedOpponentKeys.length !== 3) return;
+        currentOpponentItemIndex = 0;
+        selectedOpponentItemNames = [];
+        showOpponentItemSelection();
+    });
     const randomOpponentButton = document.getElementById('random-opponent-button');
+    const confirmOpponentSelectionButton = document.getElementById('confirm-opponent-selection-button');
     const opponentItemSelectionScreen = document.getElementById('opponent-item-selection-screen');
     const opponentItemSelectionGrid = document.getElementById('opponent-item-selection-grid');
     const opponentItemSelectionTitle = document.getElementById('opponent-item-selection-title');
@@ -4508,45 +4529,33 @@ function updatePokemonSelectionPreview(side) {
     grid.querySelectorAll('.pokemon-card').forEach(card => {
         const selected = keys.includes(card.dataset.pokemonKey);
         card.classList.toggle('is-selected', selected);
+        card.classList.remove('ring-4', 'ring-red-500');
         card.setAttribute('aria-pressed', String(selected));
     });
+    const confirmButton = isPlayer ? confirmPlayerSelectionButton : confirmOpponentSelectionButton;
+    if (confirmButton) {
+        confirmButton.disabled = keys.length !== 3;
+        confirmButton.textContent = keys.length === 3 ? 'この3匹で決定' : `あと ${3 - keys.length}匹選ぶと決定できます`;
+    }
 }
 
 function handlePlayerPokemonSelect(key) {
-
-    // 同じポケモンは2回選べない
-    if (selectedPlayerKeys.includes(key)) {
+    const selectedIndex = selectedPlayerKeys.indexOf(key);
+    if (selectedIndex >= 0) {
+        selectedPlayerKeys.splice(selectedIndex, 1);
+        updatePokemonSelectionPreview('player');
+        showMessage(`${pokemonBaseData[key]?.name || 'ポケモン'}の選択を解除しました`);
         return;
     }
+    if (selectedPlayerKeys.length >= 3) return;
 
     selectedPlayerKeys.push(key);
     updatePokemonSelectionPreview('player');
-
-    // 3体選ぶまで選択を続ける
     if (selectedPlayerKeys.length < 3) {
-
-        showMessage(
-            `あと ${3 - selectedPlayerKeys.length}体 えらんでください`
-        );
-
-        // 選択済みカードを見た目で分かるようにする
-        const selectedCard =
-            document.querySelector(
-                `[data-pokemon-key="${key}"]`
-            );
-
-        if (selectedCard) {
-            selectedCard.classList.add(
-                'ring-4',
-                'ring-red-500'
-            );
-        }
-
-        return;
+        showMessage(`あと ${3 - selectedPlayerKeys.length}体 えらんでください`);
+    } else {
+        showMessage('3匹選び終わりました。選択済みカードを押すと解除できます');
     }
-
-    // 3体選び終わった
-    showItemSelection();
 }
 
 function selectRandomPlayerPokemon() {
@@ -4719,45 +4728,22 @@ card.addEventListener('mousemove', (e) => {
         randomOpponentButton.onclick = selectRandomOpponentAndItem;
     }
     function handleOpponentPokemonSelect(key) {
-
-    // すでに3匹選び終わっていたら、追加選択を受け付けない
-    if (selectedOpponentKeys.length >= 3) {
+    const selectedIndex = selectedOpponentKeys.indexOf(key);
+    if (selectedIndex >= 0) {
+        selectedOpponentKeys.splice(selectedIndex, 1);
+        updatePokemonSelectionPreview('opponent');
+        showMessage(`${pokemonBaseData[key]?.name || 'ポケモン'}の選択を解除しました`);
         return;
     }
-
-    // 同じポケモンは2回選べない
-    if (selectedOpponentKeys.includes(key)) {
-        return;
-    }
+    if (selectedOpponentKeys.length >= 3) return;
 
     selectedOpponentKeys.push(key);
     updatePokemonSelectionPreview('opponent');
-
-    // まだ3匹選んでいない
     if (selectedOpponentKeys.length < 3) {
-
-        showMessage(
-            `あと ${3 - selectedOpponentKeys.length}体 えらんでください`
-        );
-
-        const selectedCard =
-            document.querySelector(
-                `[data-pokemon-key="${key}"]`
-            );
-
-        if (selectedCard) {
-            selectedCard.classList.add(
-                'ring-4',
-                'ring-red-500'
-            );
-        }
-
-        return;
+        showMessage(`あと ${3 - selectedOpponentKeys.length}体 えらんでください`);
+    } else {
+        showMessage('3匹選び終わりました。選択済みカードを押すと解除できます');
     }
-
-    // 3匹選び終わった
-    currentOpponentItemIndex = 0;
-    showOpponentItemSelection();
 }
 function selectRandomOpponentAndItem() {
 

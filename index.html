@@ -547,6 +547,58 @@
             #player-area .nes-container, #opponent-area .nes-container { padding: 7px !important; }
         }
 
+
+        /* Unified retro battle theme */
+        body { background-color:#0b1220; }
+        #opening-screen, #history-screen { max-width:760px; margin:24px auto; }
+        .opening-panel {
+            background:linear-gradient(160deg,rgba(20,35,58,.98),rgba(8,17,32,.98)) !important;
+            color:#f8fafc !important; border:2px solid #64748b !important;
+            border-radius:18px !important; padding:clamp(16px,3vw,28px) !important;
+            box-shadow:0 10px 0 #020617,0 22px 42px rgba(0,0,0,.35) !important;
+        }
+        .opening-title, .opening-subtitle, .opening-section-label { color:#f8fafc !important; text-shadow:0 2px 4px #020617 !important; }
+        .opening-stats { background:rgba(148,163,184,.12); border:1px solid #475569; border-radius:12px; padding:10px; color:#e2e8f0; }
+        .opening-button { border:1px solid #64748b !important; color:#f8fafc !important; background:linear-gradient(180deg,#334155,#1e293b) !important; }
+        .opening-battle-button { background:linear-gradient(180deg,#2563eb,#1d4ed8) !important; border-color:#60a5fa !important; }
+        .opening-history-button { background:linear-gradient(180deg,#0f766e,#115e59) !important; border-color:#5eead4 !important; }
+        .copyright-disclaimer { color:#cbd5e1 !important; border-color:#475569 !important; background:rgba(2,6,23,.35) !important; }
+        #battle-screen {
+            width:min(100%, 760px) !important; max-width:760px !important;
+            margin:0 auto !important; aspect-ratio:4/3;
+        }
+        #game-container { max-width:800px !important; margin-inline:auto !important; }
+        #player-sprite, #opponent-sprite { max-width:170px; max-height:150px; }
+        .pokemon-selection-preview {
+            display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+            gap:8px; margin:0 auto 14px; padding:10px;
+            max-width:760px; min-height:68px; border:1px solid #64748b;
+            border-radius:12px; background:rgba(15,23,42,.88); color:#f8fafc;
+        }
+        .pokemon-selection-preview .preview-slot {
+            display:flex; align-items:center; gap:6px; min-width:0;
+            padding:5px 9px; border:1px solid #475569; border-radius:9px;
+            background:rgba(51,65,85,.8); font-size:.78rem; font-weight:800;
+        }
+        .pokemon-selection-preview img { width:38px; height:38px; object-fit:contain; image-rendering:pixelated; }
+        .pokemon-selection-preview .preview-empty { color:#94a3b8; font-size:.78rem; }
+        .pokemon-card.is-selected {
+            border:3px solid #16a34a !important; background:linear-gradient(180deg,#dcfce7,#bbf7d0) !important;
+            box-shadow:0 0 0 3px rgba(22,163,74,.2),0 4px 0 rgba(2,6,23,.28) !important;
+            position:relative; transform:translateY(-2px);
+        }
+        .pokemon-card.is-selected::after {
+            content:"✓ 選択済み"; position:absolute; top:5px; right:5px;
+            background:#15803d; color:white; border-radius:6px; padding:3px 6px;
+            font-size:.65rem; font-weight:900;
+        }
+        @media (max-width:640px) {
+            #battle-screen { width:100% !important; max-width:100% !important; }
+            #player-sprite, #opponent-sprite { max-width:125px; max-height:115px; }
+            #opening-screen, #history-screen { margin:8px auto; }
+            .opening-panel { padding:14px !important; }
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -700,6 +752,7 @@ ON</button>
         
         <div id="selection-screen" class="hidden p-4">
             <h2 id="selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline ">せんとうに だす ポケモンを えらんでくれ！</h2>
+            <div id="player-selection-preview" class="pokemon-selection-preview" aria-live="polite"></div>
             <div style="max-width:520px;margin:0 auto 14px;">
                 <input id="player-pokemon-search" type="text" autocomplete="off" placeholder="ポケモン名で検索（例：リザードン、ガブリアス）" aria-label="自分のポケモンを検索" style="width:100%;padding:10px;border:2px solid #333;border-radius:6px;color:#111;box-sizing:border-box;">
                 <p style="font-size:.75rem;margin-top:4px;color:#fff;text-shadow:1px 1px #111;">名前の一部を入力すると、候補だけに絞り込まれます。</p>
@@ -724,6 +777,7 @@ ON</button>
 
         <div id="opponent-selection-screen" class="hidden p-4">
             <h2 class="text-center text-lg md:text-2xl mb-4 text-outline">あいての ポケモンを えらんでくれ！</h2>
+            <div id="opponent-selection-preview" class="pokemon-selection-preview" aria-live="polite"></div>
             <div style="max-width:520px;margin:0 auto 14px;">
                 <input id="opponent-pokemon-search" type="text" autocomplete="off" placeholder="相手のポケモン名で検索（例：リザ、ガブリ）" aria-label="相手のポケモンを検索" style="width:100%;padding:10px;border:2px solid #333;border-radius:6px;color:#111;box-sizing:border-box;">
                 <p style="font-size:.75rem;margin-top:4px;color:#fff;text-shadow:1px 1px #111;">名前の一部を入力すると、候補だけに絞り込まれます。</p>
@@ -4169,6 +4223,41 @@ card.addEventListener('mousemove', (e) => {
     }
     
 
+function updatePokemonSelectionPreview(side) {
+    const isPlayer = side === 'player';
+    const keys = isPlayer ? selectedPlayerKeys : selectedOpponentKeys;
+    const root = document.getElementById(isPlayer ? 'player-selection-preview' : 'opponent-selection-preview');
+    const grid = isPlayer ? pokemonSelectionGrid : opponentPokemonSelectionGrid;
+    if (!root || !grid) return;
+    root.innerHTML = '';
+    const heading = document.createElement('strong');
+    heading.textContent = `選出 ${keys.length}/3`;
+    root.appendChild(heading);
+    for (let i = 0; i < 3; i++) {
+        const key = keys[i];
+        const slot = document.createElement('div');
+        slot.className = 'preview-slot';
+        if (key && pokemonBaseData[key]) {
+            const pokemon = pokemonBaseData[key];
+            const img = document.createElement('img');
+            img.src = getSpriteUrl({id:pokemon.id});
+            img.alt = '';
+            const name = document.createElement('span');
+            name.textContent = pokemon.name;
+            slot.append(img,name);
+        } else {
+            slot.classList.add('preview-empty');
+            slot.textContent = `${i+1}匹目：未選択`;
+        }
+        root.appendChild(slot);
+    }
+    grid.querySelectorAll('.pokemon-card').forEach(card => {
+        const selected = keys.includes(card.dataset.pokemonKey);
+        card.classList.toggle('is-selected', selected);
+        card.setAttribute('aria-pressed', String(selected));
+    });
+}
+
 function handlePlayerPokemonSelect(key) {
 
     // 同じポケモンは2回選べない
@@ -4177,6 +4266,7 @@ function handlePlayerPokemonSelect(key) {
     }
 
     selectedPlayerKeys.push(key);
+    updatePokemonSelectionPreview('player');
 
     // 3体選ぶまで選択を続ける
     if (selectedPlayerKeys.length < 3) {
@@ -4225,6 +4315,8 @@ function selectRandomPlayerPokemon() {
             selectedPlayerKeys.push(key);
         }
     }
+
+    updatePokemonSelectionPreview('player');
 
     // 持ち物選択を最初から開始
     currentPlayerItemIndex = 0;
@@ -4385,6 +4477,7 @@ card.addEventListener('mousemove', (e) => {
     }
 
     selectedOpponentKeys.push(key);
+    updatePokemonSelectionPreview('opponent');
 
     // まだ3匹選んでいない
     if (selectedOpponentKeys.length < 3) {
@@ -6148,10 +6241,11 @@ btn.onmouseout = () => {
     function getPixelSpriteUrl(id, back = false, shiny = false) {
         const base = String(id || '').trim().toLowerCase();
         if (!base) return '';
+        // Animated pixel-art GIFs, including back and shiny variants.
         const folder = back
-            ? (shiny ? 'gen5-back-shiny' : 'gen5-back')
-            : (shiny ? 'gen5-shiny' : 'gen5');
-        return `https://play.pokemonshowdown.com/sprites/${folder}/${encodeURIComponent(base)}.png`;
+            ? (shiny ? 'ani-back-shiny' : 'ani-back')
+            : (shiny ? 'ani-shiny' : 'ani');
+        return `https://play.pokemonshowdown.com/sprites/${folder}/${encodeURIComponent(base)}.gif`;
     }
 
     function getSpriteUrl(pokemon, back = false) {

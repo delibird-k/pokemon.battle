@@ -2041,7 +2041,10 @@ function handleOnlineData(data) {
         typeof team === 'object' &&
         Array.isArray(team.keys) &&
         team.keys.length === 3 &&
-        team.keys.every(key => typeof key === 'string' && key.length > 0 && key.length <= 120) &&
+        team.keys.every(key =>
+            typeof key === 'string' && key.length > 0 && key.length <= 120 &&
+            (Object.prototype.hasOwnProperty.call(pokemonBaseData, key) ||
+             Object.prototype.hasOwnProperty.call(customOriginalPokemonBaseData, key))) &&
         Array.isArray(team.items) &&
         team.items.length === 3 &&
         team.items.every(item => typeof item === 'string' && item.length <= 120) &&

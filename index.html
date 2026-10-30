@@ -1137,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyColorTheme() {
         document.body.classList.toggle('dark-mode', darkModeEnabled);
         if (themeToggleButton) {
-            themeToggleButton.textContent = '画面の明暗\\n' + (darkModeEnabled ? 'ダーク' : 'ライト');
+            themeToggleButton.textContent = '画面の明暗\n' + (darkModeEnabled ? 'ダーク' : 'ライト');
             themeToggleButton.classList.toggle('btn-success', darkModeEnabled);
             themeToggleButton.classList.toggle('btn-neutral', !darkModeEnabled);
         }

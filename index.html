@@ -4495,6 +4495,7 @@ card.addEventListener('mousemove', (e) => {
 
             pokemonSelectionGrid.appendChild(card);
         }
+        updatePokemonSelectionPreview('player');
     }
     
 
@@ -4725,6 +4726,7 @@ card.addEventListener('mousemove', (e) => {
             
             opponentPokemonSelectionGrid.appendChild(card);
         }
+        updatePokemonSelectionPreview('opponent');
         randomOpponentButton.onclick = selectRandomOpponentAndItem;
     }
     function handleOpponentPokemonSelect(key) {

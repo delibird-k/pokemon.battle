@@ -548,50 +548,80 @@
         }
 
 
-        /* Unified retro battle theme */
-        body { background-color:#0b1220; }
-        #opening-screen, #history-screen { max-width:760px; margin:24px auto; }
+        /* Simple blue theme */
+        :root { color-scheme:light; }
+        body { background:#eaf3ff !important; color:#183153; }
+        #opening-screen, #history-screen { max-width:760px; margin:20px auto; }
         .opening-panel {
-            background:linear-gradient(160deg,rgba(20,35,58,.98),rgba(8,17,32,.98)) !important;
-            color:#f8fafc !important; border:2px solid #64748b !important;
-            border-radius:18px !important; padding:clamp(16px,3vw,28px) !important;
-            box-shadow:0 10px 0 #020617,0 22px 42px rgba(0,0,0,.35) !important;
+            background:#ffffff !important; color:#183153 !important;
+            border:1px solid #c8dcf5 !important; border-radius:14px !important;
+            padding:clamp(16px,3vw,26px) !important;
+            box-shadow:0 4px 16px rgba(35,91,155,.09) !important;
         }
-        .opening-title, .opening-subtitle, .opening-section-label { color:#f8fafc !important; text-shadow:0 2px 4px #020617 !important; }
-        .opening-stats { background:rgba(148,163,184,.12); border:1px solid #475569; border-radius:12px; padding:10px; color:#e2e8f0; }
-        .opening-button { border:1px solid #64748b !important; color:#f8fafc !important; background:linear-gradient(180deg,#334155,#1e293b) !important; }
-        .opening-battle-button { background:linear-gradient(180deg,#2563eb,#1d4ed8) !important; border-color:#60a5fa !important; }
-        .opening-history-button { background:linear-gradient(180deg,#0f766e,#115e59) !important; border-color:#5eead4 !important; }
-        .copyright-disclaimer { color:#cbd5e1 !important; border-color:#475569 !important; background:rgba(2,6,23,.35) !important; }
-        #battle-screen {
-            width:min(100%, 760px) !important; max-width:760px !important;
-            margin:0 auto !important; aspect-ratio:4/3;
+        .opening-title, .opening-subtitle, .opening-section-label {
+            color:#174a82 !important; text-shadow:none !important;
+        }
+        .opening-stats {
+            background:#f1f7ff !important; border:1px solid #d6e6fa !important;
+            border-radius:9px; padding:10px; color:#355575;
+        }
+        .opening-button {
+            background:#edf5ff !important; border:1px solid #b8d2f1 !important;
+            color:#245487 !important; border-radius:9px !important; box-shadow:none !important;
+        }
+        .opening-button:hover { background:#dcecff !important; }
+        .opening-battle-button {
+            background:#2878cf !important; border-color:#2878cf !important;
+            color:#fff !important;
+        }
+        .opening-battle-button:hover { background:#1e67b6 !important; }
+        .opening-history-button {
+            background:#e7f1ff !important; border-color:#b8d2f1 !important;
+            color:#245487 !important;
+        }
+        .copyright-disclaimer {
+            color:#58718e !important; border-color:#d6e6fa !important;
+            background:#f7faff !important;
         }
         #game-container { max-width:800px !important; margin-inline:auto !important; }
+        #battle-screen {
+            width:min(100%,760px) !important; max-width:760px !important;
+            margin:0 auto !important; aspect-ratio:4/3;
+            background:#eaf3ff !important; border:1px solid #c8dcf5 !important;
+            border-radius:12px !important; box-shadow:0 4px 16px rgba(35,91,155,.08) !important;
+        }
         #player-sprite, #opponent-sprite { max-width:170px; max-height:150px; }
         .pokemon-selection-preview {
             display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
-            gap:8px; margin:0 auto 14px; padding:10px;
-            max-width:760px; min-height:68px; border:1px solid #64748b;
-            border-radius:12px; background:rgba(15,23,42,.88); color:#f8fafc;
+            gap:8px; margin:0 auto 14px; padding:10px; max-width:760px; min-height:68px;
+            border:1px solid #c8dcf5; border-radius:10px;
+            background:#f7faff; color:#245487;
         }
         .pokemon-selection-preview .preview-slot {
             display:flex; align-items:center; gap:6px; min-width:0;
-            padding:5px 9px; border:1px solid #475569; border-radius:9px;
-            background:rgba(51,65,85,.8); font-size:.78rem; font-weight:800;
+            padding:5px 9px; border:1px solid #d6e6fa; border-radius:8px;
+            background:#edf5ff; color:#24476c; font-size:.78rem; font-weight:700;
         }
-        .pokemon-selection-preview img { width:38px; height:38px; object-fit:contain; image-rendering:pixelated; }
-        .pokemon-selection-preview .preview-empty { color:#94a3b8; font-size:.78rem; }
+        .pokemon-selection-preview img {
+            width:38px; height:38px; object-fit:contain; image-rendering:pixelated;
+        }
+        .pokemon-selection-preview .preview-empty { color:#7890aa; font-size:.78rem; }
+        .pokemon-card {
+            border:1px solid #d2e2f5 !important; border-radius:10px !important;
+            box-shadow:none !important; transition:border-color .15s,background .15s;
+        }
         .pokemon-card.is-selected {
-            border:3px solid #16a34a !important; background:linear-gradient(180deg,#dcfce7,#bbf7d0) !important;
-            box-shadow:0 0 0 3px rgba(22,163,74,.2),0 4px 0 rgba(2,6,23,.28) !important;
-            position:relative; transform:translateY(-2px);
+            border:2px solid #2878cf !important; background:#e7f1ff !important;
+            box-shadow:0 0 0 2px rgba(40,120,207,.12) !important;
+            position:relative; transform:none;
         }
         .pokemon-card.is-selected::after {
             content:"✓ 選択済み"; position:absolute; top:5px; right:5px;
-            background:#15803d; color:white; border-radius:6px; padding:3px 6px;
-            font-size:.65rem; font-weight:900;
+            background:#2878cf; color:white; border-radius:5px; padding:3px 6px;
+            font-size:.65rem; font-weight:700;
         }
+        .pokemon-card img { image-rendering:pixelated; }
+        .btn-primary { background:#2878cf !important; border-color:#1f65ad !important; }
         @media (max-width:640px) {
             #battle-screen { width:100% !important; max-width:100% !important; }
             #player-sprite, #opponent-sprite { max-width:125px; max-height:115px; }

@@ -802,6 +802,17 @@ document.addEventListener('DOMContentLoaded', () => {
             try { window.localStorage.removeItem(key); return true; } catch (error) { return false; }
         }
     };
+    const safeSessionStorage = {
+        getItem(key) {
+            try { return window.sessionStorage.getItem(key); } catch (error) { return null; }
+        },
+        setItem(key, value) {
+            try { window.sessionStorage.setItem(key, String(value)); return true; } catch (error) { return false; }
+        },
+        removeItem(key) {
+            try { window.sessionStorage.removeItem(key); return true; } catch (error) { return false; }
+        }
+    };
     // スマホ用レイアウトはオープニング画面のスイッチで切替。設定は次回も維持する。
     const smartphoneModeButton = document.getElementById('smartphone-mode-toggle-button');
     let smartphoneModeEnabled = false;
@@ -2105,7 +2116,7 @@ function handleOnlineData(data) {
         movesContainer.style.display = 'none';
 
         const guestWon = !!data.guestWon;
-        sessionStorage.removeItem('pokemonBattleInProgress');
+        safeSessionStorage.removeItem('pokemonBattleInProgress');
         if (data.recordResult !== false) {
             if (guestWon) {
                 winStreak++; loseStreak=0; winCount++;
@@ -2164,7 +2175,7 @@ function onlineStartGuestBattle(hostTeam) {
 
     // ゲスト側もオープニング・選出・待機画面を完全に隠してバトルだけ表示。
     onlineShowOnly('battle');
-    sessionStorage.setItem('pokemonBattleInProgress','true');
+    safeSessionStorage.setItem('pokemonBattleInProgress','true');
     initBattleUI();
     messageText.textContent='対戦相手の準備が完了しました。';
     battleMenu.style.display='none';
@@ -2175,7 +2186,7 @@ function onlineStartGuestBattle(hostTeam) {
 }
 
 function onlineCleanup() {
-    sessionStorage.removeItem('pokemonBattleInProgress');
+    safeSessionStorage.removeItem('pokemonBattleInProgress');
     onlineMode=false; onlineRole=null; onlineLocalReady=false; onlineRemoteReady=false; onlineLocalItemsReady=false; onlineRemoteItemsReady=false; onlineTeraSelectionStarted=false; onlineRemoteTeamData=null; onlineBattleStarted=false; onlineBattleStartSent=false; onlineActionResolver=null; onlineQueuedAction=null; onlineWaitingForRemote=false; onlineGuestActedTurn=0;
     if (onlineGuestRampageTimer) { clearTimeout(onlineGuestRampageTimer); onlineGuestRampageTimer=null; }
     if (onlineConn) { try { onlineConn.close(); } catch(e){} }
@@ -3796,7 +3807,7 @@ function handleRefreshLoss() {
     }
 
     // 対戦中フラグを消す
-    sessionStorage.removeItem('pokemonBattleInProgress');
+    safeSessionStorage.removeItem('pokemonBattleInProgress');
 
     // レート変動OFFなら、リロードによる離脱も戦績・履歴に記録しない。
     if (ratingEnabled) {
@@ -4546,7 +4557,7 @@ function startGame(difficultyLevel) {
 
     difficultySelectionScreen.style.display = 'none';
     battleScreen.style.display = 'block';
-    sessionStorage.setItem(
+    safeSessionStorage.setItem(
     'pokemonBattleInProgress',
     'true'
 );
@@ -4554,7 +4565,7 @@ function startGame(difficultyLevel) {
     // ============================================================
 // リロード対策：バトル開始済みとして記録
 // ============================================================
-sessionStorage.setItem(
+safeSessionStorage.setItem(
     'pokemonBattleInProgress',
     'true'
 );
@@ -14642,7 +14653,7 @@ function endGame(playerWon) {
     battleEndProcessed = true;
 
     if (difficulty === "online" && onlineRole === "host") {
-        sessionStorage.removeItem('pokemonBattleInProgress');
+        safeSessionStorage.removeItem('pokemonBattleInProgress');
         disableMoves();
         const delta = playerWon ? (Math.floor(Math.random()*11)+10 + (winStreak + 1) * 3) : -(Math.floor(Math.random()*11)+10 + (loseStreak + 1) * 2);
         if (ratingEnabled) {
@@ -14664,7 +14675,7 @@ function endGame(playerWon) {
     // ============================================================
     // 対戦終了：リロードしても「途中離脱」扱いにしない
     // ============================================================
-    sessionStorage.removeItem(
+    safeSessionStorage.removeItem(
         'pokemonBattleInProgress'
     );
 
@@ -15002,7 +15013,7 @@ winRestartButton.onclick = resetGame;
 // ============================================================
 
 const battleWasInProgress =
-    sessionStorage.getItem('pokemonBattleInProgress') === 'true';
+    safeSessionStorage.getItem('pokemonBattleInProgress') === 'true';
 
 if (battleWasInProgress) {
 

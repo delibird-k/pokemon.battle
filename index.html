@@ -1375,7 +1375,7 @@ let onlineRemoteItemsReady = false;
 let onlineTeraSelectionStarted = false;
 let onlineRemoteTeamData = null;
 let onlineActionResolver = null;
-let onlineQueuedAction = null;
+let onlineQueuedActions = [];
 let onlineWaitingForRemote = false;
 let onlineBattleStarted = false;
 let onlineBattleStartSent = false;
@@ -1383,7 +1383,14 @@ let onlineGuestActedTurn = 0;      // ゲストが行動を送信済みのター
 let onlineGuestRampageTimer = null;
 
 function onlineSend(message) {
-    if (onlineConn && onlineConn.open) onlineConn.send(message);
+    if (!onlineConn || !onlineConn.open || !message || typeof message !== 'object') return false;
+    try {
+        onlineConn.send(message);
+        return true;
+    } catch (error) {
+        onlineLobbyStatus.textContent = '通信に失敗しました。接続状態を確認してください。';
+        return false;
+    }
 }
 
 function onlineSanitizePokemon(pokemon) {
@@ -1422,21 +1429,23 @@ function onlineTeamPayload() {
 }
 
 function onlineWaitForAction() {
-    if (onlineQueuedAction) {
-        const a = onlineQueuedAction;
-        onlineQueuedAction = null;
-        return Promise.resolve(a);
-    }
-    return new Promise(resolve => { onlineActionResolver = resolve; });
+    if (onlineQueuedActions.length) return Promise.resolve(onlineQueuedActions.shift());
+    return new Promise(resolve => {
+        // 同じホスト処理が複数回待機登録されないよう、古い待機を解放する。
+        if (onlineActionResolver) onlineActionResolver(null);
+        onlineActionResolver = resolve;
+    });
 }
 
 function onlineReceiveAction(action) {
+    if (!action || action.type !== 'action') return;
     if (onlineActionResolver) {
         const resolve = onlineActionResolver;
         onlineActionResolver = null;
         resolve(action);
-    } else {
-        onlineQueuedAction = action;
+    } else if (onlineQueuedActions.length < 4) {
+        // パケットが連続到着しても最後の入力で上書きせず、到着順を維持する。
+        onlineQueuedActions.push(action);
     }
 }
 

@@ -628,6 +628,16 @@
             background:#2878cf; color:white; border-radius:5px; padding:3px 6px;
             font-size:.65rem; font-weight:700;
         }
+        .item-card.is-selected {
+            border:2px solid #2878cf !important;
+            background:#e7f1ff !important;
+            box-shadow:0 0 0 2px rgba(40,120,207,.12) !important;
+        }
+        .item-card.is-selected::after {
+            content:"✓ 選択済み"; display:block; margin-top:6px;
+            color:#2878cf; font-size:.7rem; font-weight:700;
+        }
+        .item-card:disabled { opacity:.45; cursor:not-allowed; }
         .pokemon-card img { image-rendering:pixelated; }
         .btn-primary { background:#2878cf !important; border-color:#1f65ad !important; }
         @media (max-width:640px) {
@@ -932,7 +942,10 @@ ON</button>
         
        <div id="item-selection-screen" class="hidden p-4">
             <h2 id="item-selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline">もちものを えらんでくれ！</h2>
-            <div id="item-selection-grid" class="flex flex-wrap justify-center items-center gap-4">
+            <div id="player-item-selection-preview" class="pokemon-selection-preview" aria-live="polite"></div>
+            <div id="item-selection-grid" class="flex flex-wrap justify-center items-center gap-4"></div>
+            <div class="text-center mt-4">
+                <button id="confirm-player-items-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md" disabled>3匹分の持ち物を決定</button>
             </div>
         </div>
 
@@ -953,7 +966,10 @@ ON</button>
         
         <div id="opponent-item-selection-screen" class="hidden p-4">
             <h2 id="opponent-item-selection-title" class="text-center text-lg md:text-2xl mb-4 text-outline">あいての もちものを えらんでくれ！</h2>
-            <div id="opponent-item-selection-grid" class="flex flex-wrap justify-center items-center gap-4">
+            <div id="opponent-item-selection-preview" class="pokemon-selection-preview" aria-live="polite"></div>
+            <div id="opponent-item-selection-grid" class="flex flex-wrap justify-center items-center gap-4"></div>
+            <div class="text-center mt-4">
+                <button id="confirm-opponent-items-button" class="btn-primary border-2 border-gray-800 font-bold py-2 px-4 rounded shadow-md" disabled>3匹分の持ち物を決定</button>
             </div>
         </div>
         
@@ -1362,6 +1378,8 @@ document.addEventListener('DOMContentLoaded', () => {
 };
     const itemSelectionGrid = document.getElementById('item-selection-grid');
     const itemSelectionTitle = document.getElementById('item-selection-title');
+    const confirmPlayerItemsButton = document.getElementById('confirm-player-items-button');
+    const confirmOpponentItemsButton = document.getElementById('confirm-opponent-items-button');
     const opponentSelectionScreen = document.getElementById('opponent-selection-screen');
     const opponentPokemonSelectionGrid = document.getElementById('opponent-pokemon-selection-grid');
     const playerPokemonSearch = document.getElementById('player-pokemon-search');
@@ -1389,6 +1407,23 @@ document.addEventListener('DOMContentLoaded', () => {
         currentOpponentItemIndex = 0;
         selectedOpponentItemNames = [];
         showOpponentItemSelection();
+    });
+    confirmPlayerItemsButton?.addEventListener('click', () => {
+        if (selectedPlayerItemNames.length !== 3) return;
+        currentPlayerItemIndex = 3;
+        if (onlineMode) {
+            onlineLocalItemsReady = true;
+            onlineSend({type:'items-ready'});
+            onlineShowWaiting('持ちものの選択が完了しました。相手の選択完了を待っています…');
+            onlineTryBeginTeraSelection();
+            return;
+        }
+        beginTeraSelection('player');
+    });
+    confirmOpponentItemsButton?.addEventListener('click', () => {
+        if (selectedOpponentItemNames.length !== 3) return;
+        currentOpponentItemIndex = 3;
+        beginTeraSelection('opponent');
     });
     const randomOpponentButton = document.getElementById('random-opponent-button');
     const opponentItemSelectionScreen = document.getElementById('opponent-item-selection-screen');
@@ -4589,59 +4624,93 @@ function selectRandomPlayerPokemon() {
     showItemSelection();
 }
     
-    function showItemSelection() {
-        selectionScreen.style.display = 'none';
-        itemSelectionScreen.style.display = 'block';
-        
-        itemSelectionGrid.innerHTML = '';
+    function updateItemSelectionPreview(side) {
+    const isPlayer = side === 'player';
+    const keys = isPlayer ? selectedPlayerKeys : selectedOpponentKeys;
+    const names = isPlayer ? selectedPlayerItemNames : selectedOpponentItemNames;
+    const root = document.getElementById(isPlayer ? 'player-item-selection-preview' : 'opponent-item-selection-preview');
+    const grid = isPlayer ? itemSelectionGrid : opponentItemSelectionGrid;
+    const confirmButton = isPlayer ? confirmPlayerItemsButton : confirmOpponentItemsButton;
+    if (!root || !grid) return;
 
-        // 今、持ち物を選んでいるポケモンの名前を表示
-        const currentPokemonKey = selectedPlayerKeys[currentPlayerItemIndex];
-        const currentPokemon = pokemonBaseData[currentPokemonKey];
-        itemSelectionTitle.textContent =
-            `${currentPokemon ? currentPokemon.name : "ポケモン"}の もちものを えらんでくれ！`;
+    root.innerHTML = '';
+    const heading = document.createElement('strong');
+    heading.textContent = `持ち物 ${names.length}/3`;
+    root.appendChild(heading);
 
-        for (const key in items) {
-            const item = items[key];
-
-            // 同じチーム内では、すでに選んだ持ち物を重複して選べない
-            if (selectedPlayerItemNames.includes(item.name)) continue;
-
-            const card = document.createElement('button');
-            card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
-            card.onclick = () => handlePlayerItemSelect(item.name);
-            const itemIcon = createBattleAssetImage(getItemIconUrl(item.name), item.name, 'w-12 h-12 object-contain mx-auto mb-2');
-            if (itemIcon) card.appendChild(itemIcon);
-            const itemNameLabel = document.createElement('p');
-            itemNameLabel.className = 'text-sm font-bold';
-            itemNameLabel.textContent = item.name;
-            const itemDescription = document.createElement('p');
-            itemDescription.className = 'mt-2 text-xs';
-            itemDescription.textContent = item.description;
-            card.append(itemNameLabel, itemDescription);
-            itemSelectionGrid.appendChild(card);
+    for (let i = 0; i < 3; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'preview-slot';
+        const pokemon = pokemonBaseData[keys[i]];
+        if (pokemon) {
+            const name = document.createElement('span');
+            name.textContent = pokemon.name;
+            const item = document.createElement('span');
+            item.textContent = names[i] || '持ち物未選択';
+            slot.append(name, item);
+        } else {
+            slot.classList.add('preview-empty');
+            slot.textContent = `${i + 1}匹目：未選択`;
         }
+        root.appendChild(slot);
     }
-    
+
+    grid.querySelectorAll('.item-card').forEach(card => {
+        const itemName = card.dataset.itemName;
+        const selected = names.includes(itemName);
+        const takenByOther = names.includes(itemName) && !selected;
+        card.classList.toggle('is-selected', selected);
+        card.disabled = takenByOther;
+        card.setAttribute('aria-pressed', String(selected));
+    });
+    if (confirmButton) {
+        confirmButton.disabled = names.length !== 3;
+        confirmButton.textContent = names.length === 3 ? 'この3匹の持ち物で決定' : `あと ${3 - names.length}個選ぶと決定できます`;
+    }
+}
+
+function showItemSelection() {
+    selectionScreen.style.display = 'none';
+    itemSelectionScreen.style.display = 'block';
+    itemSelectionGrid.innerHTML = '';
+
+    const currentPokemonKey = selectedPlayerKeys[selectedPlayerItemNames.length];
+    const currentPokemon = pokemonBaseData[currentPokemonKey];
+    itemSelectionTitle.textContent = currentPokemon
+        ? `${currentPokemon.name}たちの もちものを えらんでくれ！`
+        : 'もちものを えらんでくれ！';
+
+    for (const key in items) {
+        const item = items[key];
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.dataset.itemName = item.name;
+        card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
+        card.onclick = () => handlePlayerItemSelect(item.name);
+        const itemIcon = createBattleAssetImage(getItemIconUrl(item.name), item.name, 'w-12 h-12 object-contain mx-auto mb-2');
+        if (itemIcon) card.appendChild(itemIcon);
+        const itemNameLabel = document.createElement('p');
+        itemNameLabel.className = 'text-sm font-bold';
+        itemNameLabel.textContent = item.name;
+        const itemDescription = document.createElement('p');
+        itemDescription.className = 'mt-2 text-xs';
+        itemDescription.textContent = item.description;
+        card.append(itemNameLabel, itemDescription);
+        itemSelectionGrid.appendChild(card);
+    }
+    updateItemSelectionPreview('player');
+}
+
 function handlePlayerItemSelect(itemName) {
-
-    selectedPlayerItemNames.push(itemName);
-
-    currentPlayerItemIndex++;
-
-    if (currentPlayerItemIndex < 3) {
-        showItemSelection();
-        return;
+    const selectedIndex = selectedPlayerItemNames.indexOf(itemName);
+    if (selectedIndex >= 0) {
+        selectedPlayerItemNames.splice(selectedIndex, 1);
+    } else {
+        if (selectedPlayerItemNames.length >= 3) return;
+        selectedPlayerItemNames.push(itemName);
     }
-
-    if (onlineMode) {
-        onlineLocalItemsReady = true;
-        onlineSend({type:'items-ready'});
-        onlineShowWaiting('持ちものの選択が完了しました。相手の選択完了を待っています…');
-        onlineTryBeginTeraSelection();
-        return;
-    }
-    beginTeraSelection('player');
+    currentPlayerItemIndex = selectedPlayerItemNames.length;
+    updateItemSelectionPreview('player');
 }
     
     function showOpponentSelection() {
@@ -4789,33 +4858,23 @@ function selectRandomOpponentAndItem() {
 }
     
     function showOpponentItemSelection() {
-
     opponentSelectionScreen.style.display = 'none';
     opponentItemSelectionScreen.style.display = 'block';
-
     opponentItemSelectionGrid.innerHTML = '';
 
-    // 今、持ち物を選んでいるポケモンの名前を表示
-    const currentOpponentPokemonKey = selectedOpponentKeys[currentOpponentItemIndex];
-    const currentOpponentPokemon = pokemonBaseData[currentOpponentPokemonKey];
-    opponentItemSelectionTitle.textContent =
-        `${currentOpponentPokemon ? currentOpponentPokemon.name : "ポケモン"}の もちものを えらんでくれ！`;
+    const currentPokemonKey = selectedOpponentKeys[selectedOpponentItemNames.length];
+    const currentPokemon = pokemonBaseData[currentPokemonKey];
+    opponentItemSelectionTitle.textContent = currentPokemon
+        ? `${currentPokemon.name}たちの もちものを えらんでくれ！`
+        : 'あいての もちものを えらんでくれ！';
 
     for (const key in items) {
-
         const item = items[key];
-
-        // 相手チーム内でも、すでに選んだ持ち物は候補から除外する
-        if (selectedOpponentItemNames.includes(item.name)) continue;
-
         const card = document.createElement('button');
-
-        card.className =
-            "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
-
-        card.onclick = () =>
-            handleOpponentItemSelect(item.name);
-
+        card.type = 'button';
+        card.dataset.itemName = item.name;
+        card.className = "nes-container bg-white p-4 text-center cursor-pointer item-card w-48";
+        card.onclick = () => handleOpponentItemSelect(item.name);
         const itemIcon = createBattleAssetImage(getItemIconUrl(item.name), item.name, 'w-12 h-12 object-contain mx-auto mb-2');
         if (itemIcon) card.appendChild(itemIcon);
         const itemNameLabel = document.createElement('p');
@@ -4825,25 +4884,21 @@ function selectRandomOpponentAndItem() {
         itemDescription.className = 'mt-2 text-xs';
         itemDescription.textContent = item.description;
         card.append(itemNameLabel, itemDescription);
-
         opponentItemSelectionGrid.appendChild(card);
     }
+    updateItemSelectionPreview('opponent');
 }
-    
+
 function handleOpponentItemSelect(itemName) {
-
-    selectedOpponentItemNames.push(itemName);
-
-    currentOpponentItemIndex++;
-
-    // まだ3匹分の持ち物を選んでいない
-    if (currentOpponentItemIndex < 3) {
-        showOpponentItemSelection();
-        return;
+    const selectedIndex = selectedOpponentItemNames.indexOf(itemName);
+    if (selectedIndex >= 0) {
+        selectedOpponentItemNames.splice(selectedIndex, 1);
+    } else {
+        if (selectedOpponentItemNames.length >= 3) return;
+        selectedOpponentItemNames.push(itemName);
     }
-
-    // 3匹分選び終わったら、相手チームのテラスタイプを1匹ずつ設定する。
-    beginTeraSelection('opponent');
+    currentOpponentItemIndex = selectedOpponentItemNames.length;
+    updateItemSelectionPreview('opponent');
 }
     
     // 相手のテラスタイプ候補：

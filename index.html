@@ -437,6 +437,116 @@
         .online-code { border-color: var(--ui-ink); background: #f9fafb; }
         .online-input { border-color: var(--ui-ink); }
         .history-list:not(:has(.history-row)) { padding: 18px 12px; text-align: center; font-size: .7rem; line-height: 1.8; margin-bottom: 4px; }
+     
+        /* ============================================================
+           視認性を優先したゲームUI
+           ============================================================ */
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Yu Gothic", sans-serif !important;
+            color: #172033;
+            background-color: #101827;
+        }
+        #game-container { max-width: 1100px !important; }
+        #selection-screen, #item-selection-screen, #opponent-selection-screen,
+        #opponent-item-selection-screen, #tera-selection-screen, #difficulty-selection-screen {
+            background: rgba(15, 23, 42, .94) !important;
+            border: 1px solid rgba(255,255,255,.16);
+            border-radius: 18px;
+            box-shadow: 0 18px 48px rgba(0,0,0,.28);
+            padding: clamp(14px, 3vw, 28px) !important;
+        }
+        #selection-title, #item-selection-title, #tera-selection-title,
+        #opponent-selection-screen h2, #difficulty-selection-screen h2,
+        #opponent-item-selection-title {
+            color: #f8fafc;
+            text-shadow: none;
+            font-size: clamp(1.05rem, 2.5vw, 1.45rem);
+            font-weight: 800;
+            line-height: 1.5;
+        }
+        #player-pokemon-search, #opponent-pokemon-search {
+            border: 2px solid #64748b !important;
+            border-radius: 12px !important;
+            padding: 12px 14px !important;
+            font-size: 16px !important;
+            background: #fff;
+            box-shadow: 0 3px 0 rgba(0,0,0,.2);
+        }
+        #pokemon-selection-grid, #opponent-pokemon-selection-grid {
+            gap: 12px !important;
+        }
+        .pokemon-card, .item-card, .difficulty-card {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 14px !important;
+            background: linear-gradient(180deg,#fff 0%,#f1f5f9 100%) !important;
+            box-shadow: 0 4px 0 rgba(2,6,23,.28) !important;
+            padding: 10px 8px !important;
+            min-height: 126px;
+            color: #172033;
+            font-weight: 700;
+        }
+        .pokemon-card:hover, .item-card:hover, .difficulty-card:hover {
+            transform: translateY(-3px);
+            border-color: #fbbf24 !important;
+            box-shadow: 0 7px 0 rgba(2,6,23,.25) !important;
+        }
+        .pokemon-card img {
+            width: 100%;
+            height: 76px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        #battle-screen {
+            border: 3px solid #0b1220 !important;
+            border-radius: 18px !important;
+            overflow: hidden;
+            box-shadow: 0 18px 45px rgba(0,0,0,.32) !important;
+        }
+        #player-sprite, #opponent-sprite {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            object-fit: contain;
+            filter: drop-shadow(0 5px 3px rgba(0,0,0,.22));
+        }
+        #player-area .nes-container, #opponent-area .nes-container {
+            border: 2px solid #1e293b !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 0 rgba(15,23,42,.28) !important;
+            background: rgba(255,255,255,.96) !important;
+        }
+        .hp-bar-container { height: 14px; border: 1px solid #334155; border-radius: 99px; }
+        .hp-bar { border-radius: 99px; }
+        button, input, select { font-family: inherit; }
+        button { line-height: 1.45; }
+        .opening-panel, .online-lobby-panel, #history-screen {
+            border-radius: 18px !important;
+            box-shadow: 0 14px 38px rgba(0,0,0,.24) !important;
+        }
+        .opening-button, .btn-primary, .btn-secondary, .btn-accent,
+        .btn-neutral, .btn-danger, .btn-success {
+            border-radius: 10px !important;
+            min-height: 44px;
+            font-size: .9rem;
+            box-shadow: 0 3px 0 rgba(15,23,42,.25);
+        }
+        @media (max-width: 640px) {
+            #game-container { padding: 8px !important; }
+            #selection-screen, #item-selection-screen, #opponent-selection-screen,
+            #opponent-item-selection-screen, #tera-selection-screen, #difficulty-selection-screen {
+                border-radius: 14px;
+                padding: 12px !important;
+            }
+            #pokemon-selection-grid, #opponent-pokemon-selection-grid {
+                grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+                gap: 9px !important;
+            }
+            .pokemon-card { min-height: 112px; }
+            .pokemon-card img { height: 68px; }
+            #player-area, #opponent-area { max-width: 48% !important; }
+            #player-area .nes-container, #opponent-area .nes-container { padding: 7px !important; }
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -6034,23 +6144,33 @@ btn.onmouseout = () => {
 }
 
     
+    // 対戦画面・選択画面で共通の静止ドットスプライトを使用する。
+    function getPixelSpriteUrl(id, back = false, shiny = false) {
+        const base = String(id || '').trim().toLowerCase();
+        if (!base) return '';
+        const folder = back
+            ? (shiny ? 'gen5-back-shiny' : 'gen5-back')
+            : (shiny ? 'gen5-shiny' : 'gen5');
+        return `https://play.pokemonshowdown.com/sprites/${folder}/${encodeURIComponent(base)}.png`;
+    }
+
     function getSpriteUrl(pokemon, back = false) {
+        if (!pokemon) return '';
+        let specialUrl = null;
         if (pokemon.megaEvolved && pokemon.megaSpriteFront) {
-            return back ? pokemon.megaSpriteBack : pokemon.megaSpriteFront;
+            specialUrl = back ? pokemon.megaSpriteBack : pokemon.megaSpriteFront;
+        } else if (pokemon.disguiseBroken && pokemon.bustedSpriteFront) {
+            specialUrl = back ? pokemon.bustedSpriteBack : pokemon.bustedSpriteFront;
         }
-        if (pokemon.disguiseBroken && pokemon.bustedSpriteFront) {
-            return back ? pokemon.bustedSpriteBack : pokemon.bustedSpriteFront;
+        if (specialUrl) {
+            const match = String(specialUrl).match(/\/([^/?#]+)\.(?:gif|png|webp)(?:[?#].*)?$/i);
+            if (match) {
+                let slug = match[1];
+                slug = slug.replace(/-shiny$/, '');
+                return getPixelSpriteUrl(slug, back, !!pokemon.isShiny);
+            }
         }
-        if (typeof pokemon.id === 'string') {
-             const baseUrl = "https://play.pokemonshowdown.com/sprites/";
-             const folder = back ? "ani-back" : "ani";
-             const shiny = pokemon.isShiny ? "-shiny" : "";
-             return `${baseUrl}${folder}${shiny}/${pokemon.id}.gif`;
-        } else {
-             const shinyFolder = pokemon.isShiny ? 'shiny/' : '';
-             const backFolder = back ? 'back/' : '';
-             return `${POKE_API_BASE_URL}${backFolder}${shinyFolder}${pokemon.id}.gif`;
-        }
+        return getPixelSpriteUrl(pokemon.id, back, !!pokemon.isShiny);
     }
 
     function getMoveTooltipContent(move) {

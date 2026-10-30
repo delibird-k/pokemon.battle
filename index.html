@@ -5707,9 +5707,6 @@ if (!playerPokemon.pendingMega && !playerPokemon.pendingTera && !playerPokemon.p
         const moveLabel = document.createElement('span');
         moveLabel.textContent = displayedMove.displayName || displayedMove.name;
         button.textContent = '';
-        const typeIcon = createBattleAssetImage(getTypeIconUrl(displayType), `${displayType}タイプ`, 'move-type-icon w-8 h-4 object-contain shrink-0');
-        if (typeIcon) button.appendChild(typeIcon);
-        button.appendChild(moveLabel);
 
         const isDisabled =
     move.currentPp === 0 ||
@@ -5736,6 +5733,10 @@ if (
 ) {
     displayType = "フェアリー";
 }
+
+const typeIcon = createBattleAssetImage(getTypeIconUrl(displayType), `${displayType}タイプ`, 'move-type-icon w-8 h-4 object-contain shrink-0');
+if (typeIcon) button.appendChild(typeIcon);
+button.appendChild(moveLabel);
 
 button.className =
     `border-2 border-gray-800 rounded p-1 inline-flex items-center justify-center gap-1

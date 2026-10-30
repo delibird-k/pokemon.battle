@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172554">
+  <title>ポケモンバトルシミュレーター v2（開発版）</title>
+  <link rel="stylesheet" href="./src/ui/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <p class="eyebrow">POKÉMON BATTLE SIMULATOR</p>
+      <h1>ポケモンバトル</h1>
+      <p class="subtitle">3対3 シミュレーター — 新設計・開発版</p>
+    </header>
+
+    <section id="screen-home" class="panel screen">
+      <h2>あそびかたを選ぶ</h2>
+      <p class="help">遊びたいモードを選択してください。</p>
+      <div class="choice-grid">
+        <button class="choice-card primary" data-action="start-local">
+          <span class="choice-icon" aria-hidden="true">⚔</span>
+          <strong>CPU対戦</strong>
+          <span>コンピューターと3対3で対戦</span>
+        </button>
+        <button class="choice-card" disabled title="移植準備中">
+          <span class="choice-icon" aria-hidden="true">👥</span>
+          <strong>オンライン対戦</strong>
+          <span>移植準備中</span>
+        </button>
+      </div>
+      <p class="dev-note">これは新しい設計の動作確認用画面です。旧版の機能を移植している途中です。</p>
+    </section>
+
+    <section id="screen-setup" class="panel screen" hidden>
+      <div class="section-heading">
+        <div><p class="eyebrow">BATTLE SETUP</p><h2>チームを選ぶ</h2></div>
+        <span class="step-label">STEP 1</span>
+      </div>
+      <p class="help">まずは仮データで3匹のチームを作成します。ポケモンデータ移植後に全ポケモンへ拡張します。</p>
+      <div id="team-picker" class="pokemon-grid"></div>
+      <div class="footer-actions">
+        <button class="button secondary" data-action="back-home">戻る</button>
+        <button class="button primary" data-action="begin-battle" disabled>バトル開始</button>
+      </div>
+      <p id="setup-status" class="status-line" role="status"></p>
+    </section>
+
+    <section id="screen-battle" class="screen battle-layout" hidden>
+      <div class="battle-topline"><span id="turn-label">TURN 1</span><button class="button small secondary" data-action="forfeit">降参</button></div>
+      <div class="battle-side opponent-side">
+        <div><p class="side-label">あいて</p><h2 id="opponent-name">CPU</h2></div>
+        <div id="opponent-team" class="team-strip"></div>
+        <div class="active-card"><div><p class="side-label">いま戦っているポケモン</p><h3 id="opponent-active-name">—</h3><div class="hp-track"><span id="opponent-hp-bar"></span></div><p id="opponent-hp-text" class="hp-text"></p></div><img id="opponent-sprite" alt="" hidden></div>
+      </div>
+      <div class="battle-log" aria-live="polite"><strong>バトルログ</strong><ol id="battle-log"></ol></div>
+      <div class="battle-side player-side">
+        <div class="active-card"><img id="player-sprite" alt="" hidden><div><p class="side-label">いま戦っているポケモン</p><h3 id="player-active-name">—</h3><div class="hp-track"><span id="player-hp-bar"></span></div><p id="player-hp-text" class="hp-text"></p></div></div>
+        <div><p class="side-label">あなた</p><div id="player-team" class="team-strip"></div></div>
+      </div>
+      <div class="battle-controls">
+        <h2>どうする？</h2>
+        <div id="move-choices" class="move-grid"></div>
+      </div>
+    </section>
+
+    <section id="screen-result" class="panel screen" hidden>
+      <p class="eyebrow">BATTLE RESULT</p><h2 id="result-title">バトル終了</h2><p id="result-message"></p>
+      <button class="button primary" data-action="back-home">タイトルへ戻る</button>
+    </section>
+    <footer>非公式ファン制作コンテンツ / v2 開発版</footer>
+  </main>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

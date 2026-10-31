@@ -531,12 +531,29 @@
         .pokemon-sprite-stage img {
             position: relative; z-index: 1; display: block;
             transform: translateY(12px);
+            transform-origin: 50% 90%;
+        }
+        .pokemon-sprite-stage.is-floating::before {
+            width: min(58%, 126px); height: 13px; bottom: 7px;
+            opacity: .48; filter: blur(1.5px);
+            background: radial-gradient(ellipse, rgba(40,55,65,.5), rgba(40,55,65,0) 72%);
+            border: 0; box-shadow: none;
+        }
+        .pokemon-sprite-stage.is-floating img {
+            transform: translateY(-13px);
+            animation: pokemon-hover 2.2s ease-in-out infinite;
+        }
+        @keyframes pokemon-hover {
+            0%,100% { translate: 0 0; }
+            50% { translate: 0 -7px; }
         }
         body.smartphone-mode .pokemon-sprite-stage { min-height: clamp(100px,20dvh,170px); padding-bottom: 0; }
         body.smartphone-mode .pokemon-sprite-stage::before {
             bottom: 3px; height: 29px; width: min(94%, 158px);
         }
         body.smartphone-mode .pokemon-sprite-stage img { transform: translateY(9px); }
+        body.smartphone-mode .pokemon-sprite-stage.is-floating::before { width: min(58%, 100px); height: 11px; bottom: 5px; }
+        body.smartphone-mode .pokemon-sprite-stage.is-floating img { transform: translateY(-10px); }
 
         #player-sprite, #opponent-sprite {
             image-rendering: pixelated;
@@ -1259,7 +1276,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const now = retroAudio.currentTime;
                 const notes = kind === 'select' ? [[660, 0, .075], [990, .075, .09]]
                     : kind === 'confirm' ? [[523, 0, .07], [784, .065, .08], [1047, .13, .11]]
-                    : kind === 'hit' ? [[180, 0, .055], [120, .055, .085]]
+                    : kind === 'hit-heavy' ? [[105, 0, .09], [72, .075, .14], [48, .19, .16]]
+                    : kind === 'hit-medium' ? [[145, 0, .065], [95, .06, .105]]
+                    : kind === 'hit-light' || kind === 'hit' ? [[220, 0, .045], [165, .045, .065]]
                     : kind === 'faint' ? [[392, 0, .12], [294, .13, .14], [196, .28, .22]]
                     : kind === 'attack' ? [[740, 0, .045], [520, .045, .07]]
                     : [[440, 0, .045]];
@@ -2049,9 +2068,11 @@ function onlineSendState(phase = 'event', messageOverride = null, messageAlready
 }
 
 // 攻撃を受けたポケモンの画像だけを振動させる
-function shakeSprite(el) {
+function shakeSprite(el, damage = 0) {
     if (!el) return;
-    playRetroSound('hit');
+    const amount = Math.max(0, Number(damage) || 0);
+    const soundKind = amount >= 30 ? 'hit-heavy' : amount >= 10 ? 'hit-medium' : 'hit-light';
+    playRetroSound(soundKind);
     el.classList.remove('sprite-shake');
     void el.offsetWidth;
     el.classList.add('sprite-shake');
@@ -2111,6 +2132,7 @@ function onlineUpdateSprite(uiSide, pokemon, isBack) {
     const sprite = uiSide.sprite;
     const url = getSpriteUrl(shown, isBack);
     if (sprite.getAttribute('src') !== url) sprite.src = url;
+    updatePokemonFloatVisual(pokemon, sprite);
 
     const base = `mx-auto ${onlineSpriteSizeClass(pokemon)} object-contain transition-all duration-1000`;
     if (sprite.dataset.onlineBase !== base + '|' + pokemon.id + '|' + pokemon.name) {
@@ -6091,6 +6113,7 @@ player.maxHpEl.textContent =
 
 player.sprite.src =
     getSpriteUrl(playerShown, true);
+updatePokemonFloatVisual(playerPokemon, player.sprite);
 const opponentShown =
     opponentPokemon.disguiseData || opponentPokemon;
 
@@ -6101,6 +6124,7 @@ document.getElementById("opponent-max-hp").textContent =
 
 opponent.sprite.src =
     getSpriteUrl(opponentShown);
+        updatePokemonFloatVisual(opponentPokemon, opponent.sprite);
         const playerSizeClasses = playerPokemon.id === 'necrozma-ultra' || playerPokemon.id === 'eternatus-eternamax' ? 'h-28 sm:h-36 md:h-44' : 'h-24 sm:h-32 md:h-40';
         player.sprite.className = `mx-auto ${playerSizeClasses} object-contain transition-all duration-1000`;
 
@@ -6618,10 +6642,34 @@ btn.onmouseout = () => {
                 let slug = match[1].replace(/-shiny$/, '').toLowerCase();
                 // Showdown のメガリザードンX/Yは mega-x / mega-y ではなく megax / megay のファイル名。
                 slug = slug.replace(/-mega-x$/, '-megax').replace(/-mega-y$/, '-megay');
+                // ミミッキュのばれたすがたも静止ドット絵の同じ描画系に統一。
                 return getPixelSpriteUrl(slug, back, !!pokemon.isShiny);
             }
         }
         return getPixelSpriteUrl(pokemon.id, back, !!pokemon.isShiny);
+    }
+
+    // 浮遊する見た目のポケモンは、足元の地面を小さく薄くし、画像を上下に浮かせる。
+    // 「ふゆう」持ちと、見た目として常時空中にいる代表的なポケモンを対象にする。
+    const visuallyFloatingPokemon = new Set([
+        'magnemite','magneton','magnezone','koffing','weezing','gastly','haunter','gengar',
+        'misdreavus','unown','lunatone','solrock','baltoy','claydol','duskull','chimecho',
+        'latias','latios','castform','drifloon','drifblim','uxie','mesprit','azelf',
+        'cresselia','rotom','yamask','cofagrigus','elgyem','beheeyem','litwick','lampent',
+        'chandelure','hydreigon','flabebe','floette','florges','sylveon','carbink',
+        'klefki','phantump','trevenant','pumpkaboo','gourgeist','xerneas','yveltal',
+        'hoopa','volcanion','magearna','necrozma','lunala','solgaleo','poipole',
+        'naganadel','blacephalon','zeraora','eternatus','calyrex','enamorus',
+        'flittle','espathra','tinkatink','tinkatuff','tinkaton','ceruledge','armarouge',
+        'mimikyu-busted'
+    ]);
+    function updatePokemonFloatVisual(pokemon, sprite) {
+        if (!pokemon || !sprite) return;
+        const stage = sprite.closest('.pokemon-sprite-stage');
+        if (!stage) return;
+        const id = String(pokemon.id || '').toLowerCase();
+        const floats = pokemon.ability === 'ふゆう' || visuallyFloatingPokemon.has(id);
+        stage.classList.toggle('is-floating', floats);
     }
 
     function getMoveTooltipContent(move) {
@@ -7040,6 +7088,7 @@ playerPokemon.statStages = {
             playerShown,
             true
         );
+    updatePokemonFloatVisual(playerPokemon, player.sprite);
 
     player.sprite.className =
         `mx-auto ${
@@ -7526,6 +7575,7 @@ opponentPokemon.protectUsed = false;
 
     opponent.sprite.src =
         getSpriteUrl(opponentShown);
+    updatePokemonFloatVisual(opponentPokemon, opponent.sprite);
 
     opponent.sprite.className =
         `mx-auto ${
@@ -11943,7 +11993,7 @@ for(let hit = 0; hit < hitCount; hit++){
     // ダメージ後のHP表示・被弾シェイク・振動を先に実行し、その後ではたきおとすのメッセージを出す。
     if (currentDamage > 0) {
         updateHpBars();
-        shakeSprite(defenderUI.sprite);
+        shakeSprite(defenderUI.sprite, currentDamage);
         vibrateOnHit();
         onlineSendShake(defenderUI === player);
     }
@@ -12443,7 +12493,7 @@ if (!move?.isDynamaxMove) {
     // 被弾した側を毎回振動させる。
     // 自分が攻撃を受けた場合も、相手が攻撃を受けた場合も同じ処理を通る。
     // 連続技では applyDamage が1発ごとに呼ばれるため、1発ずつ振動する。
-    shakeSprite(defenderUI.sprite);
+    shakeSprite(defenderUI.sprite, damage);
     vibrateOnHit();
     onlineSendShake(defenderUI === player);
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -13796,6 +13846,7 @@ updateStatDisplay(
 
     opponent.sprite.src =
         getSpriteUrl(opponentShown);
+    updatePokemonFloatVisual(opponentPokemon, opponent.sprite);
 
     opponent.sprite.className =
         `mx-auto ${
@@ -14893,17 +14944,18 @@ const defStageFix = (stage) =>
         let sprite;
 
         defender.bustedSpriteFront =
-            "https://play.pokemonshowdown.com/sprites/ani/mimikyu-busted.gif";
+            "https://play.pokemonshowdown.com/sprites/gen5/mimikyu-busted.png";
         defender.bustedSpriteBack =
-            "https://play.pokemonshowdown.com/sprites/ani-back/mimikyu-busted.gif";
+            "https://play.pokemonshowdown.com/sprites/gen5-back/mimikyu-busted.png";
 
         if (defender === playerPokemon) {
             sprite = player.sprite;
-            sprite.src = defender.bustedSpriteBack;
+            sprite.src = getSpriteUrl(defender, true);
         } else {
             sprite = opponent.sprite;
-            sprite.src = defender.bustedSpriteFront;
+            sprite.src = getSpriteUrl(defender, false);
         }
+        updatePokemonFloatVisual(defender, sprite);
 
     }
 

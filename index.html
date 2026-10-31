@@ -140,6 +140,41 @@
         background-size: cover;
         background-position: center;
     }
+        /* 天候・フィールド演出 */
+        #battle-screen { background-color: #8fbd72; transition: background-color .35s ease, background-image .35s ease; }
+        #battle-screen.field-grass { background-image: linear-gradient(rgba(45,150,65,.30),rgba(45,150,65,.48)),url("kusa.jpeg"); }
+        #battle-screen.field-psyco { background-image: linear-gradient(rgba(255,105,180,.34),rgba(255,105,180,.48)),url("kusa.jpeg"); }
+        #battle-screen.field-electric { background-image: linear-gradient(rgba(255,220,35,.36),rgba(255,220,35,.50)),url("kusa.jpeg"); }
+        #battle-screen.field-misty { background-image: linear-gradient(rgba(160,95,210,.36),rgba(160,95,210,.50)),url("kusa.jpeg"); }
+        #battle-screen::before {
+            content:""; position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0;
+        }
+        #battle-screen.weather-rain::before {
+            opacity:.72;
+            background-image: repeating-linear-gradient(108deg, transparent 0 17px, rgba(215,238,255,.72) 18px, transparent 20px 34px);
+            background-size: 100% 170px;
+            animation: battle-rain .48s linear infinite;
+        }
+        #battle-screen.weather-sandstorm::before {
+            opacity:.62;
+            background-image: repeating-linear-gradient(8deg, transparent 0 22px, rgba(194,151,83,.42) 23px 27px, transparent 29px 48px);
+            background-size: 180px 100%;
+            animation: battle-sand 1.4s linear infinite;
+        }
+        #battle-screen.weather-sun::before {
+            opacity:.42;
+            background: radial-gradient(ellipse at 78% 12%, rgba(255,245,160,.85), rgba(255,220,90,.18) 28%, transparent 65%);
+        }
+        #battle-screen.weather-snow::before {
+            opacity:.72;
+            background-image: radial-gradient(circle, rgba(255,255,255,.95) 1.5px, transparent 2px), radial-gradient(circle, rgba(255,255,255,.8) 1px, transparent 1.8px);
+            background-size: 46px 52px, 71px 78px;
+            animation: battle-snow 4s linear infinite;
+        }
+        @keyframes battle-rain { from { background-position: 0 -170px; } to { background-position: 0 0; } }
+        @keyframes battle-sand { from { background-position: -180px 0; } to { background-position: 0 0; } }
+        @keyframes battle-snow { from { background-position: 0 -80px, 20px -110px; } to { background-position: 0 80px, 20px 110px; } }
+
 
         /* 効果音コントロール */
         #sound-volume { accent-color: #477eaf; cursor: pointer; }
@@ -515,29 +550,14 @@
             box-shadow: 0 18px 45px rgba(0,0,0,.32) !important;
         }
 
-        /* 対戦フィールド：ドット絵の足元に置く楕円形の地面 */
+        /* ポケモンの足元：楕円の台座は使わず、浮遊するポケモンだけ上下に動かす */
         .pokemon-sprite-stage {
             position: relative; display: flex; align-items: flex-end; justify-content: center;
-            width: 100%; min-height: 180px; padding-bottom: 0; box-sizing: border-box; isolation: isolate;
-        }
-        .pokemon-sprite-stage::before {
-            content: ""; position: absolute; z-index: 0; left: 50%; bottom: 5px;
-            transform: translateX(-50%); width: min(92%, 210px); height: 38px;
-            border: 2px solid rgba(71,91,112,.78); border-radius: 50%;
-            background: radial-gradient(ellipse at 50% 32%, rgba(229,241,245,.98) 0%, rgba(170,196,205,.94) 55%, rgba(103,137,151,.9) 100%);
-            box-shadow: inset 0 4px 0 rgba(255,255,255,.5), 0 4px 3px rgba(0,0,0,.2);
-            pointer-events: none;
+            width: 100%; min-height: 180px; padding-bottom: 0; box-sizing: border-box;
         }
         .pokemon-sprite-stage img {
             position: relative; z-index: 1; display: block;
-            transform: translateY(12px);
             transform-origin: 50% 90%;
-        }
-        .pokemon-sprite-stage.is-floating::before {
-            width: min(58%, 126px); height: 13px; bottom: 7px;
-            opacity: .48; filter: blur(1.5px);
-            background: radial-gradient(ellipse, rgba(40,55,65,.5), rgba(40,55,65,0) 72%);
-            border: 0; box-shadow: none;
         }
         .pokemon-sprite-stage.is-floating img {
             transform: translateY(-13px);
@@ -548,11 +568,7 @@
             50% { translate: 0 -7px; }
         }
         body.smartphone-mode .pokemon-sprite-stage { min-height: clamp(100px,20dvh,170px); padding-bottom: 0; }
-        body.smartphone-mode .pokemon-sprite-stage::before {
-            bottom: 3px; height: 29px; width: min(94%, 158px);
-        }
-        body.smartphone-mode .pokemon-sprite-stage img { transform: translateY(9px); }
-        body.smartphone-mode .pokemon-sprite-stage.is-floating::before { width: min(58%, 100px); height: 11px; bottom: 5px; }
+        body.smartphone-mode .pokemon-sprite-stage { min-height: clamp(100px,20dvh,170px); padding-bottom: 0; }
         body.smartphone-mode .pokemon-sprite-stage.is-floating img { transform: translateY(-10px); }
 
         #player-sprite, #opponent-sprite {
@@ -15627,6 +15643,13 @@ isBattleInProgress = false;
 }
 
     function updateWeatherIndicator() {
+    const battle = document.getElementById('battle-screen');
+    if (battle) {
+        battle.classList.remove('weather-sun', 'weather-rain', 'weather-sandstorm', 'weather-snow');
+        if (['sun', 'rain', 'sandstorm', 'snow'].includes(weather.type)) {
+            battle.classList.add('weather-' + weather.type);
+        }
+    }
     if (weather.type === 'sun') {
         weatherIndicator.textContent = '状態: はれ';
         weatherIndicator.style.display = 'block';
@@ -15638,37 +15661,33 @@ isBattleInProgress = false;
         weatherIndicator.style.display = 'block';
     } else if (weather.type === 'snow') {
         weatherIndicator.textContent = '状態: ゆき';
-        weatherIndicator.style.display = 'block'; 
-    } else {    
+        weatherIndicator.style.display = 'block';
+    } else {
         weatherIndicator.style.display = 'none';
     }
 }
 function updateFieldIndicator() {
-
+    const battle = document.getElementById('battle-screen');
+    if (battle) {
+        battle.classList.remove('field-grass', 'field-psyco', 'field-electric', 'field-misty');
+        if (['grass', 'psyco', 'electric', 'misty'].includes(field.type)) {
+            battle.classList.add('field-' + field.type);
+        }
+    }
     if (field.type === 'psyco') {
-
         fieldIndicator.textContent = '状態: サイコフィールド';
         fieldIndicator.style.display = 'block';
-
     } else if (field.type === 'grass') {
-
         fieldIndicator.textContent = '状態: グラスフィールド';
         fieldIndicator.style.display = 'block';
-
     } else if (field.type === 'electric') {
-
         fieldIndicator.textContent = '状態: エレキフィールド';
         fieldIndicator.style.display = 'block';
-
     } else if (field.type === 'misty') {
-
         fieldIndicator.textContent = '状態: ミストフィールド';
         fieldIndicator.style.display = 'block';
-
     } else {
-
         fieldIndicator.style.display = 'none';
-
     }
 }
 

@@ -215,9 +215,8 @@
         body.dark-mode .sound-volume-label { background:#24364e !important; color:#e5edf8 !important; border-color:#526780 !important; }
         /* 変身演出はメッセージ欄を避けて画面上部～中央に表示 */
         #battle-effect-layer { position:absolute; inset:0; z-index:8; pointer-events:none; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .battle-transformation-flash { position:absolute; left:50%; top:42%; width:min(78%,560px); min-height:110px; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; border-radius:18px; color:#fff; font-weight:900; letter-spacing:.12em; text-align:center; text-shadow:0 3px 8px rgba(0,0,0,.9),0 0 18px currentColor; background:radial-gradient(ellipse,rgba(10,20,45,.82),rgba(10,20,45,.12) 72%,transparent); animation:transformation-burst .95s ease-out both; }
-        .battle-transformation-flash .effect-title { font-size:clamp(1.05rem,4vw,2.2rem); line-height:1.25; }
-        .battle-transformation-flash .effect-subtitle { font-size:clamp(.58rem,1.8vw,.88rem); letter-spacing:.2em; }
+        .battle-transformation-flash { position:absolute; left:50%; top:42%; width:min(48vw,300px); aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.96) 0%,currentColor 9%,transparent 68%); filter:drop-shadow(0 0 18px currentColor); animation:transformation-burst .95s ease-out both; }
+        .battle-transformation-flash::after { content:""; position:absolute; inset:12%; border:3px solid currentColor; border-radius:50%; box-shadow:0 0 22px currentColor,inset 0 0 18px currentColor; }
         .battle-transformation-flash.mega { color:#ffe58a; }
         .battle-transformation-flash.dynamax { color:#ff9b9b; }
         .battle-transformation-flash.tera { color:#a9f4ff; }
@@ -1520,23 +1519,10 @@ document.addEventListener('DOMContentLoaded', () => {
             layer.id = 'battle-effect-layer';
             battleScreen.appendChild(layer);
         }
-        const labels = {
-            mega: ['MEGA EVOLUTION', 'メガシンカ'],
-            dynamax: ['DYNAMAX', 'ダイマックス'],
-            tera: ['TERASTAL', 'テラスタル'],
-            zmove: ['Z-POWER', 'Ｚワザ']
-        };
-        const label = labels[kind] || ['POWER UP', 'パワーアップ'];
         layer.innerHTML = '';
         const flash = document.createElement('div');
         flash.className = 'battle-transformation-flash ' + kind;
-        const title = document.createElement('div');
-        title.className = 'effect-title';
-        title.textContent = label[1];
-        const subtitle = document.createElement('div');
-        subtitle.className = 'effect-subtitle';
-        subtitle.textContent = label[0] + (pokemon ? '  •  ' + getShownName(pokemon) : '');
-        flash.append(title, subtitle);
+        flash.setAttribute('aria-hidden', 'true');
         layer.appendChild(flash);
         playRetroSound(kind);
         await new Promise(resolve => setTimeout(resolve, 850));

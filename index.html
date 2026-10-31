@@ -92,17 +92,20 @@
         }
         .condition-marker {
             display: inline-flex !important;
-            width: 25px;
-            height: 25px;
+            width: auto !important;
+            min-width: 0;
+            height: auto !important;
             align-items: center;
             justify-content: center;
-            padding: 0 !important;
-            border: 2px solid rgba(17,24,39,.75);
-            border-radius: 6px;
-            font-size: 15px !important;
-            line-height: 1;
+            padding: 2px 7px !important;
+            border: 1px solid rgba(17,24,39,.55);
+            border-radius: 5px;
+            font-size: 0.62rem !important;
+            font-weight: 700;
+            line-height: 1.35;
             margin-left: 5px;
             box-sizing: border-box;
+            white-space: nowrap;
         }
         body {
     background-image: url("sensyutu.jpeg");
@@ -515,19 +518,25 @@
         /* 対戦フィールド：ドット絵の足元に置く楕円形の地面 */
         .pokemon-sprite-stage {
             position: relative; display: flex; align-items: flex-end; justify-content: center;
-            width: 100%; min-height: 180px; padding-bottom: 7px; box-sizing: border-box; isolation: isolate;
+            width: 100%; min-height: 180px; padding-bottom: 0; box-sizing: border-box; isolation: isolate;
         }
         .pokemon-sprite-stage::before {
-            content: ""; position: absolute; z-index: 0; left: 50%; bottom: 12px;
-            transform: translateX(-50%); width: min(76%, 154px); height: 23px;
-            border: 2px solid rgba(71,91,112,.72); border-radius: 50%;
-            background: radial-gradient(ellipse at 50% 35%, rgba(226,239,244,.96) 0%, rgba(166,190,199,.88) 58%, rgba(104,133,146,.82) 100%);
-            box-shadow: inset 0 3px 0 rgba(255,255,255,.42), 0 3px 2px rgba(0,0,0,.18);
+            content: ""; position: absolute; z-index: 0; left: 50%; bottom: 5px;
+            transform: translateX(-50%); width: min(92%, 210px); height: 38px;
+            border: 2px solid rgba(71,91,112,.78); border-radius: 50%;
+            background: radial-gradient(ellipse at 50% 32%, rgba(229,241,245,.98) 0%, rgba(170,196,205,.94) 55%, rgba(103,137,151,.9) 100%);
+            box-shadow: inset 0 4px 0 rgba(255,255,255,.5), 0 4px 3px rgba(0,0,0,.2);
             pointer-events: none;
         }
-        .pokemon-sprite-stage img { position: relative; z-index: 1; display: block; }
-        body.smartphone-mode .pokemon-sprite-stage { min-height: clamp(100px,20dvh,170px); padding-bottom: 5px; }
-        body.smartphone-mode .pokemon-sprite-stage::before { bottom: 9px; height: 17px; width: min(78%,120px); }
+        .pokemon-sprite-stage img {
+            position: relative; z-index: 1; display: block;
+            transform: translateY(12px);
+        }
+        body.smartphone-mode .pokemon-sprite-stage { min-height: clamp(100px,20dvh,170px); padding-bottom: 0; }
+        body.smartphone-mode .pokemon-sprite-stage::before {
+            bottom: 3px; height: 29px; width: min(94%, 158px);
+        }
+        body.smartphone-mode .pokemon-sprite-stage img { transform: translateY(9px); }
 
         #player-sprite, #opponent-sprite {
             image-rendering: pixelated;
@@ -15198,12 +15207,12 @@ return {
     function updateStatusMarkers() {
         // PokeAPI spritesには状態異常専用マーカーがないため、状態ごとの視認しやすい記号で表示する。
         const statusMarkers = {
-            burn: { icon: '🔥', label: 'やけど', color: '#ef4444' },
-            freeze: { icon: '❄', label: 'こおり', color: '#38bdf8' },
-            paralyze: { icon: '⚡', label: 'まひ', color: '#facc15' },
-            poison: { icon: '☠', label: 'どく', color: '#a855f7' },
-            toxic: { icon: '☣', label: 'もうどく', color: '#710297' },
-            sleep: { icon: '💤', label: 'ねむり', color: '#71717a' }
+            burn: { label: 'やけど', color: '#ef4444' },
+            freeze: { label: 'こおり', color: '#38bdf8' },
+            paralyze: { label: 'まひ', color: '#facc15' },
+            poison: { label: 'どく', color: '#a855f7' },
+            toxic: { label: 'もうどく', color: '#710297' },
+            sleep: { label: 'ねむり', color: '#71717a' }
         };
         [player, opponent].forEach(p => {
             const pokemon = p === player ? playerPokemon : opponentPokemon;
@@ -15212,7 +15221,7 @@ return {
                 p.statusEl.className = 'status-badge condition-marker';
                 p.statusEl.style.display = 'inline-flex';
                 p.statusEl.style.backgroundColor = marker.color;
-                p.statusEl.textContent = marker.icon;
+                p.statusEl.textContent = marker.label;
                 p.statusEl.title = marker.label;
                 p.statusEl.setAttribute('aria-label', marker.label);
             } else if (p.statusEl) {

@@ -13539,24 +13539,13 @@ for (const pokemon of [playerPokemon, opponentPokemon]) {
 }
 if(weather.type === 'snow') {
             await showMessage('ゆきが ふっている！');
-            if(!playerPokemon.types.includes('こおり') && playerPokemon.currentHp > 0) {
-                 playerPokemon.currentHp = Math.max(0, playerPokemon.currentHp - Math.floor(playerPokemon.maxHp / 16));
-                 await showMessage(`${playerPokemon.name}は さむさで ダメージを うけた！`);
-                 updateHpBars();
-                 if (await checkFainted(playerPokemon, true)) return true;
-            }
-             if(!opponentPokemon.types.includes('こおり') && opponentPokemon.currentHp > 0) {
-                 opponentPokemon.currentHp = Math.max(0, opponentPokemon.currentHp - Math.floor(opponentPokemon.maxHp / 16));
-                 await showMessage(`あいての ${opponentPokemon.name}は さむさで ダメージを うけた！`);
-                 updateHpBars();
-                 if (await checkFainted(opponentPokemon, false)) return true;
-            }
+            // ゆきではHPダメージを与えない。
             weather.turns--;
-    if (weather.turns === 0) {
-        weather.type = 'none';
-        await showMessage('ゆきは やんだ！');
-        updateWeatherIndicator();
-    }
+            if (weather.turns === 0) {
+                weather.type = 'none';
+                await showMessage('ゆきは やんだ！');
+                updateWeatherIndicator();
+            }
 }
         async function applyLeechSeed(target, isPlayer) {
     if (!target.seeded || target.currentHp <= 0) return false;
@@ -15276,6 +15265,11 @@ defenseStat =
 
 if (isAncientBoostActive(defender) && getAncientBoostStat(defender) === "defense") {
     defenseStat *= 1.3;
+}
+
+// ゆき：こおりタイプの物理防御が1.5倍
+if (weather.type === "snow" && defender.types.includes("こおり")) {
+    defenseStat *= 1.5;
 }
 
 // わざわいのつるぎ

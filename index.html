@@ -210,19 +210,45 @@
         @keyframes battle-snow { from { background-position: 0 -80px, 20px -110px; } to { background-position: 0 80px, 20px 110px; } }
 
 
-        /* 能力ランク変化：ポケモンの周囲を流れる青・赤の波 */
-        .stat-stage-wave { position:absolute; left:50%; top:50%; width:min(88%,150px); height:min(72%,110px); pointer-events:none; z-index:9; transform:translate(-50%,-50%); }
-        .stat-stage-wave::before,.stat-stage-wave::after { content:""; position:absolute; left:50%; width:78%; height:34%; border:3px solid currentColor; border-left-color:transparent; border-right-color:transparent; border-radius:50%; filter:drop-shadow(0 0 5px currentColor); opacity:0; }
+        /* 能力ランク変化：波をポケモン画像と同じ矩形に重ねて表示 */
+        .stat-stage-wave {
+            position:absolute; pointer-events:none; z-index:9;
+            overflow:visible; isolation:isolate;
+        }
+        .stat-stage-wave::before,.stat-stage-wave::after {
+            content:""; position:absolute; left:50%; top:50%;
+            width:78%; height:34%; box-sizing:border-box;
+            border:3px solid currentColor; border-left-color:transparent;
+            border-right-color:transparent; border-radius:50%;
+            filter:drop-shadow(0 0 5px currentColor);
+            opacity:0; transform:translate(-50%,-50%);
+        }
         .stat-stage-wave::before { animation:stat-wave-main .8s ease-out both; }
         .stat-stage-wave::after { animation:stat-wave-secondary .8s .09s ease-out both; }
         .stat-stage-wave.up { color:#ff4545; }
         .stat-stage-wave.down { color:#278cff; }
-        @keyframes stat-wave-main { 0% { opacity:0; transform:translate(-50%,0) scale(.55) rotate(-8deg); } 18% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-95px) scale(1.18) rotate(8deg); } }
-        @keyframes stat-wave-secondary { 0% { opacity:0; transform:translate(-50%,0) scale(.7) rotate(8deg); } 20% { opacity:.85; } 100% { opacity:0; transform:translate(-50%,-72px) scale(1.05) rotate(-8deg); } }
+        @keyframes stat-wave-main {
+            0% { opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg); }
+            18% { opacity:1; }
+            100% { opacity:0; transform:translate(-50%,-145%) scale(1.18) rotate(8deg); }
+        }
+        @keyframes stat-wave-secondary {
+            0% { opacity:0; transform:translate(-50%,-50%) scale(.7) rotate(8deg); }
+            20% { opacity:.85; }
+            100% { opacity:0; transform:translate(-50%,-125%) scale(1.05) rotate(-8deg); }
+        }
         .stat-stage-wave.down::before { animation-name:stat-wave-main-down; }
         .stat-stage-wave.down::after { animation-name:stat-wave-secondary-down; }
-        @keyframes stat-wave-main-down { 0% { opacity:0; transform:translate(-50%,-95px) scale(1.18) rotate(8deg); } 18% { opacity:1; } 100% { opacity:0; transform:translate(-50%,0) scale(.55) rotate(-8deg); } }
-        @keyframes stat-wave-secondary-down { 0% { opacity:0; transform:translate(-50%,-72px) scale(1.05) rotate(-8deg); } 20% { opacity:.85; } 100% { opacity:0; transform:translate(-50%,0) scale(.7) rotate(8deg); } }
+        @keyframes stat-wave-main-down {
+            0% { opacity:0; transform:translate(-50%,-145%) scale(1.18) rotate(8deg); }
+            18% { opacity:1; }
+            100% { opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg); }
+        }
+        @keyframes stat-wave-secondary-down {
+            0% { opacity:0; transform:translate(-50%,-125%) scale(1.05) rotate(-8deg); }
+            20% { opacity:.85; }
+            100% { opacity:0; transform:translate(-50%,-50%) scale(.7) rotate(8deg); }
+        }
         @media (prefers-reduced-motion:reduce) { .stat-stage-wave::before,.stat-stage-wave::after { animation-duration:.3s; } }
 
         /* 効果音コントロール */
@@ -4566,27 +4592,32 @@ function useZMove(pokemon){
         pokemon.selectedZMove
     );
 }
-    // 能力ランク変化の波を、ステージ全体ではなくポケモン画像そのものに重ねる。
+    // 現在表示中のポケモン画像の矩形に、波の表示レイヤーを正確に重ねる。
     function playStatStageWave(pokemon, direction) {
         const isPlayer = pokemon === playerPokemon;
         const isOpponent = pokemon === opponentPokemon;
         if (!isPlayer && !isOpponent) return;
+
         const sprite = document.getElementById(isPlayer ? 'player-sprite' : 'opponent-sprite');
         const stage = sprite?.closest('.pokemon-sprite-stage');
-        if (!sprite || !stage || !sprite.getBoundingClientRect().width) return;
+        if (!sprite || !stage || !sprite.getClientRects().length) return;
 
         const spriteRect = sprite.getBoundingClientRect();
         const stageRect = stage.getBoundingClientRect();
+        if (spriteRect.width <= 0 || spriteRect.height <= 0) return;
+
         const wave = document.createElement('div');
         wave.className = 'stat-stage-wave ' + direction;
         wave.setAttribute('aria-hidden', 'true');
-        wave.style.left = (spriteRect.left - stageRect.left) + 'px';
-        wave.style.top = (spriteRect.top - stageRect.top) + 'px';
-        wave.style.width = spriteRect.width + 'px';
-        wave.style.height = spriteRect.height + 'px';
+        Object.assign(wave.style, {
+            left: (spriteRect.left - stageRect.left) + 'px',
+            top: (spriteRect.top - stageRect.top) + 'px',
+            width: spriteRect.width + 'px',
+            height: spriteRect.height + 'px'
+        });
         stage.appendChild(wave);
         wave.addEventListener('animationend', () => wave.remove(), { once: true });
-        setTimeout(() => wave.remove(), 1100);
+        window.setTimeout(() => wave.remove(), 1100);
     }
 
     function attachStatStageVisuals(pokemon) {

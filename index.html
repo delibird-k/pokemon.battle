@@ -214,8 +214,8 @@
         #sound-volume { accent-color: #477eaf; cursor: pointer; }
         body.dark-mode .sound-volume-label { background:#24364e !important; color:#e5edf8 !important; border-color:#526780 !important; }
         /* 変身演出はメッセージ欄を避けて画面上部～中央に表示 */
-        #battle-effect-layer { position:absolute; inset:0; z-index:8; pointer-events:none; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .battle-transformation-flash { position:absolute; left:50%; top:42%; width:min(48vw,300px); aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.96) 0%,currentColor 9%,transparent 68%); filter:drop-shadow(0 0 18px currentColor); animation:transformation-burst .95s ease-out both; }
+        #battle-effect-layer { position:absolute; z-index:8; pointer-events:none; overflow:visible; display:flex; align-items:center; justify-content:center; }
+        .battle-transformation-flash { position:absolute; left:50%; top:50%; width:min(90%,180px); aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.96) 0%,currentColor 9%,transparent 68%); filter:drop-shadow(0 0 18px currentColor); animation:transformation-burst .95s ease-out both; }
         .battle-transformation-flash::after { content:""; position:absolute; inset:12%; border:3px solid currentColor; border-radius:50%; box-shadow:0 0 22px currentColor,inset 0 0 18px currentColor; }
         .battle-transformation-flash.mega { color:#ffe58a; }
         .battle-transformation-flash.dynamax { color:#ff9b9b; }
@@ -227,8 +227,8 @@
             48% { opacity:1; filter:brightness(1.15); transform:translate(-50%,-50%) scale(.98); }
             100% { opacity:0; filter:brightness(1); transform:translate(-50%,-50%) scale(1.16); }
         }
-        #battle-effect-layer::before { content:""; position:absolute; left:50%; top:42%; width:12px; height:12px; border:3px solid rgba(255,255,255,.9); border-radius:50%; transform:translate(-50%,-50%); animation:transformation-ring .85s ease-out both; }
-        @keyframes transformation-ring { 0% { opacity:.95; width:10px; height:10px; } 100% { opacity:0; width:min(90vw,680px); height:min(90vw,680px); } }
+        #battle-effect-layer::before { content:""; position:absolute; left:50%; top:50%; width:10px; height:10px; border:3px solid rgba(255,255,255,.9); border-radius:50%; transform:translate(-50%,-50%); animation:transformation-ring .85s ease-out both; }
+        @keyframes transformation-ring { 0% { opacity:.95; width:8px; height:8px; } 100% { opacity:0; width:min(100%,190px); height:min(100%,190px); } }
         @media (prefers-reduced-motion:reduce) { .battle-transformation-flash,#battle-effect-layer::before { animation-duration:.25s; } }
         body.dark-mode #sound-volume + b { color:#e5edf8; }
         body.dark-mode #opening-screen label[for="sound-volume"],
@@ -1512,7 +1512,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 変身・Zワザの専用演出と専用効果音。
     async function playBattleTransformationEffect(kind, pokemon) {
         const battleScreen = document.getElementById('battle-screen');
-        if (!battleScreen) return;
+        if (!battleScreen || !pokemon) return;
+        // 演出対象のポケモン画像の位置・大きさに合わせてエフェクトを配置する。
+        const sprite = pokemon === playerPokemon
+            ? document.getElementById('player-sprite')
+            : pokemon === opponentPokemon
+                ? document.getElementById('opponent-sprite')
+                : null;
+        const target = sprite?.closest('.pokemon-sprite-stage') || sprite;
+        if (!target) return;
+        const screenRect = battleScreen.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
         let layer = document.getElementById('battle-effect-layer');
         if (!layer) {
             layer = document.createElement('div');
@@ -1520,13 +1530,19 @@ document.addEventListener('DOMContentLoaded', () => {
             battleScreen.appendChild(layer);
         }
         layer.innerHTML = '';
+        layer.style.inset = 'auto';
+        layer.style.left = (targetRect.left - screenRect.left) + 'px';
+        layer.style.top = (targetRect.top - screenRect.top) + 'px';
+        layer.style.width = targetRect.width + 'px';
+        layer.style.height = targetRect.height + 'px';
         const flash = document.createElement('div');
         flash.className = 'battle-transformation-flash ' + kind;
         flash.setAttribute('aria-hidden', 'true');
         layer.appendChild(flash);
         playRetroSound(kind);
         await new Promise(resolve => setTimeout(resolve, 850));
-        if (flash.parentNode === layer) layer.removeChild(flash);
+        if (flash.parentNode === layer) flash.parentNode.removeChild(flash);
+        layer.style.cssText = '';
     }
 
     // iOS / Chrome の自動再生制限に備え、最初のユーザー操作で音声を解放する。

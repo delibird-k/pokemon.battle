@@ -6056,9 +6056,11 @@ function determineOpponentItem(pokemon) {
 
     const sprite = isPlayer ? player.sprite : opponent.sprite;
 
-    sprite.src = isPlayer
-        ? mega.spriteBack
-        : mega.spriteFront;
+    // メガシンカ専用URLは画像名の参照元として保持し、
+    // 実際の表示は通常フォームと同じ第5世代ドット絵URLへ統一する。
+    // ここで元URLを直接 sprite.src に入れると、メガだけアニメGIFになり雰囲気が変わる。
+    sprite.src = getSpriteUrl(pokemon, isPlayer);
+    updatePokemonFloatVisual(pokemon, sprite);
 
     await showMessage(`${oldName} は メガシンカした！`);
     if (pokemon.ability === "ブレインフォース") {

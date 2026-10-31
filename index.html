@@ -146,6 +146,24 @@
         #battle-screen.field-psyco { background-image: linear-gradient(rgba(255,105,180,.34),rgba(255,105,180,.48)),url("kusa.jpeg"); }
         #battle-screen.field-electric { background-image: linear-gradient(rgba(255,220,35,.36),rgba(255,220,35,.50)),url("kusa.jpeg"); }
         #battle-screen.field-misty { background-image: linear-gradient(rgba(160,95,210,.36),rgba(160,95,210,.50)),url("kusa.jpeg"); }
+        /* フィールドの色は画面全体ではなく、地面側に帯状の色として重ねる。
+           ダークモード側の background-image:none にも負けないよう個別指定する。 */
+        #battle-screen.field-grass,
+        body.dark-mode #battle-screen.field-grass {
+            background-image: linear-gradient(to top, rgba(45,150,65,.62) 0%, rgba(45,150,65,.42) 27%, transparent 58%), url("kusa.jpeg") !important;
+        }
+        #battle-screen.field-psyco,
+        body.dark-mode #battle-screen.field-psyco {
+            background-image: linear-gradient(to top, rgba(220,75,165,.62) 0%, rgba(220,75,165,.40) 27%, transparent 58%), url("kusa.jpeg") !important;
+        }
+        #battle-screen.field-electric,
+        body.dark-mode #battle-screen.field-electric {
+            background-image: linear-gradient(to top, rgba(225,185,35,.66) 0%, rgba(225,185,35,.42) 27%, transparent 58%), url("kusa.jpeg") !important;
+        }
+        #battle-screen.field-misty,
+        body.dark-mode #battle-screen.field-misty {
+            background-image: linear-gradient(to top, rgba(145,105,220,.64) 0%, rgba(145,105,220,.42) 27%, transparent 58%), url("kusa.jpeg") !important;
+        }
         #battle-screen::before {
             content:""; position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0;
         }
@@ -7509,6 +7527,10 @@ playerActiveIndex = newIndex;
 playerPokemon =
     playerTeam[playerActiveIndex];
 
+// 交代直後に表示中の状態異常バッジを新しいポケモンの状態へ同期する。
+// 旧ポケモンの毒・猛毒バッジが演出中や次の更新まで残るのを防ぐ。
+updateStatusMarkers();
+
 // 交代して出てきたポケモンは、このターンまだ行動していない
 playerPokemon.hasMoved = false;
 playerPokemon.selectedMove = null;
@@ -7691,6 +7713,9 @@ opponentActiveIndex =
 
 opponentPokemon =
     opponentTeam[opponentActiveIndex];
+
+    // 交代直後に状態異常バッジを新しいポケモンの状態へ同期する。
+    updateStatusMarkers();
 
     // 交代したポケモンの能力変化をリセット
     opponentPokemon.statStages = {
@@ -15622,6 +15647,10 @@ isBattleInProgress = false;
 
     weather = { type: 'none', turns: 0 };
     field = { type: 'none', turns: 0 };
+    // 前の試合の天候・フィールド表示・状態異常バッジを残さない。
+    updateWeatherIndicator();
+    updateFieldIndicator();
+    updateStatusMarkers();
 
     showOpeningScreen();
 }

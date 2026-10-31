@@ -4566,31 +4566,25 @@ function useZMove(pokemon){
         pokemon.selectedZMove
     );
 }
-    // 能力ランクの実変化を監視し、現役ポケモンにだけ波の演出を表示する。
+    // 能力ランク変化の波を、ステージ全体ではなくポケモン画像そのものに重ねる。
     function playStatStageWave(pokemon, direction) {
         const isPlayer = pokemon === playerPokemon;
         const isOpponent = pokemon === opponentPokemon;
         if (!isPlayer && !isOpponent) return;
-        const battleScreen = document.getElementById('battle-screen');
         const sprite = document.getElementById(isPlayer ? 'player-sprite' : 'opponent-sprite');
-        const target = sprite?.closest('.pokemon-sprite-stage') || sprite;
-        if (!battleScreen || !target) return;
-        const screenRect = battleScreen.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        let layer = document.getElementById('battle-effect-layer');
-        if (!layer) {
-            layer = document.createElement('div');
-            layer.id = 'battle-effect-layer';
-            battleScreen.appendChild(layer);
-        }
+        const stage = sprite?.closest('.pokemon-sprite-stage');
+        if (!sprite || !stage || !sprite.getBoundingClientRect().width) return;
+
+        const spriteRect = sprite.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
         const wave = document.createElement('div');
         wave.className = 'stat-stage-wave ' + direction;
         wave.setAttribute('aria-hidden', 'true');
-        wave.style.left = (targetRect.left - screenRect.left) + 'px';
-        wave.style.top = (targetRect.top - screenRect.top) + 'px';
-        wave.style.width = targetRect.width + 'px';
-        wave.style.height = targetRect.height + 'px';
-        layer.appendChild(wave);
+        wave.style.left = (spriteRect.left - stageRect.left) + 'px';
+        wave.style.top = (spriteRect.top - stageRect.top) + 'px';
+        wave.style.width = spriteRect.width + 'px';
+        wave.style.height = spriteRect.height + 'px';
+        stage.appendChild(wave);
         wave.addEventListener('animationend', () => wave.remove(), { once: true });
         setTimeout(() => wave.remove(), 1100);
     }

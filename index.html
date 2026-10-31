@@ -1491,6 +1491,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     : kind === 'dynamax' ? [[110,0,.18],[165,.16,.18],[220,.32,.25],[330,.50,.28]]
                     : kind === 'tera' ? [[523,0,.10],[659,.09,.10],[784,.18,.12],[1047,.30,.22]]
                     : kind === 'zmove' ? [[440,0,.08],[660,.08,.08],[880,.16,.10],[1320,.27,.20]]
+                    : kind === 'victory' ? [[523,0,.13],[659,.13,.13],[784,.26,.13],[1047,.39,.28],[784,.70,.12],[1047,.82,.36]]
+                    : kind === 'defeat' ? [[659,0,.18],[587,.19,.18],[523,.38,.22],[392,.62,.28],[330,.92,.42]]
                     : [[440, 0, .045]];
                 notes.forEach(([hz, delay, duration]) => {
                     const oscillator = retroAudio.createOscillator();
@@ -2943,6 +2945,7 @@ function handleOnlineData(data) {
         movesContainer.style.display = 'none';
 
         const guestWon = !!data.guestWon;
+        playRetroSound(guestWon ? 'victory' : 'defeat');
         safeSessionStorage.removeItem('pokemonBattleInProgress');
         if (data.recordResult !== false) {
             if (guestWon) {
@@ -15588,6 +15591,8 @@ return {
 function endGame(playerWon) {
     if (battleEndProcessed) return;
     battleEndProcessed = true;
+    // 勝敗確定時に一度だけ専用ジングルを再生する。
+    playRetroSound(playerWon ? 'victory' : 'defeat');
 
     if (difficulty === "online" && onlineRole === "host") {
         safeSessionStorage.removeItem('pokemonBattleInProgress');

@@ -212,6 +212,25 @@
 
         /* 効果音コントロール */
         #sound-volume { accent-color: #477eaf; cursor: pointer; }
+        body.dark-mode .sound-volume-label { background:#24364e !important; color:#e5edf8 !important; border-color:#526780 !important; }
+        /* 変身演出はメッセージ欄を避けて画面上部～中央に表示 */
+        #battle-effect-layer { position:absolute; inset:0; z-index:8; pointer-events:none; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .battle-transformation-flash { position:absolute; left:50%; top:42%; width:min(78%,560px); min-height:110px; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; border-radius:18px; color:#fff; font-weight:900; letter-spacing:.12em; text-align:center; text-shadow:0 3px 8px rgba(0,0,0,.9),0 0 18px currentColor; background:radial-gradient(ellipse,rgba(10,20,45,.82),rgba(10,20,45,.12) 72%,transparent); animation:transformation-burst .95s ease-out both; }
+        .battle-transformation-flash .effect-title { font-size:clamp(1.05rem,4vw,2.2rem); line-height:1.25; }
+        .battle-transformation-flash .effect-subtitle { font-size:clamp(.58rem,1.8vw,.88rem); letter-spacing:.2em; }
+        .battle-transformation-flash.mega { color:#ffe58a; }
+        .battle-transformation-flash.dynamax { color:#ff9b9b; }
+        .battle-transformation-flash.tera { color:#a9f4ff; }
+        .battle-transformation-flash.zmove { color:#ffe99b; }
+        @keyframes transformation-burst {
+            0% { opacity:0; filter:brightness(2.8); transform:translate(-50%,-50%) scale(.25) rotate(-7deg); }
+            22% { opacity:1; filter:brightness(1.6); transform:translate(-50%,-50%) scale(1.08) rotate(2deg); }
+            48% { opacity:1; filter:brightness(1.15); transform:translate(-50%,-50%) scale(.98); }
+            100% { opacity:0; filter:brightness(1); transform:translate(-50%,-50%) scale(1.16); }
+        }
+        #battle-effect-layer::before { content:""; position:absolute; left:50%; top:42%; width:12px; height:12px; border:3px solid rgba(255,255,255,.9); border-radius:50%; transform:translate(-50%,-50%); animation:transformation-ring .85s ease-out both; }
+        @keyframes transformation-ring { 0% { opacity:.95; width:10px; height:10px; } 100% { opacity:0; width:min(90vw,680px); height:min(90vw,680px); } }
+        @media (prefers-reduced-motion:reduce) { .battle-transformation-flash,#battle-effect-layer::before { animation-duration:.25s; } }
         body.dark-mode #sound-volume + b { color:#e5edf8; }
         body.dark-mode #opening-screen label[for="sound-volume"],
         body.dark-mode #opening-screen label:has(#sound-volume) {
@@ -289,6 +308,20 @@
             grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 6px;
             margin-top: 10px;
+        }
+        .opening-button-row-6 { grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; margin-top:10px; align-items:stretch; }
+        .opening-button-row-6 > .opening-button { min-width:0; min-height:64px; padding:7px 3px; font-size:clamp(.46rem,.72vw,.64rem); line-height:1.45; overflow-wrap:anywhere; }
+        .sound-setting-cell { min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px; }
+        .sound-setting-cell .opening-button { min-height:34px; padding:4px 2px; font-size:.62rem; }
+        .sound-volume-label { display:flex; align-items:center; justify-content:center; gap:3px; min-width:0; padding:4px 2px; border:1px solid #8aa4c2; border-radius:6px; background:rgba(255,255,255,.7); font-size:.52rem; white-space:nowrap; }
+        .sound-volume-label input { width:42%; min-width:20px; }
+        .sound-volume-label b { font-size:.52rem; }
+        @media (max-width:600px) {
+            .opening-button-row-6 { gap:3px; }
+            .opening-button-row-6 > .opening-button { min-height:62px; font-size:.43rem; padding:5px 1px; }
+            .sound-setting-cell .opening-button { font-size:.52rem; }
+            .sound-volume-label,.sound-volume-label b { font-size:.43rem; }
+            .sound-volume-label { gap:1px; }
         }
         .opening-button-row-5 .opening-button {
             min-width: 0;
@@ -1015,7 +1048,7 @@
             </div>
 
             <div class="opening-section-label">せってい</div>
-            <div class="opening-button-row opening-button-row-5 opening-button-row-4">
+            <div class="opening-button-row opening-button-row-6">
                 <button id="smartphone-mode-toggle-button" class="opening-button btn-neutral">スマホモード
 OFF</button>
                 <button id="rating-toggle-button" class="opening-button btn-success">レート変動
@@ -1026,13 +1059,13 @@ ON</button>
 ON</button>
                 <button id="theme-toggle-button" class="opening-button btn-neutral">画面の明暗
 自動</button>
-            </div>
-            <div class="opening-button-row opening-button-row-2" style="align-items:center;margin-top:8px;">
-                <button id="sound-toggle-button" class="opening-button btn-success" type="button">効果音
+                <div class="sound-setting-cell">
+                    <button id="sound-toggle-button" class="opening-button btn-success" type="button">効果音
 ON</button>
-                <label style="display:flex;align-items:center;gap:8px;justify-content:center;min-height:54px;padding:8px;border:2px solid #8aa4c2;border-radius:8px;background:rgba(255,255,255,.7);font-size:.62rem;">
-                    音量 <input id="sound-volume" type="range" min="0" max="100" step="5" value="35" style="width:min(100px,35%);"> <b id="sound-volume-value">35%</b>
-                </label>
+                    <label class="sound-volume-label">
+                        音量 <input id="sound-volume" type="range" min="0" max="100" step="5" value="35"> <b id="sound-volume-value">35%</b>
+                    </label>
+                </div>
             </div>
 
             <button id="opening-reset-button" class="opening-button opening-reset-button opening-small-button">戦績とレートをリセット</button>
@@ -1455,6 +1488,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     : kind === 'hit-light' || kind === 'hit' ? [[220, 0, .045], [165, .045, .065]]
                     : kind === 'faint' ? [[392, 0, .12], [294, .13, .14], [196, .28, .22]]
                     : kind === 'attack' ? [[740, 0, .045], [520, .045, .07]]
+                    : kind === 'mega' ? [[392,0,.12],[587,.10,.12],[784,.20,.16],[1175,.34,.24]]
+                    : kind === 'dynamax' ? [[110,0,.18],[165,.16,.18],[220,.32,.25],[330,.50,.28]]
+                    : kind === 'tera' ? [[523,0,.10],[659,.09,.10],[784,.18,.12],[1047,.30,.22]]
+                    : kind === 'zmove' ? [[440,0,.08],[660,.08,.08],[880,.16,.10],[1320,.27,.20]]
                     : [[440, 0, .045]];
                 notes.forEach(([hz, delay, duration]) => {
                     const oscillator = retroAudio.createOscillator();
@@ -1473,6 +1510,39 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (_) {}
         });
     }
+    // 変身・Zワザの専用演出と専用効果音。
+    async function playBattleTransformationEffect(kind, pokemon) {
+        const battleScreen = document.getElementById('battle-screen');
+        if (!battleScreen) return;
+        let layer = document.getElementById('battle-effect-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.id = 'battle-effect-layer';
+            battleScreen.appendChild(layer);
+        }
+        const labels = {
+            mega: ['MEGA EVOLUTION', 'メガシンカ'],
+            dynamax: ['DYNAMAX', 'ダイマックス'],
+            tera: ['TERASTAL', 'テラスタル'],
+            zmove: ['Z-POWER', 'Ｚワザ']
+        };
+        const label = labels[kind] || ['POWER UP', 'パワーアップ'];
+        layer.innerHTML = '';
+        const flash = document.createElement('div');
+        flash.className = 'battle-transformation-flash ' + kind;
+        const title = document.createElement('div');
+        title.className = 'effect-title';
+        title.textContent = label[1];
+        const subtitle = document.createElement('div');
+        subtitle.className = 'effect-subtitle';
+        subtitle.textContent = label[0] + (pokemon ? '  •  ' + getShownName(pokemon) : '');
+        flash.append(title, subtitle);
+        layer.appendChild(flash);
+        playRetroSound(kind);
+        await new Promise(resolve => setTimeout(resolve, 850));
+        if (flash.parentNode === layer) layer.removeChild(flash);
+    }
+
     // iOS / Chrome の自動再生制限に備え、最初のユーザー操作で音声を解放する。
     document.addEventListener('pointerdown', () => { unlockRetroAudio(); }, true);
     document.addEventListener('keydown', () => { unlockRetroAudio(); }, true);
@@ -6174,6 +6244,7 @@ function determineOpponentItem(pokemon) {
         }
         pokemon.teraActive = true;
         pokemon.pendingTera = false;
+        await playBattleTransformationEffect('tera', pokemon);
         // テラスタルは1試合に片側1回。チーム全員に使用済みフラグを同期する。
         const sideTeam = isPlayer ? playerTeam : opponentTeam;
         (Array.isArray(sideTeam) ? sideTeam : [pokemon]).forEach(member => {
@@ -6221,6 +6292,7 @@ function determineOpponentItem(pokemon) {
     pokemon.speed = newStats.speed;
 
     pokemon.megaEvolved = true;
+    await playBattleTransformationEffect('mega', pokemon);
     pokemon.megaSpriteFront = mega.spriteFront;
     pokemon.megaSpriteBack = mega.spriteBack;
 
@@ -6472,6 +6544,7 @@ async function activateDynamax(pokemon, isPlayer) {
     pokemon.dynamaxUsed = true;
     pokemon.pendingDynamax = false;
     pokemon.dynamaxActive = true;
+    await playBattleTransformationEffect('dynamax', pokemon);
     pokemon.dynamaxTurns = 3;
     pokemon.originalMaxHp = pokemon.maxHp / 2 === pokemon.originalMaxHp ? pokemon.originalMaxHp : pokemon.maxHp;
     pokemon.maxHp = pokemon.originalMaxHp * 2;
@@ -10613,6 +10686,10 @@ async function applyKnockOffEffect(attacker, defender, move, damage, hitSubstitu
     }
 
     async function handleAttack(attacker, defender, move, isFirstAttacker) {
+        if (move?.isZMove && !move._zVisualPlayed) {
+            move._zVisualPlayed = true;
+            await playBattleTransformationEffect('zmove', attacker);
+        }
         const isPlayerAttacking = attacker === playerPokemon;
         const defenderUI = isPlayerAttacking ? opponent : player;
 

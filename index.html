@@ -210,6 +210,21 @@
         @keyframes battle-snow { from { background-position: 0 -80px, 20px -110px; } to { background-position: 0 80px, 20px 110px; } }
 
 
+        /* 能力ランク変化：ポケモンの周囲を流れる青・赤の波 */
+        .stat-stage-wave { position:absolute; left:50%; top:50%; width:min(88%,150px); height:min(72%,110px); pointer-events:none; z-index:9; transform:translate(-50%,-50%); }
+        .stat-stage-wave::before,.stat-stage-wave::after { content:""; position:absolute; left:50%; width:78%; height:34%; border:3px solid currentColor; border-left-color:transparent; border-right-color:transparent; border-radius:50%; filter:drop-shadow(0 0 5px currentColor); opacity:0; }
+        .stat-stage-wave::before { animation:stat-wave-main .8s ease-out both; }
+        .stat-stage-wave::after { animation:stat-wave-secondary .8s .09s ease-out both; }
+        .stat-stage-wave.up { color:#ff4545; }
+        .stat-stage-wave.down { color:#278cff; }
+        @keyframes stat-wave-main { 0% { opacity:0; transform:translate(-50%,0) scale(.55) rotate(-8deg); } 18% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-95px) scale(1.18) rotate(8deg); } }
+        @keyframes stat-wave-secondary { 0% { opacity:0; transform:translate(-50%,0) scale(.7) rotate(8deg); } 20% { opacity:.85; } 100% { opacity:0; transform:translate(-50%,-72px) scale(1.05) rotate(-8deg); } }
+        .stat-stage-wave.down::before { animation-name:stat-wave-main-down; }
+        .stat-stage-wave.down::after { animation-name:stat-wave-secondary-down; }
+        @keyframes stat-wave-main-down { 0% { opacity:0; transform:translate(-50%,-95px) scale(1.18) rotate(8deg); } 18% { opacity:1; } 100% { opacity:0; transform:translate(-50%,0) scale(.55) rotate(-8deg); } }
+        @keyframes stat-wave-secondary-down { 0% { opacity:0; transform:translate(-50%,-72px) scale(1.05) rotate(-8deg); } 20% { opacity:.85; } 100% { opacity:0; transform:translate(-50%,0) scale(.7) rotate(8deg); } }
+        @media (prefers-reduced-motion:reduce) { .stat-stage-wave::before,.stat-stage-wave::after { animation-duration:.3s; } }
+
         /* 効果音コントロール */
         #sound-volume { accent-color: #477eaf; cursor: pointer; }
         body.dark-mode .sound-volume-label { background:#24364e !important; color:#e5edf8 !important; border-color:#526780 !important; }
@@ -4551,6 +4566,58 @@ function useZMove(pokemon){
         pokemon.selectedZMove
     );
 }
+    // 能力ランクの実変化を監視し、現役ポケモンにだけ波の演出を表示する。
+    function playStatStageWave(pokemon, direction) {
+        const isPlayer = pokemon === playerPokemon;
+        const isOpponent = pokemon === opponentPokemon;
+        if (!isPlayer && !isOpponent) return;
+        const battleScreen = document.getElementById('battle-screen');
+        const sprite = document.getElementById(isPlayer ? 'player-sprite' : 'opponent-sprite');
+        const target = sprite?.closest('.pokemon-sprite-stage') || sprite;
+        if (!battleScreen || !target) return;
+        const screenRect = battleScreen.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        let layer = document.getElementById('battle-effect-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.id = 'battle-effect-layer';
+            battleScreen.appendChild(layer);
+        }
+        const wave = document.createElement('div');
+        wave.className = 'stat-stage-wave ' + direction;
+        wave.setAttribute('aria-hidden', 'true');
+        wave.style.left = (targetRect.left - screenRect.left) + 'px';
+        wave.style.top = (targetRect.top - screenRect.top) + 'px';
+        wave.style.width = targetRect.width + 'px';
+        wave.style.height = targetRect.height + 'px';
+        layer.appendChild(wave);
+        wave.addEventListener('animationend', () => wave.remove(), { once: true });
+        setTimeout(() => wave.remove(), 1100);
+    }
+
+    function attachStatStageVisuals(pokemon) {
+        let stages = pokemon.statStages || {};
+        const wrap = value => new Proxy(value, {
+            set(target, key, value) {
+                const before = Number(target[key] || 0);
+                const after = Number(value || 0);
+                target[key] = value;
+                if (['attack','defense','spAttack','spDefense','speed','accuracy','evasion'].includes(String(key)) && after !== before) {
+                    playStatStageWave(pokemon, after > before ? 'up' : 'down');
+                }
+                return true;
+            }
+        });
+        let current = wrap(stages);
+        Object.defineProperty(pokemon, 'statStages', {
+            configurable: true,
+            enumerable: true,
+            get() { return current; },
+            set(value) { current = wrap(value || {}); }
+        });
+        return pokemon;
+    }
+
     // The rest of the script is restored here...
     function createPokemonInstance(pokemonData) {
         const instance = calculateStats(pokemonData);
@@ -4598,6 +4665,7 @@ function useZMove(pokemon){
         instance.moves = JSON.parse(JSON.stringify(pokemonData.moves)); // Deep copy moves
         instance.moves.forEach(m => m.currentPp = m.pp);
         instance.bloodMoonBlocked = false;
+        attachStatStageVisuals(instance);
         return instance;
     }
 

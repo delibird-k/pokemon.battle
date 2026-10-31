@@ -4975,9 +4975,14 @@ function updatePokemonSelectionPreview(side) {
         card.setAttribute('aria-pressed', String(selected));
     });
     const confirmButton = isPlayer ? confirmPlayerSelectionButton : confirmOpponentSelectionButton;
+    const randomButton = document.getElementById(isPlayer ? 'random-player-button' : 'random-opponent-button');
+    const teamIsComplete = keys.length === 3;
+
+    // 3匹そろったら、下部には決定ボタンだけを表示する。
+    if (randomButton) randomButton.classList.toggle('hidden', teamIsComplete);
     if (confirmButton) {
-        confirmButton.disabled = keys.length !== 3;
-        confirmButton.textContent = keys.length === 3 ? 'この3匹で決定' : `あと ${3 - keys.length}匹選ぶと決定できます`;
+        confirmButton.disabled = !teamIsComplete;
+        confirmButton.textContent = teamIsComplete ? 'この3匹で決定' : `あと ${3 - keys.length}匹選ぶと決定できます`;
     }
 }
 

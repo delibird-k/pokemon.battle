@@ -848,7 +848,114 @@
             color: #ffffff !important;
         }
 
-    </style>
+    
+        /* 追加調整：ダークモードの各選択パーツの文字・背景コントラスト */
+        body.dark-mode .pokemon-card,
+        body.dark-mode .item-card,
+        body.dark-mode .difficulty-card,
+        body.dark-mode #tera-selection-grid > *,
+        body.dark-mode #selection-screen,
+        body.dark-mode #item-selection-screen,
+        body.dark-mode #opponent-selection-screen,
+        body.dark-mode #opponent-item-selection-screen,
+        body.dark-mode #difficulty-selection-screen,
+        body.dark-mode #tera-selection-screen {
+            background-color:#24364e !important;
+            color:#f1f6ff !important;
+            border-color:#526b88 !important;
+        }
+        body.dark-mode .pokemon-card p,
+        body.dark-mode .pokemon-card small,
+        body.dark-mode .item-card p,
+        body.dark-mode .item-card small,
+        body.dark-mode .difficulty-card p,
+        body.dark-mode .difficulty-card small,
+        body.dark-mode #tera-selection-grid p,
+        body.dark-mode #tera-selection-grid small,
+        body.dark-mode #selection-screen p,
+        body.dark-mode #item-selection-screen p,
+        body.dark-mode #opponent-selection-screen p,
+        body.dark-mode #opponent-item-selection-screen p,
+        body.dark-mode #difficulty-selection-screen p,
+        body.dark-mode #tera-selection-screen p {
+            color:#e5edf8 !important;
+        }
+        body.dark-mode .text-gray-900,
+        body.dark-mode .text-gray-800,
+        body.dark-mode .text-gray-700,
+        body.dark-mode .text-gray-600,
+        body.dark-mode .text-gray-500,
+        body.dark-mode .text-slate-900,
+        body.dark-mode .text-slate-800,
+        body.dark-mode .text-slate-700,
+        body.dark-mode .text-slate-600,
+        body.dark-mode .text-slate-500,
+        body.dark-mode .text-zinc-900,
+        body.dark-mode .text-zinc-800,
+        body.dark-mode .text-zinc-700,
+        body.dark-mode .text-neutral-900,
+        body.dark-mode .text-neutral-800,
+        body.dark-mode .text-stone-900,
+        body.dark-mode .text-stone-800 {
+            color:#e5edf8 !important;
+        }
+        body.dark-mode .bg-white,
+        body.dark-mode .bg-gray-50,
+        body.dark-mode .bg-gray-100,
+        body.dark-mode .bg-gray-200,
+        body.dark-mode .bg-slate-50,
+        body.dark-mode .bg-slate-100,
+        body.dark-mode .bg-zinc-50,
+        body.dark-mode .bg-neutral-50,
+        body.dark-mode .bg-stone-50 {
+            background-color:#24364e !important;
+            color:#e5edf8 !important;
+        }
+        body.dark-mode #selection-tooltip,
+        body.dark-mode #move-tooltip,
+        body.dark-mode #opponent-tooltip,
+        body.dark-mode #player-tooltip {
+            background:#142133 !important;
+            color:#f1f6ff !important;
+            border-color:#7895b8 !important;
+        }
+        body.dark-mode #selection-tooltip *,
+        body.dark-mode #move-tooltip *,
+        body.dark-mode #opponent-tooltip *,
+        body.dark-mode #player-tooltip * {
+            color:#f1f6ff !important;
+        }
+
+        /* 天候演出は上部のバトル背景だけに限定し、下部UIには重ねない */
+        #battle-screen::before {
+            top:0 !important;
+            left:0 !important;
+            right:0 !important;
+            bottom:clamp(190px, 34%, 245px) !important;
+            z-index:1 !important;
+        }
+        #battle-screen.weather-rain::before {
+            opacity:.24 !important;
+            background-color:rgba(25,65,105,.06) !important;
+            background-image:
+                repeating-linear-gradient(108deg, transparent 0 11px, rgba(235,248,255,.48) 12px 13px, transparent 14px 31px),
+                repeating-linear-gradient(108deg, transparent 0 29px, rgba(30,83,135,.25) 30px 31px, transparent 32px 58px) !important;
+        }
+        #battle-screen.weather-sandstorm::before {
+            opacity:.20 !important;
+            background-color:transparent !important;
+            background-image:
+                repeating-linear-gradient(7deg, transparent 0 14px, rgba(255,224,158,.42) 15px 16px, transparent 17px 32px),
+                repeating-linear-gradient(-4deg, transparent 0 28px, rgba(128,83,31,.22) 29px 30px, transparent 31px 54px) !important;
+        }
+        #battle-screen.weather-sun::before { opacity:.16 !important; }
+        #battle-screen.weather-snow::before { opacity:.24 !important; }
+        @media (max-width:640px) {
+            #battle-screen::before {
+                bottom:clamp(175px, 31dvh, 225px) !important;
+            }
+        }
+</style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 <div id="selection-tooltip" class="fixed hidden nes-container bg-white/95 p-2 text-xs z-[100] w-auto pointer-events-none"></div>

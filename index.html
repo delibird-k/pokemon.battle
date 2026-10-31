@@ -149,17 +149,27 @@
         #battle-screen::before {
             content:""; position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0;
         }
+        /* 雨：青みのかかった空気＋太さの異なる斜めの雨筋 */
         #battle-screen.weather-rain::before {
-            opacity:.72;
-            background-image: repeating-linear-gradient(108deg, transparent 0 17px, rgba(215,238,255,.72) 18px, transparent 20px 34px);
-            background-size: 100% 170px;
-            animation: battle-rain .48s linear infinite;
+            opacity: 1;
+            background-color: rgba(25, 65, 105, .22);
+            background-image:
+                repeating-linear-gradient(108deg, transparent 0 8px, rgba(235,248,255,.92) 9px 10px, rgba(105,170,220,.72) 11px 12px, transparent 13px 25px),
+                repeating-linear-gradient(108deg, transparent 0 23px, rgba(30,83,135,.72) 24px 26px, transparent 27px 48px),
+                linear-gradient(180deg, rgba(35,75,115,.16), rgba(15,45,80,.28));
+            background-size: 100% 125px, 100% 190px, 100% 100%;
+            animation: battle-rain .34s linear infinite;
         }
+        /* 砂嵐：黄土色の砂煙と横なぐりの砂粒 */
         #battle-screen.weather-sandstorm::before {
-            opacity:.62;
-            background-image: repeating-linear-gradient(8deg, transparent 0 22px, rgba(194,151,83,.42) 23px 27px, transparent 29px 48px);
-            background-size: 180px 100%;
-            animation: battle-sand 1.4s linear infinite;
+            opacity: 1;
+            background-color: rgba(183, 132, 54, .30);
+            background-image:
+                repeating-linear-gradient(7deg, transparent 0 10px, rgba(255,224,158,.78) 11px 13px, transparent 14px 25px),
+                repeating-linear-gradient(-4deg, transparent 0 21px, rgba(128,83,31,.56) 22px 25px, transparent 26px 43px),
+                radial-gradient(ellipse at 50% 55%, rgba(226,178,95,.30), rgba(112,78,39,.18));
+            background-size: 210px 100%, 310px 100%, 100% 100%;
+            animation: battle-sand .72s linear infinite;
         }
         #battle-screen.weather-sun::before {
             opacity:.42;
@@ -171,8 +181,14 @@
             background-size: 46px 52px, 71px 78px;
             animation: battle-snow 4s linear infinite;
         }
-        @keyframes battle-rain { from { background-position: 0 -170px; } to { background-position: 0 0; } }
-        @keyframes battle-sand { from { background-position: -180px 0; } to { background-position: 0 0; } }
+        @keyframes battle-rain {
+            from { background-position: 0 -125px, 0 -190px, 0 0; }
+            to { background-position: 0 0, 0 0, 0 0; }
+        }
+        @keyframes battle-sand {
+            from { background-position: -210px 0, 310px 0, 0 0; }
+            to { background-position: 0 0, 0 0, 0 0; }
+        }
         @keyframes battle-snow { from { background-position: 0 -80px, 20px -110px; } to { background-position: 0 80px, 20px 110px; } }
 
 
@@ -815,6 +831,23 @@
         body.dark-mode .btn-neutral,
         body.dark-mode .btn-accent { background:#2a405b !important; color:#e5edf8 !important; border-color:#526f90 !important; }
         body.dark-mode .status-badge { color:#fff !important; }
+        /* ダークモードのポケモン詳細ツールチップ */
+        body.dark-mode #selection-tooltip {
+            background: rgba(20, 33, 51, .98) !important;
+            color: #f1f6ff !important;
+            border: 2px solid #7895b8 !important;
+            box-shadow: 0 8px 26px rgba(0,0,0,.55) !important;
+        }
+        body.dark-mode #selection-tooltip p,
+        body.dark-mode #selection-tooltip span,
+        body.dark-mode #selection-tooltip strong,
+        body.dark-mode #selection-tooltip b {
+            color: #f1f6ff !important;
+        }
+        body.dark-mode #selection-tooltip .font-bold {
+            color: #ffffff !important;
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">

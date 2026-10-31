@@ -1493,11 +1493,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     : kind === 'zmove' ? [[440,0,.08],[660,.08,.08],[880,.16,.10],[1320,.27,.20]]
                     : kind === 'victory' ? [[523,0,.13],[659,.13,.13],[784,.26,.13],[1047,.39,.28],[784,.70,.12],[1047,.82,.36]]
                     : kind === 'defeat' ? [[659,0,.18],[587,.19,.18],[523,.38,.22],[392,.62,.28],[330,.92,.42]]
+                    : kind === 'shiny' ? [[1568,0,.07],[2093,.075,.09],[2637,.17,.16],[3136,.28,.22]]
                     : [[440, 0, .045]];
                 notes.forEach(([hz, delay, duration]) => {
                     const oscillator = retroAudio.createOscillator();
                     const gain = retroAudio.createGain();
-                    oscillator.type = 'square';
+                    oscillator.type = kind === 'shiny' ? 'sine' : 'square';
                     oscillator.frequency.setValueAtTime(hz, now + delay);
                     gain.gain.setValueAtTime(0.0001, now + delay);
                     gain.gain.linearRampToValueAtTime((retroVolume / 100) * 0.045, now + delay + 0.006);
@@ -4586,7 +4587,7 @@ function useZMove(pokemon){
         instance.hasSubstitute = false;
         instance.substituteHp = 0;
         instance.stealthRock = false;
-        instance.isShiny = Math.random() < 0.00025;
+        instance.isShiny = Math.random() < 0.001;
         instance.isRampaging = false;
         instance.rampageTurns = 0;
         instance.isConfused = false;
@@ -6884,6 +6885,11 @@ btn.onmouseout = () => {
 
     function getSpriteUrl(pokemon, back = false) {
         if (!pokemon) return '';
+        // 色違い個体が初めてバトル画面に表示される瞬間だけ、キラーン音を鳴らす。
+        if (pokemon.isShiny && !pokemon._shinySoundPlayed) {
+            pokemon._shinySoundPlayed = true;
+            playRetroSound('shiny');
+        }
         let specialUrl = null;
         if (pokemon.megaEvolved && pokemon.megaSpriteFront) {
             specialUrl = back ? pokemon.megaSpriteBack : pokemon.megaSpriteFront;

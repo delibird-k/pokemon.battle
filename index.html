@@ -1046,6 +1046,63 @@
                 bottom:clamp(175px, 31dvh, 225px) !important;
             }
         }
+        /* カスタマイズ画面：ダークモードでも白固定のパネル・表・説明文を読みやすくする */
+        body.dark-mode #customize-modal > div {
+            background:#17263a !important;
+            color:#edf4ff !important;
+            border-color:#526b88 !important;
+            box-shadow:0 8px 24px rgba(0,0,0,.42) !important;
+        }
+        body.dark-mode #customize-modal h2,
+        body.dark-mode #customize-modal h3,
+        body.dark-mode #customize-modal label,
+        body.dark-mode #customize-modal p,
+        body.dark-mode #customize-modal span,
+        body.dark-mode #customize-modal strong,
+        body.dark-mode #customize-modal b {
+            color:#edf4ff !important;
+        }
+        body.dark-mode #customize-modal p[style*="color"] {
+            color:#c7d8ec !important;
+        }
+        body.dark-mode #customize-modal #custom-pokemon-picker,
+        body.dark-mode #customize-modal #custom-pokemon-suggestions,
+        body.dark-mode #customize-modal #custom-pokemon-suggestions > *,
+        body.dark-mode #customize-modal #custom-moves-editor > *,
+        body.dark-mode #customize-modal #custom-moves-reference > *,
+        body.dark-mode #customize-modal #custom-stats-grid > * {
+            background:#243a54 !important;
+            color:#edf4ff !important;
+            border-color:#58718f !important;
+        }
+        body.dark-mode #customize-modal input,
+        body.dark-mode #customize-modal select,
+        body.dark-mode #customize-modal textarea,
+        body.dark-mode #customize-modal button:not(.opening-battle-button) {
+            background:#263e5a !important;
+            color:#f4f8ff !important;
+            border-color:#6b86a5 !important;
+        }
+        body.dark-mode #customize-modal input::placeholder {
+            color:#a9bdd5 !important;
+        }
+        body.dark-mode #customize-modal table {
+            background:#1e324a !important;
+            color:#edf4ff !important;
+            border-color:#58718f !important;
+        }
+        body.dark-mode #customize-modal th,
+        body.dark-mode #customize-modal td {
+            background:#243a54 !important;
+            color:#edf4ff !important;
+            border-color:#58718f !important;
+        }
+        body.dark-mode #customize-modal #customize-status {
+            color:#d9e8fa !important;
+        }
+        body.dark-mode #customize-modal button:disabled {
+            opacity:.55;
+        }
 </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -4305,7 +4362,7 @@ const MEGA_DATA = {
             types: ["みず","エスパー"],
             ability: "ちからもち",
             baseHp: 60,
-            baseAttack: 100,
+            baseAttack: 140,
             baseDefense: 105,
             baseSpAttack: 130,
             baseSpDefense: 105,
@@ -4315,19 +4372,19 @@ const MEGA_DATA = {
         }
     },
     "ゲッコウガ": {
-        stone: "なにも持たせない",
+        stone: "メガストーン",
         form: {
-            name: "サトシゲッコウガ",
+            name: "メガゲッコウガ",
             types: ["みず","あく"],
-            ability: "きずなへんげ",
+            ability: "へんげんじざい",
             baseHp: 72,
-            baseAttack: 145,
-            baseDefense: 67,
-            baseSpAttack: 153,
-            baseSpDefense: 71,
-            baseSpeed: 132,
-            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/greninja-ash.gif",
-            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/greninja-ash.gif"
+            baseAttack: 125,
+            baseDefense: 77,
+            baseSpAttack: 133,
+            baseSpDefense: 81,
+            baseSpeed: 142,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/greninja-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/greninja-mega.gif"
         }
     },
     "リザードン": {
@@ -4392,6 +4449,70 @@ const MEGA_DATA = {
             baseSpeed: 105,
             spriteFront: "https://play.pokemonshowdown.com/sprites/ani/sharpedo-mega.gif",
             spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/sharpedo-mega.gif"
+        }
+    },
+    "カイリュー": {
+        stone: "メガストーン",
+        form: {
+            name: "メガカイリュー",
+            types: ["ドラゴン","ひこう"],
+            ability: "マルチスケイル",
+            baseHp: 91,
+            baseAttack: 124,
+            baseDefense: 115,
+            baseSpAttack: 145,
+            baseSpDefense: 125,
+            baseSpeed: 100,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/dragonite-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/dragonite-mega.gif"
+        }
+    },
+    "オニゴーリ": {
+        stone: "メガストーン",
+        form: {
+            name: "メガオニゴーリ",
+            types: ["こおり"],
+            ability: "フリーズスキン",
+            baseHp: 80,
+            baseAttack: 120,
+            baseDefense: 80,
+            baseSpAttack: 120,
+            baseSpDefense: 80,
+            baseSpeed: 100,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/glalie-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/glalie-mega.gif"
+        }
+    },
+    "ガブリアス": {
+        stone: "メガストーン",
+        form: {
+            name: "メガガブリアス",
+            types: ["ドラゴン","じめん"],
+            ability: "すなのちから",
+            baseHp: 108,
+            baseAttack: 170,
+            baseDefense: 115,
+            baseSpAttack: 120,
+            baseSpDefense: 95,
+            baseSpeed: 92,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/garchomp-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/garchomp-mega.gif"
+        }
+    },
+    "ヒードラン": {
+        stone: "メガストーン",
+        form: {
+            name: "メガヒードラン",
+            types: ["ほのお","はがね"],
+            ability: "もらいび",
+            baseHp: 91,
+            baseAttack: 120,
+            baseDefense: 106,
+            baseSpAttack: 175,
+            baseSpDefense: 141,
+            baseSpeed: 67,
+            spriteFront: "https://play.pokemonshowdown.com/sprites/ani/heatran-mega.gif",
+            spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/heatran-mega.gif"
         }
     },
     "トレーニング": {
@@ -6983,6 +7104,15 @@ btn.onmouseout = () => {
 
     function getSpriteUrl(pokemon, back = false) {
         if (!pokemon) return '';
+        // ギルガルドは第6世代で登場したため、第5世代フォルダに画像がない。
+        // シールド／ブレードの両方を同じ第6世代ドット絵セットから取得する。
+        if (pokemon.id === 'aegislash') {
+            const slug = pokemon.form === 'blade' ? 'aegislash-blade' : 'aegislash';
+            const folder = back
+                ? (pokemon.isShiny ? 'gen6-back-shiny' : 'gen6-back')
+                : (pokemon.isShiny ? 'gen6-shiny' : 'gen6');
+            return `https://play.pokemonshowdown.com/sprites/${folder}/${slug}.png`;
+        }
         // 色違い個体が初めてバトル画面に表示される瞬間だけ、キラーン音を鳴らす。
         if (pokemon.isShiny && !pokemon._shinySoundPlayed) {
             pokemon._shinySoundPlayed = true;

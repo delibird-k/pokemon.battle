@@ -6016,6 +6016,7 @@ function determineOpponentItem(pokemon) {
             'Zクリスタル',
         ],
         "ヒードラン": [
+            "メガストーン",
             "こだわりメガネ",
             "ものしりメガネ",
             "たいきゅうチョッキ",
@@ -6059,6 +6060,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "ゲッコウガ": [
+            "メガストーン",
             "きあいのタスキ",
             "こだわりメガネ",
             "ものしりメガネ",
@@ -6163,6 +6165,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "カイリュー": [
+            "メガストーン",
             "こだわりハチマキ",
             "ちからのハチマキ",
             "たいきゅうチョッキ",
@@ -6172,6 +6175,7 @@ function determineOpponentItem(pokemon) {
             "きあいのハチマキ",
         ],
         "ガブリアス": [
+            "メガストーン",
             "きあいのタスキ",
             "こだわりハチマキ",
             "ちからのハチマキ",
@@ -6305,6 +6309,7 @@ function determineOpponentItem(pokemon) {
             "たいきゅうチョッキ",
         ],
         "オニゴーリ": [
+            "メガストーン",
             "たべのこし",
         ],
         "カバルドン": [
@@ -7104,13 +7109,12 @@ btn.onmouseout = () => {
 
     function getSpriteUrl(pokemon, back = false) {
         if (!pokemon) return '';
-        // ギルガルドは第6世代で登場したため、第5世代フォルダに画像がない。
-        // シールド／ブレードの両方を同じ第6世代ドット絵セットから取得する。
+        // ギルガルドのブレードフォルムも他のポケモンと同じ第5世代風の静止ドット絵に統一。
         if (pokemon.id === 'aegislash') {
             const slug = pokemon.form === 'blade' ? 'aegislash-blade' : 'aegislash';
             const folder = back
-                ? (pokemon.isShiny ? 'gen6-back-shiny' : 'gen6-back')
-                : (pokemon.isShiny ? 'gen6-shiny' : 'gen6');
+                ? (pokemon.isShiny ? 'gen5-back-shiny' : 'gen5-back')
+                : (pokemon.isShiny ? 'gen5-shiny' : 'gen5');
             return `https://play.pokemonshowdown.com/sprites/${folder}/${slug}.png`;
         }
         // 色違い個体が初めてバトル画面に表示される瞬間だけ、キラーン音を鳴らす。

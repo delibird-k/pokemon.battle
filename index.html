@@ -12028,9 +12028,9 @@ if (move.name === "じんらい") {
         AEGISLASH_FORM.blade.spriteBack;
 
     if (attacker === playerPokemon) {
-        player.sprite.src = attacker.spriteBack;
+        player.sprite.src = getSpriteUrl(attacker, true);
     } else {
-        opponent.sprite.src = attacker.spriteFront;
+        opponent.sprite.src = getSpriteUrl(attacker, false);
     }
 
     await showMessage(
@@ -12063,9 +12063,9 @@ if (move.name === "じんらい") {
         AEGISLASH_FORM.shield.spriteBack;
 
     if (attacker === playerPokemon) {
-        player.sprite.src = attacker.spriteBack;
+        player.sprite.src = getSpriteUrl(attacker, true);
     } else {
-        opponent.sprite.src = attacker.spriteFront;
+        opponent.sprite.src = getSpriteUrl(attacker, false);
     }
 
     await showMessage(

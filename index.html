@@ -7100,6 +7100,14 @@ btn.onmouseout = () => {
     function getPixelSpriteUrl(id, back = false, shiny = false) {
         const base = String(id || '').trim().toLowerCase();
         if (!base) return '';
+        // 一部の新しいメガフォルムは第5世代風フォルダに前面画像がないため、存在する世代のドット絵を使う。
+        if (base === 'garchomp-mega' && !back) {
+            return `https://play.pokemonshowdown.com/sprites/gen6/garchomp-mega.png`;
+        }
+        // メガカイリューは背面専用画像がないため、確認できる前面ドット絵を共用して画像切れを防ぐ。
+        if (base === 'dragonite-mega' && back) {
+            return `https://play.pokemonshowdown.com/sprites/gen5/dragonite-mega.png`;
+        }
         // 第5世代（ブラック・ホワイト）風の静止画像に統一。色違い・背面も対応。
         const folder = back
             ? (shiny ? 'gen5-back-shiny' : 'gen5-back')
@@ -7129,6 +7137,10 @@ btn.onmouseout = () => {
             specialUrl = back ? pokemon.bustedSpriteBack : pokemon.bustedSpriteFront;
         }
         if (specialUrl) {
+            // メガヒードランはShowdownの第5世代ドット絵が未提供のため、確認できるZAのゲームスプライトを使用。
+            if (/heatran-mega/i.test(String(specialUrl))) {
+                return 'https://www.serebii.net/legendsz-a/pokemon/485-m.png';
+            }
             const match = String(specialUrl).match(/\/([^/?#]+)\.(?:gif|png|webp)(?:[?#].*)?$/i);
             if (match) {
                 let slug = match[1].replace(/-shiny$/, '').toLowerCase();

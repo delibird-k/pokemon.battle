@@ -12559,12 +12559,12 @@ for(let hit = 0; hit < hitCount; hit++){
 
     if (defender === playerPokemon) {
         updateBattleNameLabel(defender, player.nameEl, defender.name);
-        player.sprite.src =
-            "https://play.pokemonshowdown.com/sprites/ani-back/zoroark-hisui.gif";
+        player.sprite.src = getSpriteUrl(defender, true);
+        updatePokemonFloatVisual(defender, player.sprite);
     } else {
         updateBattleNameLabel(defender, opponent.nameEl, defender.name);
-        opponent.sprite.src =
-            "https://play.pokemonshowdown.com/sprites/ani/zoroark-hisui.gif";
+        opponent.sprite.src = getSpriteUrl(defender, false);
+        updatePokemonFloatVisual(defender, opponent.sprite);
     }
 
     await showMessage(

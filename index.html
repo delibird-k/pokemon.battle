@@ -2337,7 +2337,8 @@ function onlineNamesFor(pokemon) {
     if (pokemon.disguiseData && pokemon.disguiseData.name) names.add(pokemon.disguiseData.name);
     if (pokemon.megaEvolved && typeof MEGA_DATA !== 'undefined') {
         Object.keys(MEGA_DATA).forEach(base => {
-            if (MEGA_DATA[base] && MEGA_DATA[base].form && MEGA_DATA[base].form.name === pokemon.name) names.add(base);
+            const data = MEGA_DATA[base];
+            if (data?.form?.name === pokemon.name || data?.ashForm?.form?.name === pokemon.name) names.add(base);
         });
     }
     return [...names];
@@ -4385,6 +4386,23 @@ const MEGA_DATA = {
             baseSpeed: 142,
             spriteFront: "https://play.pokemonshowdown.com/sprites/ani/greninja-mega.gif",
             spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/greninja-mega.gif"
+        },
+        // 以前のサトシゲッコウガも「なにも持たせない」で引き続き選択可能。
+        ashForm: {
+            stone: "なにも持たせない",
+            form: {
+                name: "サトシゲッコウガ",
+                types: ["みず","あく"],
+                ability: "きずなへんげ",
+                baseHp: 72,
+                baseAttack: 145,
+                baseDefense: 67,
+                baseSpAttack: 153,
+                baseSpDefense: 71,
+                baseSpeed: 132,
+                spriteFront: "https://play.pokemonshowdown.com/sprites/ani/greninja-ash.gif",
+                spriteBack: "https://play.pokemonshowdown.com/sprites/ani-back/greninja-ash.gif"
+            }
         }
     },
     "リザードン": {
@@ -4657,13 +4675,22 @@ function canUseZMove(pokemon) {
     );
 }
 
+function getMegaFormData(pokemon) {
+    const mega = pokemon && MEGA_DATA[pokemon.name];
+    if (!mega) return null;
+    if (mega.ashForm && pokemon.item?.name === mega.ashForm.stone) return mega.ashForm.form;
+    return mega.form || null;
+}
+
 function canMegaEvolve(pokemon) {
     if (pokemon.megaEvolved) return false;
-
-    const mega = MEGA_DATA[pokemon.name];
-    if (!mega) return false;
-
-    return pokemon.item?.name === mega.stone;
+    const mega = pokemon && MEGA_DATA[pokemon.name];
+    const form = getMegaFormData(pokemon);
+    if (!mega || !form) return false;
+    const requiredStone = mega.ashForm && pokemon.item?.name === mega.ashForm.stone
+        ? mega.ashForm.stone
+        : mega.stone;
+    return pokemon.item?.name === requiredStone;
 }
     
 
@@ -6061,6 +6088,7 @@ function determineOpponentItem(pokemon) {
         ],
         "ゲッコウガ": [
             "メガストーン",
+            "なにも持たせない",
             "きあいのタスキ",
             "こだわりメガネ",
             "ものしりメガネ",
@@ -6493,7 +6521,8 @@ function determineOpponentItem(pokemon) {
 
     if(!canMegaEvolve(pokemon)) return;
 
-    const mega = MEGA_DATA[pokemon.name].form;
+    const mega = getMegaFormData(pokemon);
+    if (!mega) return;
 
     const oldName = pokemon.name;
     pokemon.name = mega.name;

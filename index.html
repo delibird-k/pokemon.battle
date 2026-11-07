@@ -3258,6 +3258,7 @@ let isBattleInProgress = false;
         'こだわりスカーフ': 'choice-scarf',
         'ゴツゴツメット': 'rocky-helmet',
         'たいきゅうチョッキ': 'assault-vest',
+        'しんかのきせき': 'eviolite',
         'オボンの実': 'sitrus-berry',
         'たべのこし': 'leftovers',
         'せんせいのツメ': 'quick-claw',
@@ -3323,6 +3324,7 @@ let isBattleInProgress = false;
         'こだわりスカーフ': { name: 'こだわりスカーフ', description: '素早さが1.5倍。交代するまで技が固定。'},
         'ゴツゴツメット': { name: 'ゴツゴツメット', description: '直接触れたら最大HPの1/8のダメージ'},
         'たいきゅうチョッキ': { name: 'たいきゅうチョッキ', description: '特防が1.5倍。'},
+        'しんかのきせき': { name: 'しんかのきせき', description: '進化できるポケモンの防御・特防が1.5倍。'},
         'オボンの実': { name: 'オボンの実', description: 'HPが半分でHPが1/4回復。'},
         'たべのこし': { name: 'たべのこし', description: '毎ターンHPを1/16回復。'},
         'せんせいのツメ': { name: 'せんせいのツメ', description: '30%で先制できる'},
@@ -5772,6 +5774,7 @@ function determineOpponentItem(pokemon) {
             'Zクリスタル',
             'Zクリスタル',
             "たいきゅうチョッキ",
+            "しんかのきせき",
         ],
         "ゾロアーク": [
             "きあいのタスキ",
@@ -8770,6 +8773,11 @@ function getAITypeEffectiveness(move, attackerOrDefender, maybeDefender) {
 // AI：実質ステータス
 // ============================================================
 
+function canUseEviolite(pokemon) {
+    // 現在の対戦データ内で進化先が残っているポケモン。
+    return !!pokemon && pokemon.id === 'porygon2';
+}
+
 function getAIEffectiveStat(pokemon, statName) {
 
     if (!pokemon) return 1;
@@ -8783,6 +8791,9 @@ function getAIEffectiveStat(pokemon, statName) {
         );
 
     let effective = Math.max(1, stat * getStatModifier(stage));
+    if ((statName === 'defense' || statName === 'spDefense') && pokemon.item?.name === 'しんかのきせき' && canUseEviolite(pokemon)) {
+        effective *= 1.5;
+    }
     if (statName === 'speed') {
         if (pokemon.status === 'paralyze') effective *= 0.5;
         if (pokemon.item?.name === 'こだわりスカーフ') effective *= 1.5;
@@ -15538,7 +15549,11 @@ defenseStat =
     defender.defense *
     getStatModifier(defStageFix(defenseStage));
 
-if (isAncientBoostActive(defender) && getAncientBoostStat(defender) === "defense") {
+if (defender.item?.name === 'しんかのきせき' && canUseEviolite(defender)) {
+    defenseStat *= 1.5;
+}
+
+if (isAncientBoostActive(defender)) && getAncientBoostStat(defender) === "defense") {
     defenseStat *= 1.3;
 }
 
@@ -15572,7 +15587,11 @@ if (defender.ability === "わざわいのうつわ") {
         defender.spDefense *
         getStatModifier(defStageFix(defender.statStages.spDefense));
 
-    if (isAncientBoostActive(defender) && getAncientBoostStat(defender) === "spDefense") {
+    if (defender.item?.name === 'しんかのきせき' && canUseEviolite(defender)) {
+        defenseStat *= 1.5;
+    }
+
+    if (isAncientBoostActive(defender)) && getAncientBoostStat(defender) === "spDefense") {
         defenseStat *= 1.3;
     }
 

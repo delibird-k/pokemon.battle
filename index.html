@@ -7891,6 +7891,9 @@ playerActiveIndex = newIndex;
 playerPokemon =
     playerTeam[playerActiveIndex];
 
+// このターンに交代した事実を記録。ふいうち・じんらいは交代先に成功しない。
+playerPokemon.hasSwitchedThisTurn = true;
+
 // 交代直後に表示中の状態異常バッジを新しいポケモンの状態へ同期する。
 // 旧ポケモンの毒・猛毒バッジが演出中や次の更新まで残るのを防ぐ。
 updateStatusMarkers();
@@ -8080,6 +8083,9 @@ opponentActiveIndex =
 opponentPokemon =
     opponentTeam[opponentActiveIndex];
 
+    // このターンに交代した事実を記録する。
+    opponentPokemon.hasSwitchedThisTurn = true;
+
     // 交代直後に状態異常バッジを新しいポケモンの状態へ同期する。
     updateStatusMarkers();
 
@@ -8185,6 +8191,8 @@ if (opponentPokemon.bloodMoonBlocked) {
 movesContainer.style.display = "none";
       playerPokemon.hasMoved = false;
 opponentPokemon.hasMoved = false;
+      playerPokemon.hasSwitchedThisTurn = false;
+      opponentPokemon.hasSwitchedThisTurn = false;
       if(isBattleInProgress) return;
         isBattleInProgress = true;
         disableMoves();
@@ -8832,11 +8840,11 @@ function getAIAccuracy(move) {
 // ============================================================
 
 function getAIDamage(move, attacker, defender) {
-    // サイコフィールド中は優先度が高い攻撃技を無効化する。
-    if (field?.type === 'psyco' && (move?.priority ?? 0) > 0 && move?.category !== 'status') return 0;
-
     // CPUの候補技が未設定／不正な場合も、評価処理を例外で止めない。
     if (!move || !attacker || !defender) return 0;
+    // サイコフィールドは地面にいる相手への先制技だけを防ぐ。
+    if (field?.type === 'psyco' && isPokemonGrounded(defender) &&
+        (move.priority ?? 0) > 0 && move.category !== 'status') return 0;
 
     if (move.isBloodMoon && attacker.bloodMoonBlocked) {
         return 0;
@@ -8977,25 +8985,16 @@ function getAIDamage(move, attacker, defender) {
         }
     }
 
-    // フィールド
-    if (
-        typeof field !== "undefined" &&
-        field
-    ) {
-
-        if (
-            field.type === "psyco" &&
-            moveTypes.includes("エスパー")
-        ) {
-            power *= 1.6;
-        }
-
-        if (
-            field.type === "psyco" &&
-            (move.priority ?? 0) > 0
-        ) {
-            power *= 0.0001;
-        }
+    // フィールド（第9世代準拠）
+    if (field) {
+        const attackerGrounded = isPokemonGrounded(attacker);
+        const defenderGrounded = isPokemonGrounded(defender);
+        if (field.type === 'psyco' && attackerGrounded && moveTypes.includes('エスパー')) power *= 1.3;
+        if (field.type === 'grass' && attackerGrounded && moveTypes.includes('くさ')) power *= 1.3;
+        if (field.type === 'electric' && attackerGrounded && moveTypes.includes('でんき')) power *= 1.3;
+        if (field.type === 'misty' && defenderGrounded && moveTypes.includes('ドラゴン')) power *= 0.5;
+        if (field.type === 'grass' && defenderGrounded &&
+            ['じしん', 'じならし', 'マグニチュード'].includes(move.name)) power *= 0.5;
     }
 
     let attackStat;
@@ -12014,9 +12013,9 @@ if (move.name === "メタルバースト") {
         return false;
     }
 
-    // 相手が変化技
+    // 相手が交代した、技を選んでいない、または変化技を選んだ場合は失敗。
     if (
-        defender.selectedMove &&
+        !defender.selectedMove ||
         defender.selectedMove.category === "status"
     ) {
         await showMessage("しかし しっぱいした！");
@@ -12037,9 +12036,9 @@ if (move.name === "じんらい") {
         return false;
     }
 
-    // 相手が変化技
+    // 相手が交代した、技を選んでいない、または変化技を選んだ場合は失敗。
     if (
-        defender.selectedMove &&
+        !defender.selectedMove ||
         defender.selectedMove.category === "status"
     ) {
         await showMessage("しかし しっぱいした！");
@@ -13141,6 +13140,8 @@ if (!move?.isDynamaxMove) {
         if ((status === 'poison' || status === 'toxic') &&
             (types.includes('どく') || types.includes('はがね') || ability === 'めんえき')) return false;
         if (status === 'sleep' && (ability === 'ふみん' || ability === 'やるき')) return false;
+        // ミストフィールド：地面にいるポケモンは状態異常にならない。
+        if (field?.type === 'misty' && isPokemonGrounded(target)) return false;
 
         return true;
     }
@@ -13725,8 +13726,7 @@ if (field.type === 'grass') {
     // プレイヤー側
     if (
         playerPokemon.currentHp > 0 &&
-        !playerPokemon.types.includes('ひこう') &&
-        playerPokemon.ability !== 'ふゆう'
+        isPokemonGrounded(playerPokemon)
     ) {
         const healAmount = Math.max(
             1,
@@ -13742,8 +13742,7 @@ if (field.type === 'grass') {
     // 相手側
     if (
         opponentPokemon.currentHp > 0 &&
-        !opponentPokemon.types.includes('ひこう') &&
-        opponentPokemon.ability !== 'ふゆう'
+        isPokemonGrounded(opponentPokemon)
     ) {
         const healAmount = Math.max(
             1,
@@ -15433,6 +15432,13 @@ async function applyGeigekiScopeOnEnter(pokemon) {
         return false;
     }
 
+    function isPokemonGrounded(pokemon) {
+        if (!pokemon) return false;
+        if (pokemon.grounded === false || pokemon.isGrounded === false) return false;
+        const types = Array.isArray(pokemon.types) ? pokemon.types : [pokemon.types].filter(Boolean);
+        return !types.includes('ひこう') && pokemon.ability !== 'ふゆう';
+    }
+
     function calculateTypeEffectiveness(moveType, defenderTypes) {
         let totalMultiplier = 1;
         defenderTypes.forEach(defendingType => {
@@ -15680,35 +15686,24 @@ if (weather.type === 'rain') {
     if (attackTypes.includes('みず')) movePower *= 1.5;
     if (attackTypes.includes('ほのお')) movePower *= 0.5;
 };
-if (field.type === 'psyco') {
+const attackerGrounded = isPokemonGrounded(attacker);
+const defenderGrounded = isPokemonGrounded(defender);
 
-    // エスパー技強化
-    if (attackTypes.includes('エスパー')) {
-        movePower *= 1.6;
-    }
+// サイコフィールド：地面にいる使用者のエスパー技を1.3倍
+if (field.type === 'psyco' && attackerGrounded && attackTypes.includes('エスパー')) movePower *= 1.3;
 
-    // 先制技弱体化
-    if (move.priority > 0) {
-        movePower *= 0.0001;
-    }
-}
-// グラスフィールド
+// グラスフィールド：地面にいる使用者のくさ技を1.3倍。
+// 地面にいる対象へのじしん等は威力半減。
 if (field.type === 'grass') {
-
-    // エスパー技強化
-    if (attackTypes.includes('くさ')) {
-        movePower *= 1.5;
-    }
-
-    // じしん・じならし・マグニチュードの威力半減
-    if (
-        move.name === 'じしん' ||
-        move.name === 'じならし' ||
-        move.name === 'マグニチュード'
-    ) {
-        movePower *= 0.5;
-    }
+    if (attackerGrounded && attackTypes.includes('くさ')) movePower *= 1.3;
+    if (defenderGrounded && ['じしん', 'じならし', 'マグニチュード'].includes(move.name)) movePower *= 0.5;
 }
+
+// エレキフィールド：地面にいる使用者のでんき技を1.3倍
+if (field.type === 'electric' && attackerGrounded && attackTypes.includes('でんき')) movePower *= 1.3;
+
+// ミストフィールド：地面にいる対象へのドラゴン技を半減
+if (field.type === 'misty' && defenderGrounded && attackTypes.includes('ドラゴン')) movePower *= 0.5;
 
         let damage = Math.floor(Math.floor(Math.floor(2 * level / 5 + 2) * movePower * attackStat / defenseStat) / 50) + 2;
 
@@ -15808,9 +15803,10 @@ if (move.name === "ソウルドレイン") {
     healing = Math.floor(damage * 3 / 4);
 }
 
-// サイコフィールド中は、優先度が高い攻撃技のダメージを完全に0にする。
+// サイコフィールドは地面にいる対象への先制技を防ぐ。
 const blockedByPsychicField =
     field?.type === 'psyco' &&
+    isPokemonGrounded(defender) &&
     (move.priority ?? 0) > 0 &&
     move.category !== 'status';
 

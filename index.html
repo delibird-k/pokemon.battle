@@ -8832,6 +8832,9 @@ function getAIAccuracy(move) {
 // ============================================================
 
 function getAIDamage(move, attacker, defender) {
+    // サイコフィールド中は優先度が高い攻撃技を無効化する。
+    if (field?.type === 'psyco' && (move?.priority ?? 0) > 0 && move?.category !== 'status') return 0;
+
     // CPUの候補技が未設定／不正な場合も、評価処理を例外で止めない。
     if (!move || !attacker || !defender) return 0;
 
@@ -15805,8 +15808,15 @@ if (move.name === "ソウルドレイン") {
     healing = Math.floor(damage * 3 / 4);
 }
 
-const finalDamage =
-    Math.max(actualTypeMultiplier > 0 ? 1 : 0, damage);
+// サイコフィールド中は、優先度が高い攻撃技のダメージを完全に0にする。
+const blockedByPsychicField =
+    field?.type === 'psyco' &&
+    (move.priority ?? 0) > 0 &&
+    move.category !== 'status';
+
+const finalDamage = blockedByPsychicField
+    ? 0
+    : Math.max(actualTypeMultiplier > 0 ? 1 : 0, damage);
 
 return {
     damage: finalDamage,

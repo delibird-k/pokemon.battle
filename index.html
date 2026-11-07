@@ -13140,6 +13140,8 @@ if (!move?.isDynamaxMove) {
         if ((status === 'poison' || status === 'toxic') &&
             (types.includes('どく') || types.includes('はがね') || ability === 'めんえき')) return false;
         if (status === 'sleep' && (ability === 'ふみん' || ability === 'やるき')) return false;
+        // エレキフィールド：地面にいるポケモンは眠らない。
+        if (status === 'sleep' && field?.type === 'electric' && isPokemonGrounded(target)) return false;
         // ミストフィールド：地面にいるポケモンは状態異常にならない。
         if (field?.type === 'misty' && isPokemonGrounded(target)) return false;
 
@@ -13582,8 +13584,11 @@ if (move.name === "ミイラしばり" && defender.currentHp > 0) {
                 break;
             case 'あくび':
 
-    if (field?.type === 'misty' && isPokemonGrounded(defender)) {
-        message = `しかし ミストフィールドに まもられている！`;
+    if (
+        (field?.type === 'misty' || field?.type === 'electric') &&
+        isPokemonGrounded(defender)
+    ) {
+        message = `しかし フィールドに まもられている！`;
     }
     else if (defender.status !== null) {
         message = `しかし うまくきまらなかった！`;

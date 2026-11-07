@@ -13582,7 +13582,10 @@ if (move.name === "ミイラしばり" && defender.currentHp > 0) {
                 break;
             case 'あくび':
 
-    if (defender.status !== null) {
+    if (field?.type === 'misty' && isPokemonGrounded(defender)) {
+        message = `しかし ミストフィールドに まもられている！`;
+    }
+    else if (defender.status !== null) {
         message = `しかし うまくきまらなかった！`;
     }
     else if (
@@ -13605,7 +13608,9 @@ if (move.name === "ミイラしばり" && defender.currentHp > 0) {
                 if (move.name === 'いばる' && defender.statStages) {
                     defender.statStages.attack = Math.min(6, (defender.statStages.attack || 0) + 2);
                 }
-                if (defender.isConfused) {
+                if (field?.type === 'misty' && isPokemonGrounded(defender)) {
+                    message = `しかし ミストフィールドに まもられている！`;
+                } else if (defender.isConfused) {
                     message = `しかし ${defender.name} は すでに こんらんしている！`;
                 } else {
                     defender.isConfused = true;

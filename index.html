@@ -3481,15 +3481,17 @@ let isBattleInProgress = false;
     // PokéAPI のスラッグはこのゲームの id と異なる場合があるため、別名テーブルと species 経由のフォールバックを用意
     const customPokeApiAlias = {
       'urshifu':'urshifu-single-strike','urshifu-rapidstrike':'urshifu-rapid-strike',
+      'rillaboom':'rillaboom','cinderace':'cinderace','meowscarada':'meowscarada','kingambit':'kingambit',
+      'roaringmoon':'roaring-moon','archaludon':'archaludon','ragingbolt':'raging-bolt',
       'landorus':'landorus-incarnate','thundurus':'thundurus-incarnate','tornadus':'tornadus-incarnate',
       'aegislash':'aegislash-shield','mimikyu':'mimikyu-disguised','basculegion':'basculegion-male',
-      'fluttermane':'flutter-mane','chienpao':'chien-pao','chiyu':'chi-yu','roaringmoon':'roaring-moon',
-      'ragingbolt':'raging-bolt','tapulele':'tapu-lele','tapukoko':'tapu-koko','tapubulu':'tapu-bulu','tapufini':'tapu-fini',
-      'tinglu':'ting-lu','wochien':'wo-chien','greatTusk':'great-tusk','irontreads':'iron-treads','ironbundle':'iron-bundle',
-      'ironvaliant':'iron-valiant','ironhands':'iron-hands','ironmoth':'iron-moth','ironthorns':'iron-thorns',
-      'ironcrown':'iron-crown','ironboulder':'iron-boulder','ironjugulis':'iron-jugulis','ironleaves':'iron-leaves',
-      'greattusk':'great-tusk','screamtail':'scream-tail','brutebonnet':'brute-bonnet','sandyshocks':'sandy-shocks',
-      'slitherwing':'slither-wing','walkingwake':'walking-wake','gougingfire':'gouging-fire'
+      'fluttermane':'flutter-mane','chienpao':'chien-pao','chiyu':'chi-yu','tapulele':'tapu-lele',
+      'tapukoko':'tapu-koko','tapubulu':'tapu-bulu','tapufini':'tapu-fini','tinglu':'ting-lu','wochien':'wo-chien',
+      'greattusk':'great-tusk','irontreads':'iron-treads','ironbundle':'iron-bundle','ironvaliant':'iron-valiant',
+      'ironhands':'iron-hands','ironmoth':'iron-moth','ironthorns':'iron-thorns','ironcrown':'iron-crown',
+      'ironboulder':'iron-boulder','ironjugulis':'iron-jugulis','ironleaves':'iron-leaves','screamtail':'scream-tail',
+      'brutebonnet':'brute-bonnet','sandyshocks':'sandy-shocks','slitherwing':'slither-wing',
+      'walkingwake':'walking-wake','gougingfire':'gouging-fire'
     };
     function customPokeApiSlug(p,key){
       const raw=String(p?.id||key||'').toLowerCase().trim();
@@ -7231,14 +7233,32 @@ btn.onmouseout = () => {
                 : (pokemon.isShiny
                     ? (candidateAnimated.front_shiny || candidateAnimated.front_default)
                     : candidateAnimated.front_default));
-            if (candidateGif) { data = candidateData; break; }
+            // API側のsprites項目が未収録でも、全国図鑑番号からBW GIFの標準配置を直接参照する。
+            // 存在しない場合は下のonerrorで従来PNGへ戻す。
+            const directGif = candidateData?.id
+                ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${back ? 'back/' : ''}${pokemon.isShiny ? 'shiny/' : ''}${candidateData.id}.gif`
+                : null;
+            if (candidateGif || directGif) {
+                data = candidateData;
+                data.__gen5AnimatedGif = candidateGif || directGif;
+                break;
+            }
         }
         if (!data || img.dataset.spriteRequestToken !== token) return;
-        const animated = data.sprites.versions['generation-v']['black-white'].animated;
-        const gif = back
+        const animated = data.sprites?.versions?.['generation-v']?.['black-white']?.animated;
+        const gif = data.__gen5AnimatedGif || (animated && (back
             ? (pokemon.isShiny ? (animated.back_shiny || animated.back_default) : animated.back_default)
-            : (pokemon.isShiny ? (animated.front_shiny || animated.front_default) : animated.front_default);
-        if (gif && img.dataset.spriteRequestToken === token) img.src = gif;
+            : (pokemon.isShiny ? (animated.front_shiny || animated.front_default) : animated.front_default)));
+        if (gif && img.dataset.spriteRequestToken === token) {
+            const staticFallback = getSpriteUrl(pokemon, back);
+            img.onerror = () => {
+                if (img.dataset.spriteRequestToken === token) {
+                    img.onerror = null;
+                    img.src = staticFallback;
+                }
+            };
+            img.src = gif;
+        }
     }
 
     // 浮遊する見た目のポケモンは、足元の地面を小さく薄くし、画像を上下に浮かせる。

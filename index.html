@@ -2478,8 +2478,7 @@ function onlineSpriteSizeClass(pokemon) {
 function onlineUpdateSprite(uiSide, pokemon, isBack) {
     const shown = pokemon.disguiseData || pokemon;
     const sprite = uiSide.sprite;
-    const url = getSpriteUrl(shown, isBack);
-    if (sprite.getAttribute('src') !== url) sprite.src = url;
+    setPokemonSprite(sprite, shown, isBack);
     updatePokemonFloatVisual(pokemon, sprite);
 
     const base = `mx-auto ${onlineSpriteSizeClass(pokemon)} object-contain transition-all duration-1000`;
@@ -5019,6 +5018,8 @@ function getShownName(pokemon){
             let imgSrc = getSpriteUrl({id: p.id});
             const imgSizeClass = p.id === 'eternatus-eternamax' ? 'h-24' : 'h-20';
             card.innerHTML = `<img src="${imgSrc}" alt="${p.name}" class="mx-auto ${imgSizeClass}"><p class="mt-2 text-xs sm:text-sm">${p.name}</p>`;
+            const cardSprite = card.querySelector('img');
+            if (cardSprite) setPokemonSprite(cardSprite, {id:p.id}, false);
             
             card.addEventListener('mouseover', (e) => {
                let tooltipContent = `
@@ -5107,7 +5108,7 @@ function updatePokemonSelectionPreview(side) {
         if (key && pokemonBaseData[key]) {
             const pokemon = pokemonBaseData[key];
             const img = document.createElement('img');
-            img.src = getSpriteUrl({id:pokemon.id});
+            setPokemonSprite(img, {id:pokemon.id});
             img.alt = '';
             const name = document.createElement('span');
             name.textContent = pokemon.name;
@@ -6567,7 +6568,7 @@ function determineOpponentItem(pokemon) {
     // メガシンカ専用URLは画像名の参照元として保持し、
     // 実際の表示は通常フォームと同じ第5世代ドット絵URLへ統一する。
     // ここで元URLを直接 sprite.src に入れると、メガだけアニメGIFになり雰囲気が変わる。
-    sprite.src = getSpriteUrl(pokemon, isPlayer);
+    setPokemonSprite(sprite, pokemon, isPlayer);
     updatePokemonFloatVisual(pokemon, sprite);
 
     await showMessage(`${oldName} は メガシンカした！`);
@@ -6621,8 +6622,7 @@ updateBattleNameLabel(playerPokemon, player.nameEl, playerShown.name);
 player.maxHpEl.textContent =
     playerPokemon.maxHp;
 
-player.sprite.src =
-    getSpriteUrl(playerShown, true);
+setPokemonSprite(player.sprite, playerShown, true);
 updatePokemonFloatVisual(playerPokemon, player.sprite);
 const opponentShown =
     opponentPokemon.disguiseData || opponentPokemon;
@@ -6632,8 +6632,7 @@ updateBattleNameLabel(opponentPokemon, opponent.nameEl, opponentShown.name);
 document.getElementById("opponent-max-hp").textContent =
     opponentPokemon.maxHp;
 
-opponent.sprite.src =
-    getSpriteUrl(opponentShown);
+setPokemonSprite(opponent.sprite, opponentShown);
         updatePokemonFloatVisual(opponentPokemon, opponent.sprite);
         const playerSizeClasses = playerPokemon.id === 'necrozma-ultra' || playerPokemon.id === 'eternatus-eternamax' ? 'h-28 sm:h-36 md:h-44' : 'h-24 sm:h-32 md:h-40';
         player.sprite.className = `mx-auto ${playerSizeClasses} object-contain transition-all duration-1000`;
@@ -7128,31 +7127,7 @@ btn.onmouseout = () => {
 }
 
     
-    // 第5世代風のアニメーションGIF。通常フォームは動くスプライトを優先する。
-    function getAnimatedSpriteUrl(id, back = false, shiny = false) {
-        const base = String(id || '').trim().toLowerCase();
-        if (!base) return '';
-        const folder = back
-            ? (shiny ? 'ani-back-shiny' : 'ani-back')
-            : (shiny ? 'ani-shiny' : 'ani');
-        return `https://play.pokemonshowdown.com/sprites/${folder}/${encodeURIComponent(base)}.gif`;
-    }
-
-    // GIFが用意されていないポケモンは、従来の第5世代風PNGへ自動で切り替える。
-    if (!window.__pokemonAnimatedSpriteFallbackInstalled) {
-        window.__pokemonAnimatedSpriteFallbackInstalled = true;
-        document.addEventListener('error', function(event) {
-            const img = event.target;
-            if (!(img instanceof HTMLImageElement) || img.dataset.spriteFallbackApplied === 'true') return;
-            const match = String(img.src || '').match(/\/sprites\/(ani(?:-back)?(?:-shiny)?)\/([^/]+)\.gif(?:[?#].*)?$/i);
-            if (!match) return;
-            img.dataset.spriteFallbackApplied = 'true';
-            const folder = match[1].toLowerCase();
-            const slug = decodeURIComponent(match[2]);
-            img.src = getPixelSpriteUrl(slug, folder.includes('back'), folder.includes('shiny'));
-        }, true);
-    }
-
+    // 静止PNGはGIF非対応フォーム・通信失敗時のフォールバックとして保持する。
     // 従来の静止PNG。GIF未対応フォーム・GIF読み込み失敗時のフォールバックに使う。
     function getPixelSpriteUrl(id, back = false, shiny = false) {
         const base = String(id || '').trim().toLowerCase();
@@ -7204,8 +7179,32 @@ btn.onmouseout = () => {
                 return getPixelSpriteUrl(slug, back, !!pokemon.isShiny);
             }
         }
-        // 通常フォームは第5世代風アニメーションGIFを使用。失敗時は上のエラー処理でPNGへ戻す。
-        return getAnimatedSpriteUrl(pokemon.id, back, !!pokemon.isShiny);
+        return getPixelSpriteUrl(pokemon.id, back, !!pokemon.isShiny);
+    }
+
+    // PokeAPIの第5世代BWアニメーションGIF。従来のドット絵と同じテイスト。
+    const gen5AnimatedSpriteCache = new Map();
+    async function setPokemonSprite(img, pokemon, back = false) {
+        if (!img || !pokemon) return;
+        const id = String(pokemon.id || '').toLowerCase();
+        const token = String((Number(img.dataset.spriteRequestToken) || 0) + 1);
+        img.dataset.spriteRequestToken = token;
+        setPokemonSprite(img, pokemon, back);
+        if (pokemon.megaEvolved || pokemon.disguiseBroken || id === 'aegislash') return;
+        let pending = gen5AnimatedSpriteCache.get(id);
+        if (!pending) {
+            pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(id)}`)
+                .then(res => res.ok ? res.json() : null).catch(() => null);
+            gen5AnimatedSpriteCache.set(id, pending);
+        }
+        const data = await pending;
+        if (!data || img.dataset.spriteRequestToken !== token) return;
+        const animated = data.sprites?.versions?.['generation-v']?.['black-white']?.animated;
+        if (!animated) return;
+        const gif = back
+            ? (pokemon.isShiny ? animated.back_shiny : animated.back_default)
+            : (pokemon.isShiny ? animated.front_shiny : animated.front_default);
+        if (gif && img.dataset.spriteRequestToken === token) img.src = gif;
     }
 
     // 浮遊する見た目のポケモンは、足元の地面を小さく薄くし、画像を上下に浮かせる。
@@ -7644,11 +7643,7 @@ playerPokemon.statStages = {
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
 
-    player.sprite.src =
-        getSpriteUrl(
-            playerShown,
-            true
-        );
+    setPokemonSprite(player.sprite, playerShown, true);
     updatePokemonFloatVisual(playerPokemon, player.sprite);
 
     player.sprite.className =
@@ -7956,11 +7951,7 @@ updateStatDisplay(
     player.maxHpEl.textContent =
         playerPokemon.maxHp;
 
-    player.sprite.src =
-        getSpriteUrl(
-            playerShown,
-            true
-        );
+    setPokemonSprite(player.sprite, playerShown, true);
 
     player.sprite.className =
         `mx-auto ${
@@ -8151,8 +8142,7 @@ opponentPokemon.protectUsed = false;
     ).textContent =
         opponentPokemon.maxHp;
 
-    opponent.sprite.src =
-        getSpriteUrl(opponentShown);
+    setPokemonSprite(opponent.sprite, opponentShown);
     updatePokemonFloatVisual(opponentPokemon, opponent.sprite);
 
     opponent.sprite.className =
@@ -12098,9 +12088,9 @@ if (move.name === "じんらい") {
         AEGISLASH_FORM.blade.spriteBack;
 
     if (attacker === playerPokemon) {
-        player.sprite.src = getSpriteUrl(attacker, true);
+        setPokemonSprite(player.sprite, attacker, true);
     } else {
-        opponent.sprite.src = getSpriteUrl(attacker, false);
+        setPokemonSprite(opponent.sprite, attacker, false);
     }
 
     await showMessage(
@@ -12133,9 +12123,9 @@ if (move.name === "じんらい") {
         AEGISLASH_FORM.shield.spriteBack;
 
     if (attacker === playerPokemon) {
-        player.sprite.src = getSpriteUrl(attacker, true);
+        setPokemonSprite(player.sprite, attacker, true);
     } else {
-        opponent.sprite.src = getSpriteUrl(attacker, false);
+        setPokemonSprite(opponent.sprite, attacker, false);
     }
 
     await showMessage(
@@ -12595,11 +12585,11 @@ for(let hit = 0; hit < hitCount; hit++){
 
     if (defender === playerPokemon) {
         updateBattleNameLabel(defender, player.nameEl, defender.name);
-        player.sprite.src = getSpriteUrl(defender, true);
+        setPokemonSprite(player.sprite, defender, true);
         updatePokemonFloatVisual(defender, player.sprite);
     } else {
         updateBattleNameLabel(defender, opponent.nameEl, defender.name);
-        opponent.sprite.src = getSpriteUrl(defender, false);
+        setPokemonSprite(opponent.sprite, defender, false);
         updatePokemonFloatVisual(defender, opponent.sprite);
     }
 
@@ -14425,8 +14415,7 @@ updateStatDisplay(
     ).textContent =
         opponentPokemon.maxHp;
 
-    opponent.sprite.src =
-        getSpriteUrl(opponentShown);
+    setPokemonSprite(opponent.sprite, opponentShown);
     updatePokemonFloatVisual(opponentPokemon, opponent.sprite);
 
     opponent.sprite.className =
@@ -14658,11 +14647,7 @@ updateBattleNameLabel(playerPokemon, player.nameEl, playerShown.name);
 player.maxHpEl.textContent =
     playerPokemon.maxHp;
 
-player.sprite.src =
-    getSpriteUrl(
-        playerShown,
-        true
-    );
+setPokemonSprite(player.sprite, playerShown, true);
 
 player.sprite.className =
     `mx-auto ${
@@ -15538,10 +15523,10 @@ const defStageFix = (stage) =>
 
         if (defender === playerPokemon) {
             sprite = player.sprite;
-            sprite.src = getSpriteUrl(defender, true);
+            setPokemonSprite(sprite, defender, true);
         } else {
             sprite = opponent.sprite;
-            sprite.src = getSpriteUrl(defender, false);
+            setPokemonSprite(sprite, defender, false);
         }
         updatePokemonFloatVisual(defender, sprite);
 

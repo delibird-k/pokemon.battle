@@ -7202,7 +7202,7 @@ btn.onmouseout = () => {
         if (!pending) {
             pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(apiId)}`)
                 .then(res => res.ok ? res.json() : null).catch(() => null);
-            gen5AnimatedSpriteCache.set(id, pending);
+            gen5AnimatedSpriteCache.set(apiId, pending);
         }
         const data = await pending;
         if (!data || img.dataset.spriteRequestToken !== token) return;

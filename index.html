@@ -7191,13 +7191,29 @@ btn.onmouseout = () => {
         img.dataset.spriteRequestToken = token;
         // まず従来の第5世代風PNGを表示し、GIF取得後に同じ絵柄のアニメーションへ切り替える。
         img.src = getSpriteUrl(pokemon, back);
-        if (pokemon.megaEvolved || pokemon.disguiseBroken || id === 'aegislash') return;
         const apiIdAliases = {
             tapulele: 'tapu-lele',
             chiyu: 'chi-yu',
-            'urshifu-rapidstrike': 'urshifu-rapid-strike'
+            fluttermane: 'flutter-mane',
+            chienpao: 'chien-pao',
+            roaringmoon: 'roaring-moon',
+            ragingbolt: 'raging-bolt',
+            urshifu: 'urshifu-single-strike',
+            'urshifu-rapidstrike': 'urshifu-rapid-strike',
+            basculegion: 'basculegion-male'
         };
-        const apiId = pokemon.pokeApiId || apiIdAliases[id] || id;
+        // バトル中の特殊フォームも、対応するフォーム別GIFがあれば取得する。
+        let apiId = pokemon.pokeApiId || apiIdAliases[id] || id;
+        if (pokemon.megaEvolved && pokemon.megaSpriteFront) {
+            const megaSlug = String(pokemon.megaSpriteFront).match(/\/([^/?#]+)\.(?:gif|png|webp)(?:[?#].*)?$/i)?.[1];
+            if (megaSlug) apiId = megaSlug.toLowerCase()
+                .replace(/-megax$/, '-mega-x')
+                .replace(/-megay$/, '-mega-y');
+        } else if (pokemon.disguiseBroken && id === 'mimikyu') {
+            apiId = 'mimikyu-busted';
+        } else if (id === 'aegislash' && pokemon.form === 'blade') {
+            apiId = 'aegislash-blade';
+        }
         let pending = gen5AnimatedSpriteCache.get(apiId);
         if (!pending) {
             pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(apiId)}`)
@@ -7959,6 +7975,7 @@ updateStatDisplay(
         playerPokemon.maxHp;
 
     setPokemonSprite(player.sprite, playerShown, true);
+    updatePokemonFloatVisual(playerPokemon, player.sprite);
 
     player.sprite.className =
         `mx-auto ${

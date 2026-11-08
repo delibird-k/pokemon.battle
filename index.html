@@ -7128,19 +7128,41 @@ btn.onmouseout = () => {
 }
 
     
-    // 対戦画面・選択画面で共通の静止ドットスプライトを使用する。
+    // 第5世代風のアニメーションGIF。通常フォームは動くスプライトを優先する。
+    function getAnimatedSpriteUrl(id, back = false, shiny = false) {
+        const base = String(id || '').trim().toLowerCase();
+        if (!base) return '';
+        const folder = back
+            ? (shiny ? 'ani-back-shiny' : 'ani-back')
+            : (shiny ? 'ani-shiny' : 'ani');
+        return `https://play.pokemonshowdown.com/sprites/${folder}/${encodeURIComponent(base)}.gif`;
+    }
+
+    // GIFが用意されていないポケモンは、従来の第5世代風PNGへ自動で切り替える。
+    if (!window.__pokemonAnimatedSpriteFallbackInstalled) {
+        window.__pokemonAnimatedSpriteFallbackInstalled = true;
+        document.addEventListener('error', function(event) {
+            const img = event.target;
+            if (!(img instanceof HTMLImageElement) || img.dataset.spriteFallbackApplied === 'true') return;
+            const match = String(img.src || '').match(/\/sprites\/(ani(?:-back)?(?:-shiny)?)\/([^/]+)\.gif(?:[?#].*)?$/i);
+            if (!match) return;
+            img.dataset.spriteFallbackApplied = 'true';
+            const folder = match[1].toLowerCase();
+            const slug = decodeURIComponent(match[2]);
+            img.src = getPixelSpriteUrl(slug, folder.includes('back'), folder.includes('shiny'));
+        }, true);
+    }
+
+    // 従来の静止PNG。GIF未対応フォーム・GIF読み込み失敗時のフォールバックに使う。
     function getPixelSpriteUrl(id, back = false, shiny = false) {
         const base = String(id || '').trim().toLowerCase();
         if (!base) return '';
-        // 一部の新しいメガフォルムは第5世代風フォルダに前面画像がないため、存在する世代のドット絵を使う。
         if (base === 'garchomp-mega' && !back) {
             return `https://play.pokemonshowdown.com/sprites/gen6/garchomp-mega.png`;
         }
-        // メガカイリューは背面専用画像がないため、確認できる前面ドット絵を共用して画像切れを防ぐ。
         if (base === 'dragonite-mega' && back) {
             return `https://play.pokemonshowdown.com/sprites/gen5/dragonite-mega.png`;
         }
-        // 第5世代（ブラック・ホワイト）風の静止画像に統一。色違い・背面も対応。
         const folder = back
             ? (shiny ? 'gen5-back-shiny' : 'gen5-back')
             : (shiny ? 'gen5-shiny' : 'gen5');
@@ -7149,7 +7171,7 @@ btn.onmouseout = () => {
 
     function getSpriteUrl(pokemon, back = false) {
         if (!pokemon) return '';
-        // ギルガルドのブレードフォルムも他のポケモンと同じ第5世代風の静止ドット絵に統一。
+        // ギルガルドは特殊なフォーム画像を維持し、通常フォームと同様に画像切れを防ぐ。
         if (pokemon.id === 'aegislash') {
             const slug = pokemon.form === 'blade' ? 'aegislash-blade' : 'aegislash';
             const folder = back
@@ -7182,7 +7204,8 @@ btn.onmouseout = () => {
                 return getPixelSpriteUrl(slug, back, !!pokemon.isShiny);
             }
         }
-        return getPixelSpriteUrl(pokemon.id, back, !!pokemon.isShiny);
+        // 通常フォームは第5世代風アニメーションGIFを使用。失敗時は上のエラー処理でPNGへ戻す。
+        return getAnimatedSpriteUrl(pokemon.id, back, !!pokemon.isShiny);
     }
 
     // 浮遊する見た目のポケモンは、足元の地面を小さく薄くし、画像を上下に浮かせる。

@@ -7189,11 +7189,18 @@ btn.onmouseout = () => {
         const id = String(pokemon.id || '').toLowerCase();
         const token = String((Number(img.dataset.spriteRequestToken) || 0) + 1);
         img.dataset.spriteRequestToken = token;
-        setPokemonSprite(img, pokemon, back);
+        // まず従来の第5世代風PNGを表示し、GIF取得後に同じ絵柄のアニメーションへ切り替える。
+        img.src = getSpriteUrl(pokemon, back);
         if (pokemon.megaEvolved || pokemon.disguiseBroken || id === 'aegislash') return;
-        let pending = gen5AnimatedSpriteCache.get(id);
+        const apiIdAliases = {
+            tapulele: 'tapu-lele',
+            chiyu: 'chi-yu',
+            'urshifu-rapidstrike': 'urshifu-rapid-strike'
+        };
+        const apiId = pokemon.pokeApiId || apiIdAliases[id] || id;
+        let pending = gen5AnimatedSpriteCache.get(apiId);
         if (!pending) {
-            pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(id)}`)
+            pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(apiId)}`)
                 .then(res => res.ok ? res.json() : null).catch(() => null);
             gen5AnimatedSpriteCache.set(id, pending);
         }

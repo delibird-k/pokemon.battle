@@ -7191,19 +7191,8 @@ btn.onmouseout = () => {
         img.dataset.spriteRequestToken = token;
         // まず従来の第5世代風PNGを表示し、GIF取得後に同じ絵柄のアニメーションへ切り替える。
         img.src = getSpriteUrl(pokemon, back);
-        const apiIdAliases = {
-            tapulele: 'tapu-lele',
-            chiyu: 'chi-yu',
-            fluttermane: 'flutter-mane',
-            chienpao: 'chien-pao',
-            roaringmoon: 'roaring-moon',
-            ragingbolt: 'raging-bolt',
-            urshifu: 'urshifu-single-strike',
-            'urshifu-rapidstrike': 'urshifu-rapid-strike',
-            basculegion: 'basculegion-male'
-        };
-        // バトル中の特殊フォームも、対応するフォーム別GIFがあれば取得する。
-        let apiId = pokemon.pokeApiId || apiIdAliases[id] || id;
+        // 学習データ取得処理と共通のPokeAPI別名表を使い、ゲーム内IDの表記揺れを統一する。
+        let apiId = pokemon.pokeApiId || (typeof customPokeApiSlug === 'function' ? customPokeApiSlug(pokemon) : id);
         if (pokemon.megaEvolved && pokemon.megaSpriteFront) {
             const megaSlug = String(pokemon.megaSpriteFront).match(/\/([^/?#]+)\.(?:gif|png|webp)(?:[?#].*)?$/i)?.[1];
             if (megaSlug) apiId = megaSlug.toLowerCase()
@@ -7211,22 +7200,44 @@ btn.onmouseout = () => {
                 .replace(/-megay$/, '-mega-y');
         } else if (pokemon.disguiseBroken && id === 'mimikyu') {
             apiId = 'mimikyu-busted';
-        } else if (id === 'aegislash' && pokemon.form === 'blade') {
-            apiId = 'aegislash-blade';
+        } else if (id === 'aegislash') {
+            apiId = pokemon.form === 'blade' ? 'aegislash-blade' : 'aegislash-shield';
         }
-        let pending = gen5AnimatedSpriteCache.get(apiId);
-        if (!pending) {
-            pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(apiId)}`)
-                .then(res => res.ok ? res.json() : null).catch(() => null);
-            gen5AnimatedSpriteCache.set(apiId, pending);
+
+        // フォーム専用データにGIFがない場合は通常フォームのGIFも確認する。
+        const apiCandidates = [...new Set([
+            apiId,
+            id === 'urshifu-rapidstrike' ? 'urshifu-rapid-strike' : null,
+            id === 'basculegion' ? 'basculegion' : null,
+            id === 'aegislash' ? 'aegislash' : null,
+            id === 'mimikyu' ? 'mimikyu' : null,
+            pokemon.megaEvolved ? id : null
+        ].filter(Boolean))];
+        let data = null;
+        for (const candidate of apiCandidates) {
+            let pending = gen5AnimatedSpriteCache.get(candidate);
+            if (!pending) {
+                pending = fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(candidate)}`)
+                    .then(res => res.ok ? res.json() : null).catch(() => null);
+                gen5AnimatedSpriteCache.set(candidate, pending);
+            }
+            const candidateData = await pending;
+            if (img.dataset.spriteRequestToken !== token) return;
+            const candidateAnimated = candidateData?.sprites?.versions?.['generation-v']?.['black-white']?.animated;
+            const candidateGif = candidateAnimated && (back
+                ? (pokemon.isShiny
+                    ? (candidateAnimated.back_shiny || candidateAnimated.back_default)
+                    : candidateAnimated.back_default)
+                : (pokemon.isShiny
+                    ? (candidateAnimated.front_shiny || candidateAnimated.front_default)
+                    : candidateAnimated.front_default));
+            if (candidateGif) { data = candidateData; break; }
         }
-        const data = await pending;
         if (!data || img.dataset.spriteRequestToken !== token) return;
-        const animated = data.sprites?.versions?.['generation-v']?.['black-white']?.animated;
-        if (!animated) return;
+        const animated = data.sprites.versions['generation-v']['black-white'].animated;
         const gif = back
-            ? (pokemon.isShiny ? animated.back_shiny : animated.back_default)
-            : (pokemon.isShiny ? animated.front_shiny : animated.front_default);
+            ? (pokemon.isShiny ? (animated.back_shiny || animated.back_default) : animated.back_default)
+            : (pokemon.isShiny ? (animated.front_shiny || animated.front_default) : animated.front_default);
         if (gif && img.dataset.spriteRequestToken === token) img.src = gif;
     }
 
